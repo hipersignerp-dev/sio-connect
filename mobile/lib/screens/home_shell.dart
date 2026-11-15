@@ -8,6 +8,7 @@ import 'collection_screens.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
 import 'home_screen.dart';
+import 'manage_screens.dart';
 import 'meeting_screens.dart';
 import 'more_screen.dart';
 import 'notice_screens.dart';
@@ -137,6 +138,12 @@ Future<void> showQuickAdd(BuildContext context) async {
       (Icons.receipt_long, SioColors.warning, 'Expense claim', 'Bills for events and meetings', () => const NewClaimScreen()),
     if (s.can('send_notice'))
       (Icons.campaign, SioColors.purple, 'Send update', 'Tell members in the app', () => const SendNoticeScreen()),
+    if (s.can('manage_events'))
+      (Icons.event_available, SioColors.green, 'New event', 'Programme, camp, iftar...', () => const EventFormScreen()),
+    if (s.can('add_members'))
+      (Icons.person_add_alt_1, SioColors.blue, 'Add student', 'Add a student or member to your unit', () => const MemberFormScreen()),
+    if (s.can('manage_collections'))
+      (Icons.savings_outlined, SioColors.red, 'New collection', 'Set a target and split it to units', () => const CollectionFormScreen()),
     if (!s.can('rsvp'))
       (Icons.event, SioColors.blue, 'Events', 'See and register for programmes', () => const EventsScreen(standalone: true)),
   ];
@@ -145,7 +152,7 @@ Future<void> showQuickAdd(BuildContext context) async {
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheet) => SafeArea(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
+      child: ListView(shrinkWrap: true, children: [
         for (final it in items)
           ListTile(
             leading: CircleAvatar(backgroundColor: it.$2, child: Icon(it.$1, color: Colors.white)),

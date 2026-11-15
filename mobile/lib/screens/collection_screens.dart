@@ -4,6 +4,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'manage_screens.dart';
 
 IconData collectionIcon(String? type) => switch (type) {
       'Ramadan Collection' => Icons.nightlight_round,
@@ -32,7 +33,20 @@ class _CollectionScreenState extends State<CollectionScreen> {
   Widget build(BuildContext context) {
     final s = AppState.i;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(title: Text(widget.title), actions: [
+        if (s.can('manage_collections')) ...[
+          IconButton(
+            tooltip: 'All collections',
+            icon: const Icon(Icons.list_alt),
+            onPressed: () => push(context, const ManageCollectionsScreen()),
+          ),
+          IconButton(
+            tooltip: 'New collection',
+            icon: const Icon(Icons.add),
+            onPressed: () => push(context, const CollectionFormScreen()),
+          ),
+        ],
+      ]),
       body: Loader<Map<String, dynamic>>(
         key: ValueKey(_selected),
         load: () async =>
@@ -40,7 +54,19 @@ class _CollectionScreenState extends State<CollectionScreen> {
         builder: (context, d) {
           final collections = (d['collections'] as List?) ?? [];
           final sel = d['collection'] as Map?;
-          if (sel == null) return [const EmptyNote('No collection is open right now.')];
+          if (sel == null) {
+            return [
+              const EmptyNote('No collection is open right now.'),
+              if (s.can('manage_collections')) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () => push(context, const CollectionFormScreen()),
+                  icon: const Icon(Icons.add),
+                  label: const Text('New collection'),
+                ),
+              ],
+            ];
+          }
           final totals = d['totals'] as Map?;
           final mine = (d['my_offers'] as List?) ?? [];
           final entries =
@@ -92,6 +118,16 @@ class _CollectionScreenState extends State<CollectionScreen> {
                         if (sel['unit'] != null) '${sel['unit']} unit',
                       ].join(' · '),
                       style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                    ),
+                  ),
+                if (s.can('manage_collections'))
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: () => push(context, CollectionFormScreen(name: sel['name'].toString())),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit, set unit targets'),
                     ),
                   ),
                 if ((sel['description'] ?? '').toString().isNotEmpty) ...[

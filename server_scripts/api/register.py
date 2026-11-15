@@ -16,7 +16,8 @@ if len(password) < 8:
     frappe.throw(_("Password must be at least 8 characters."))
 if unit and not frappe.db.exists("SIO Unit", {"name": unit, "active": 1}):
     frappe.throw(_("Pick your unit from the list."))
-if frappe.db.exists("User", email) or frappe.db.exists("SIO Member", {"mobile": mobile}):
+existing = frappe.db.get_value("SIO Member", {"mobile": mobile}, ["name", "user"], as_dict=True)
+if frappe.db.exists("User", email) or (existing and existing.user):
     frappe.throw(_("This email or mobile is already registered. Sign in, or use Forgot password."))
 
 parts = full_name.split(" ", 1)
@@ -34,19 +35,29 @@ user = frappe.get_doc({
 })
 user.insert(ignore_permissions=True)
 
-member = frappe.get_doc({
-    "doctype": "SIO Member",
-    "full_name": full_name,
-    "mobile": mobile,
-    "email": email,
-    "user": user.name,
-    "member_role": "Associate",
-    "status": "Pending Approval",
-    "unit": unit,
-    "campus": f.get("campus"),
-    "course": f.get("course"),
-    "year_of_study": f.get("year_of_study") or "",
-    "home_town": f.get("home_town"),
-})
-member.insert(ignore_permissions=True)
+if existing:
+    # added earlier by the unit admin: this sign-up becomes their login, keeping role and status
+    member = frappe.get_doc("SIO Member", existing.name)
+    member.user = user.name
+    member.email = email
+    for k in ("campus", "course", "home_town"):
+        if f.get(k) and not member.get(k):
+            member.set(k, f.get(k))
+    member.save(ignore_permissions=True)
+else:
+    member = frappe.get_doc({
+        "doctype": "SIO Member",
+        "full_name": full_name,
+        "mobile": mobile,
+        "email": email,
+        "user": user.name,
+        "member_role": "Associate",
+        "status": "Pending Approval",
+        "unit": unit,
+        "campus": f.get("campus"),
+        "course": f.get("course"),
+        "year_of_study": f.get("year_of_study") or "",
+        "home_town": f.get("home_town"),
+    })
+    member.insert(ignore_permissions=True)
 frappe.response["message"] = {"user": user.name, "member": member.name, "status": member.status}

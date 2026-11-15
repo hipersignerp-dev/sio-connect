@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../update_service.dart';
 import '../widgets.dart';
 import 'accounts_screen.dart';
+import 'manage_screens.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
 import 'meeting_screens.dart';
@@ -57,6 +58,13 @@ class MoreScreen extends StatelessWidget {
                 title: 'Expense claims',
                 subtitle: s.can('approve_expense') ? 'Approve and pay claims' : 'Claim bills for events and meetings',
                 onTap: () => push(context, const ExpensesScreen()),
+              ),
+            if (s.can('manage_collections'))
+              SioTile(
+                icon: Icons.savings_outlined,
+                title: 'Collections & targets',
+                subtitle: 'Add, close or delete collections; split targets to units',
+                onTap: () => push(context, const ManageCollectionsScreen()),
               ),
             if (s.can('view_accounts'))
               SioTile(

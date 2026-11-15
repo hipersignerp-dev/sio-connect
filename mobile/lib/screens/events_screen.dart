@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'event_detail_screen.dart';
+import 'manage_screens.dart';
 
 class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key, this.standalone = false});
@@ -14,7 +15,10 @@ class EventsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Events')),
+      appBar: AppBar(title: const Text('Events'), actions: [
+        if (AppState.i.can('manage_events'))
+          IconButton(tooltip: 'New event', icon: const Icon(Icons.add), onPressed: () => push(context, const EventFormScreen())),
+      ]),
       body: Loader<List<dynamic>>(
         load: () async => (await Api.call('${Api.m}events') as List?) ?? [],
         builder: (context, list) => [

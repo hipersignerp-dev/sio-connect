@@ -276,6 +276,42 @@ check("event filter shows only that event's spending",
       ea["in"] == 0 and all(x["event"] == "EVT-00001" for x in ea["rows"]) and claim in [x["ref"] for x in ea["rows"]],
       ea)
 
+print("Managing from the app")
+cname = "Test Fund " + stamp[-5:]
+r = fin.m("save_collection", collection_name=cname, collection_type="Relief Fund", target_amount=100000,
+          unit_targets=json.dumps([{"unit": "Feroke", "target": 40000}, {"unit": "Areekode", "target": 60000}]))
+check("finance adds a collection with unit targets", r[0] == 200 and msg(r)["unit_targets_total"] == 100000, r)
+r = fin.m("save_collection", name=cname, collection_type="Relief Fund", target_amount=100000, is_active=0,
+          unit_targets=json.dumps([{"unit": "Feroke", "target": 50000}, {"unit": "Areekode", "target": 50000}]))
+form = msg(fin.m("collection_form", name=cname)) or {}
+check("finance edits targets and closes it",
+      r[0] == 200 and form["collection"]["is_active"] == 0 and len(form["collection"]["unit_targets"]) == 2, form)
+r = pres.m("save_collection", collection_name="Not allowed")
+check("unit president cannot add collections", r[0] == 403, r)
+r = fin.m("delete_collection", name=RAMADAN)
+check("a collection with entries cannot be deleted", r[0] != 200, r)
+r = fin.m("delete_collection", name=cname)
+check("an empty collection is deleted", r[0] == 200, r)
+r = pres.m("save_event", title="Unit meetup " + stamp[-4:], starts_on="2030-01-05 17:00:00", budget=3000, unit="Areekode")
+ev_name = (msg(r) or {}).get("name")
+ev = [x for x in (msg(pres.m("events")) or []) if x["name"] == ev_name]
+check("president adds an event, kept in their own unit", ev and ev[0]["unit"] == "Feroke", ev)
+r = kpres.m("save_event", name=ev_name, title="Hijack", starts_on="2030-01-05 17:00:00")
+check("another unit's president cannot change it", r[0] == 403, r)
+r = pres.m("delete_event", name=ev_name)
+check("president deletes the empty event", r[0] == 200, r)
+mob = "97" + stamp[-8:]
+r = pres.m("save_member", full_name="Added Student " + stamp[-4:], mobile=mob, campus="Farook College")
+added = (msg(r) or {}).get("name")
+check("president adds a student directly (Active)", r[0] == 200 and msg(r)["status"] == "Active", r)
+r = pres.m("save_member", name=added, full_name="Added Student", mobile=mob, member_role="Unit President")
+check("president cannot make them Unit President", r[0] == 403, r)
+em = "sio.test.s" + stamp + "@example.com"
+code, body = Client("Guest").post("sio_connect.api.auth.register", full_name="Added Student", mobile=mob, email=em,
+                                  password=PASSWORD, unit="Feroke")
+check("student signs up later with the same mobile and gets the same record",
+      code == 200 and body["message"]["member"] == added and body["message"]["status"] == "Active", body)
+
 print("Fingerprint sign-in (API key)")
 r = assoc.post("sio_connect.api.auth.enable_biometric", device_name="Test phone")
 keys = msg(r) or {}

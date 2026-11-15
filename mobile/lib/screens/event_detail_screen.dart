@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'expense_screens.dart';
+import 'manage_screens.dart';
 
 /// One event: details, and its expenses. Office bearers see budget, spent, waiting and what is left,
 /// split by category; members see their own claims for the event.
@@ -51,6 +52,19 @@ class EventDetailScreen extends StatelessWidget {
                         .where((x) => x != null && '$x'.isNotEmpty)
                         .join(' · '),
                     style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+                if (s.can('manage_events') && (s.can('all_units') || (e['unit'] != null && e['unit'] == s.me['unit'])))
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: () async {
+                        final r = await push(context, EventFormScreen(event: e));
+                        if (r == 'deleted' && context.mounted) Navigator.pop(context);
+                      },
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit event'),
+                    ),
+                  ),
                 if ((e['description'] ?? '').toString().isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(e['description'].toString()),

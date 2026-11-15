@@ -4,6 +4,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'manage_screens.dart';
 
 /// Members of the unit (or all units for district admins). New associates waiting for approval come first.
 class MembersScreen extends StatefulWidget {
@@ -21,7 +22,17 @@ class _MembersScreenState extends State<MembersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Students & members')),
+      appBar: AppBar(title: const Text('Students & members'), actions: [
+        if (AppState.i.can('add_members'))
+          IconButton(
+            tooltip: 'Add student',
+            icon: const Icon(Icons.person_add_alt_1),
+            onPressed: () async {
+              final ok = await push(context, const MemberFormScreen());
+              if (ok == true) setState(() => _version++);
+            },
+          ),
+      ]),
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -140,6 +151,18 @@ class _MembersScreenState extends State<MembersScreen> {
                 },
                 child: Text(m['status'] == 'Pending Approval' ? 'Approve' : 'Save role'),
               ),
+              if (AppState.i.can('add_members') && m['status'] != 'Pending Approval') ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(sheet);
+                    final ok = await push(context, MemberFormScreen(member: m));
+                    if (ok == true) setState(() => _version++);
+                  },
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Edit details'),
+                ),
+              ],
               if (m['status'] == 'Pending Approval') ...[
                 const SizedBox(height: 8),
                 OutlinedButton(

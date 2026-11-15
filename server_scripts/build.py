@@ -33,7 +33,9 @@ API = {
 }
 MOBILE = ["me", "update_my_profile", "home", "meetings", "meeting", "rsvp", "save_attendance", "schedule_meeting",
           "events", "event", "register_event", "collection", "add_collection_entry", "add_payment", "expenses",
-          "claim_expense", "set_expense_status", "notices", "send_notice", "members", "approve_member", "accounts"]
+          "claim_expense", "set_expense_status", "notices", "send_notice", "members", "approve_member", "accounts",
+          "collection_form", "manage_collections", "save_collection", "delete_collection", "save_event",
+          "delete_event", "save_member"]
 for m in MOBILE:
     API[m] = f"sio_connect.api.mobile.{m}"
 
