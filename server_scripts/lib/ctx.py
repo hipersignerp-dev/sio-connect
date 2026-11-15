@@ -30,7 +30,7 @@ unit = member.unit if member else None
 caps = {
     "rsvp": active and member is not None,
     "register_events": status in ("Active", "Pending Approval") and member is not None,
-    "pledge": status in ("Active", "Pending Approval") and member is not None,
+    "offer": status in ("Active", "Pending Approval") and member is not None,
     "collect": is_member,
     "claim_expense": is_member and member is not None,
     "view_members": is_unit_admin,

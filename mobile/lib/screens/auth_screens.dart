@@ -275,7 +275,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: AppBar(title: const Text('Register as associate')),
       body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 32), children: [
         const SioBanner(
-            text: 'You join as an associate. Your unit approves you as a member later; until then you can see events, updates and make a pledge.'),
+            text: 'You join as an associate. Your unit approves you as a member later; until then you can see events, updates and give an offer.'),
         const SizedBox(height: 16),
         if (_error != null) ...[SioBanner(text: _error!, error: true), const SizedBox(height: 16)],
         _field(_name, 'Full name', icon: Icons.person_outline, hints: const [AutofillHints.name], cap: TextCapitalization.words),

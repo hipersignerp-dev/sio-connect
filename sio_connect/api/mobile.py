@@ -97,14 +97,11 @@ def home():
 	events = _events_query(ctx, upcoming_only=True, limit=1)
 	out["next_event"] = events[0] if events else None
 
-	camp = _active_campaign()
-	if camp:
-		out["campaign"] = {"name": camp.name, "target": flt(camp.target_amount)}
-		if caps["view_collection_totals"]:
-			out["campaign"].update(_collection_totals(camp.name, ctx.unit_scope()))
-		if ctx.member:
-			out["my_pledges"] = _entries(
-				{"campaign": camp.name, "contributor_member": ctx.member.name}, limit=20)
+	collections = _collections(ctx)
+	out["collections"] = [{"name": c["name"], "collection_type": c["collection_type"], "totals": c["totals"]}
+	                      for c in collections]
+	out["my_offers"] = {"offered": sum(c["my_offered"] for c in collections),
+	                    "paid": sum(c["my_paid"] for c in collections)}
 	if caps["view_members"]:
 		scope = ctx.unit_scope()
 		base = {"unit": scope} if scope else {}
@@ -340,127 +337,141 @@ def register_event(event, cancel=0):
 	return {"registered": True}
 
 
-# ------------------------------------------------------------------------------------- collection
+# ------------------------------------------------------------------------------------ collections
+# Several collections can be open at once (Ramadan Collection, Baithul Mal, Zakat, ...). An entry is an
+# Offer (will pay later), a Payment (paid now) or Items (food kits, clothes, ...).
+
+ENTRY_FIELDS = ["name", "collection", "entry_type", "contributor_name", "contributor_type", "contributor_mobile",
+                "unit", "offered_amount", "paid_amount", "balance_amount", "items_value", "items_given", "status",
+                "collected_by", "creation"]
 
 
-def _active_campaign(name=None):
-	if name:
-		return frappe.get_doc("SIO Collection Campaign", name)
-	n = frappe.db.get_value("SIO Collection Campaign", {"is_active": 1}, "name", order_by="creation desc")
-	return frappe.get_doc("SIO Collection Campaign", n) if n else None
-
-
-def _collection_totals(campaign, unit=None):
-	cond, args = "campaign=%s", [campaign]
+def _totals(collection, unit=None, collected_by=None):
+	cond, args = "collection=%s", [collection]
 	if unit:
 		cond += " and unit=%s"
 		args.append(unit)
+	if collected_by:
+		cond += " and collected_by=%s"
+		args.append(collected_by)
 	r = frappe.db.sql(
 		f"""select
-			coalesce(sum(case when entry_type!='In-kind' then pledged_amount end), 0),
-			coalesce(sum(case when entry_type!='In-kind' then paid_amount end), 0),
-			coalesce(sum(case when entry_type!='In-kind' then balance_amount end), 0),
-			coalesce(sum(case when entry_type='In-kind' then in_kind_value end), 0),
+			coalesce(sum(case when entry_type!='Items' then offered_amount end), 0),
+			coalesce(sum(case when entry_type!='Items' then paid_amount end), 0),
+			coalesce(sum(case when entry_type!='Items' then balance_amount end), 0),
+			coalesce(sum(case when entry_type='Items' then items_value end), 0),
 			count(*)
 		from `tabSIO Collection Entry` where {cond}""",
 		args,
 	)[0]
-	return {"pledged": flt(r[0]), "collected": flt(r[1]), "balance": flt(r[2]), "in_kind": flt(r[3]),
-	        "entries": cint(r[4])}
+	out = {"offered": flt(r[0]), "collected": flt(r[1]), "balance": flt(r[2]), "items": flt(r[3]),
+	       "entries": cint(r[4])}
+	if collected_by:
+		out["scope"] = "collected_by_me"
+	return out
 
 
-def _entries(filters, limit=200):
-	return frappe.get_all(
-		"SIO Collection Entry",
-		filters=filters,
-		fields=["name", "entry_type", "contributor_name", "contributor_type", "contributor_mobile", "unit",
-		        "pledged_amount", "paid_amount", "balance_amount", "in_kind_value", "in_kind_details", "status",
-		        "collected_by", "creation"],
-		order_by="creation desc",
-		limit=limit,
-	)
+def _collections(ctx):
+	"""Open collections this person can see, with totals for their scope and their own offers."""
+	caps = ctx.capabilities()
+	out = []
+	for c in frappe.get_all("SIO Collection", filters={"is_active": 1},
+	                        fields=["name", "collection_type", "target_amount", "starts_on", "ends_on",
+	                                "description", "unit"], order_by="creation desc"):
+		if c.unit and not caps["all_units"] and c.unit != ctx.unit:
+			continue
+		item = {"name": c.name, "collection_type": c.collection_type, "target": flt(c.target_amount),
+		        "starts_on": c.starts_on, "ends_on": c.ends_on, "description": c.description, "unit": c.unit,
+		        "totals": None, "my_offered": 0, "my_paid": 0}
+		if caps["view_collection_totals"]:
+			item["totals"] = _totals(c.name, ctx.unit_scope())
+		elif caps["collect"] and ctx.member:
+			item["totals"] = _totals(c.name, collected_by=ctx.member.name)
+		if ctx.member:
+			mine = frappe.db.sql(
+				"""select coalesce(sum(offered_amount), 0), coalesce(sum(paid_amount), 0)
+				from `tabSIO Collection Entry` where collection=%s and contributor_member=%s""",
+				(c.name, ctx.member.name))[0]
+			item["my_offered"], item["my_paid"] = flt(mine[0]), flt(mine[1])
+		out.append(item)
+	return out
 
 
 @frappe.whitelist()
-def collection(campaign=None, status=None):
+def collection(collection=None, status=None):
 	ctx = Ctx()
 	caps = ctx.capabilities()
-	camp = _active_campaign(campaign)
-	if not camp:
-		return {"campaign": None}
-	out = {
-		"campaign": {"name": camp.name, "target": flt(camp.target_amount), "starts_on": camp.starts_on,
-		             "ends_on": camp.ends_on, "description": camp.description},
-		"my_pledges": _entries({"campaign": camp.name, "contributor_member": ctx.member.name})
-		if ctx.member else [],
-	}
-	filters = {"campaign": camp.name}
+	collections = _collections(ctx)
+	selected = next((c for c in collections if c["name"] == collection), collections[0] if collections else None)
+	out = {"collections": collections, "collection": selected, "my_offers": [], "entries": None, "totals": None}
+	if not selected:
+		return out
+	out["totals"] = selected["totals"]
+	if ctx.member:
+		out["my_offers"] = frappe.get_all("SIO Collection Entry",
+		                                  filters={"collection": selected["name"], "contributor_member": ctx.member.name},
+		                                  fields=ENTRY_FIELDS, order_by="creation desc")
+	filters = {"collection": selected["name"]}
 	if status:
 		filters["status"] = status
 	if caps["view_collection_totals"]:
-		scope = ctx.unit_scope()
-		if scope:
-			filters["unit"] = scope
-		out["totals"] = _collection_totals(camp.name, scope)
-		out["entries"] = _entries(filters)
-	elif caps["collect"]:
+		if ctx.unit_scope():
+			filters["unit"] = ctx.unit_scope()
+		out["entries"] = frappe.get_all("SIO Collection Entry", filters=filters, fields=ENTRY_FIELDS,
+		                                order_by="creation desc", limit=200)
+	elif caps["collect"] and ctx.member:
 		filters["collected_by"] = ctx.member.name
-		out["entries"] = _entries(filters)
-		mine = _entries({"campaign": camp.name, "collected_by": ctx.member.name}, limit=1000)
-		out["totals"] = {
-			"pledged": sum(flt(e.pledged_amount) for e in mine if e.entry_type != "In-kind"),
-			"collected": sum(flt(e.paid_amount) for e in mine),
-			"balance": sum(flt(e.balance_amount) for e in mine),
-			"in_kind": sum(flt(e.in_kind_value) for e in mine if e.entry_type == "In-kind"),
-			"entries": len(mine),
-			"scope": "collected_by_me",
-		}
+		out["entries"] = frappe.get_all("SIO Collection Entry", filters=filters, fields=ENTRY_FIELDS,
+		                                order_by="creation desc", limit=200)
 	return out
 
 
 @frappe.whitelist(methods=["POST"])
-def add_collection_entry(entry_type, contributor_name=None, contributor_type="Well-wisher", contributor_mobile=None,
-                         pledged_amount=0, paid_amount=0, payment_mode="Cash", reference_no=None,
-                         in_kind_value=0, in_kind_details=None, for_self=0, campaign=None):
-	"""for_self=1: the signed-in person pledges/pays themselves (any associate or member).
-	Otherwise a member records what they collected from someone else."""
+def add_collection_entry(entry_type, collection=None, contributor_name=None, contributor_type="Well-wisher",
+                         contributor_mobile=None, offered_amount=0, paid_amount=0, payment_mode="Cash",
+                         reference_no=None, items_given=None, items_value=0, for_self=0):
+	"""for_self=1: the signed-in person gives their own offer. Otherwise a collector records someone else's."""
 	ctx = Ctx()
-	camp = _active_campaign(campaign)
-	if not camp or not camp.is_active:
-		frappe.throw(_("There is no open collection campaign."))
-	if entry_type not in ("Pledge", "Payment", "In-kind"):
+	visible = [c["name"] for c in _collections(ctx)]
+	collection = collection or (visible[0] if visible else None)
+	if not collection or collection not in visible:
+		frappe.throw(_("Pick an open collection."))
+	if entry_type not in ("Offer", "Payment", "Items"):
 		frappe.throw(_("Unknown entry type."))
-	doc = frappe.get_doc({"doctype": "SIO Collection Entry", "campaign": camp.name, "entry_type": entry_type,
+	doc = frappe.get_doc({"doctype": "SIO Collection Entry", "collection": collection, "entry_type": entry_type,
 	                      "unit": ctx.unit})
 	if cint(for_self):
-		ctx.require("pledge")
+		ctx.require("offer")
 		ctx.need_member()
+		if entry_type != "Offer":
+			frappe.throw(_("Give your offer; the collector marks it paid when you pay."))
 		doc.update({
 			"contributor_name": ctx.member.full_name,
 			"contributor_type": "Member" if ctx.is_member else "Associate",
 			"contributor_member": ctx.member.name,
 			"contributor_mobile": ctx.member.mobile,
 		})
-		# money paid by the person themselves is confirmed by a collector later
 		paid_amount = 0
 	else:
 		ctx.require("collect")
 		if not (contributor_name or "").strip():
-			frappe.throw(_("Enter the contributor's name."))
+			frappe.throw(_("Enter the name of the person giving."))
 		doc.update({
 			"contributor_name": contributor_name.strip(),
 			"contributor_type": contributor_type,
 			"contributor_mobile": contributor_mobile,
 			"collected_by": ctx.member.name if ctx.member else None,
 		})
-	if entry_type == "Pledge":
-		doc.pledged_amount = flt(pledged_amount)
-		if doc.pledged_amount <= 0:
-			frappe.throw(_("Enter the pledged amount."))
-	elif entry_type == "In-kind":
-		doc.in_kind_value = flt(in_kind_value)
-		doc.in_kind_details = in_kind_details
-	if entry_type != "In-kind" and flt(paid_amount) > 0:
+	if entry_type == "Offer":
+		doc.offered_amount = flt(offered_amount)
+		if doc.offered_amount <= 0:
+			frappe.throw(_("Enter the amount offered."))
+	elif entry_type == "Items":
+		doc.items_given = items_given
+		doc.items_value = flt(items_value)
+		if not (items_given or "").strip():
+			frappe.throw(_("Enter the items given."))
+	if entry_type != "Items" and flt(paid_amount) > 0:
 		doc.append("payments", {"payment_date": nowdate(), "amount": flt(paid_amount), "mode": payment_mode,
 		                        "reference_no": reference_no, "received_by": doc.collected_by})
 	if entry_type == "Payment" and not doc.payments:
@@ -471,6 +482,7 @@ def add_collection_entry(entry_type, contributor_name=None, contributor_type="We
 
 @frappe.whitelist(methods=["POST"])
 def add_payment(entry, amount, mode="Cash", reference_no=None):
+	"""Money received against an offer."""
 	ctx = Ctx()
 	ctx.require("collect")
 	doc = frappe.get_doc("SIO Collection Entry", entry)

@@ -5,6 +5,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'collection_screens.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
 import 'meeting_screens.dart';
@@ -50,7 +51,7 @@ class HomeScreen extends StatelessWidget {
         builder: (context, h) => [
           if (s.pending) ...[
             const SioBanner(
-                text: 'Your registration is waiting for your unit’s approval. Meanwhile you can see events and updates, and make a pledge.'),
+                text: 'Your registration is waiting for your unit’s approval. Meanwhile you can see events and updates, and give an offer.'),
             const SizedBox(height: 12),
           ],
           if (h['next_meeting'] != null) ...[_MeetingCard(meeting: Map<String, dynamic>.from(h['next_meeting'])), const SizedBox(height: 12)],
@@ -65,15 +66,20 @@ class HomeScreen extends StatelessWidget {
 
   List<Widget> _tiles(BuildContext context, Map<String, dynamic> h) {
     final tiles = <Widget>[];
-    final camp = h['campaign'] as Map?;
-    if (camp != null && camp['collected'] != null) {
-      tiles.add(_Tile(Icons.volunteer_activism, 'Collected', inr(camp['collected']), () => openTab(2)));
-    } else if ((h['my_pledges'] as List?)?.isNotEmpty ?? false) {
-      final list = h['my_pledges'] as List;
-      final pledged = list.fold<num>(0, (a, e) => a + numOf(e['pledged_amount']));
-      tiles.add(_Tile(Icons.favorite_outline, 'My pledge', inr(pledged), () => openTab(2)));
-    } else if (camp != null) {
-      tiles.add(_Tile(Icons.volunteer_activism, camp['name'].toString(), 'Make a pledge', () => openTab(2)));
+    final collections = (h['collections'] as List?) ?? [];
+    for (final c in collections) {
+      final t = c['totals'] as Map?;
+      if (t != null) {
+        tiles.add(_Tile(collectionIcon(c['collection_type']?.toString()), c['name'].toString(), inr(t['collected']),
+            () => openTab(2)));
+      }
+    }
+    final mine = h['my_offers'] as Map?;
+    if (mine != null && numOf(mine['offered']) > 0) {
+      tiles.add(_Tile(Icons.favorite_outline, 'My offers', inr(mine['offered']), () => openTab(2)));
+    } else if (collections.isNotEmpty && AppState.i.can('offer') && !AppState.i.can('view_collection_totals')) {
+      tiles.add(_Tile(collectionIcon(collections.first['collection_type']?.toString()), collections.first['name'].toString(),
+          'Give an offer', () => openTab(2)));
     }
     final members = h['members'] as Map?;
     if (members != null) {

@@ -28,16 +28,11 @@ events = run_script("SIO lib events", upcoming_only=1, limit=1).sio_events
 if events:
     out["next_event"] = events[0]
 
-camp = frappe.db.get_value("SIO Collection Campaign", {"is_active": 1}, ["name", "target_amount"], as_dict=True,
-                           order_by="creation desc")
-if camp:
-    out["campaign"] = {"name": camp.name, "target": frappe.utils.flt(camp.target_amount)}
-    if caps["view_collection_totals"]:
-        out["campaign"].update(run_script("SIO lib totals", campaign=camp.name, unit=ctx["scope"] or "").sio_totals)
-    if member:
-        out["my_pledges"] = frappe.get_all(
-            "SIO Collection Entry", filters={"campaign": camp.name, "contributor_member": member.name},
-            fields=["name", "entry_type", "pledged_amount", "paid_amount", "balance_amount", "status"])
+collections = run_script("SIO lib collections").sio_collections
+out["collections"] = [{"name": c["name"], "collection_type": c["collection_type"], "totals": c["totals"]}
+                      for c in collections]
+out["my_offers"] = {"offered": sum([c["my_offered"] for c in collections]),
+                    "paid": sum([c["my_paid"] for c in collections])}
 if caps["view_members"]:
     base = {}
     if ctx["scope"]:

@@ -1,23 +1,23 @@
-# SIO lib totals: collection totals for a campaign, optionally one unit.
-# Args: campaign, unit. Result: frappe.flags.sio_totals
-campaign = frappe.form_dict.get("campaign")
+# SIO lib totals: totals for one collection, optionally one unit.
+# Args: collection, unit. Result: frappe.flags.sio_totals
+collection = frappe.form_dict.get("collection")
 unit = frappe.form_dict.get("unit")
-cond = "campaign = %(campaign)s"
+cond = "collection = %(collection)s"
 if unit:
     cond = cond + " and unit = %(unit)s"
 r = frappe.db.sql(
     """select
-        coalesce(sum(case when entry_type != 'In-kind' then pledged_amount end), 0),
-        coalesce(sum(case when entry_type != 'In-kind' then paid_amount end), 0),
-        coalesce(sum(case when entry_type != 'In-kind' then balance_amount end), 0),
-        coalesce(sum(case when entry_type = 'In-kind' then in_kind_value end), 0),
+        coalesce(sum(case when entry_type != 'Items' then offered_amount end), 0),
+        coalesce(sum(case when entry_type != 'Items' then paid_amount end), 0),
+        coalesce(sum(case when entry_type != 'Items' then balance_amount end), 0),
+        coalesce(sum(case when entry_type = 'Items' then items_value end), 0),
         count(*)
     from `tabSIO Collection Entry` where """ + cond,
-    {"campaign": campaign, "unit": unit})[0]
+    {"collection": collection, "unit": unit})[0]
 frappe.flags.sio_totals = {
-    "pledged": frappe.utils.flt(r[0]),
+    "offered": frappe.utils.flt(r[0]),
     "collected": frappe.utils.flt(r[1]),
     "balance": frappe.utils.flt(r[2]),
-    "in_kind": frappe.utils.flt(r[3]),
+    "items": frappe.utils.flt(r[3]),
     "entries": frappe.utils.cint(r[4]),
 }

@@ -32,7 +32,7 @@ class _HomeShellState extends State<HomeShell> {
     final pages = <Widget>[
       HomeScreen(openTab: (i) => setState(() => _tab = i)),
       meetingsTab ? const MeetingsScreen() : const EventsScreen(),
-      CollectionScreen(title: collectLabel == 'Give' ? 'Ramadan Giving' : 'Collection'),
+      CollectionScreen(title: collectLabel == 'Give' ? 'Give' : 'Collection'),
       const MoreScreen(),
     ];
     final tabs = <(IconData, IconData, String)>[
@@ -101,12 +101,12 @@ class _NavItem extends StatelessWidget {
 Future<void> showQuickAdd(BuildContext context) async {
   final s = AppState.i;
   final items = <(IconData, Color, String, String, Widget Function())>[
-    if (s.can('collect'))
-      (Icons.volunteer_activism, SioColors.red, 'Collection entry', 'Pledge, payment or in-kind from someone',
-          () => const NewEntryScreen()),
-    if (s.can('pledge'))
-      (Icons.favorite_outline, SioColors.green, 'My pledge', 'Offer an amount for the Ramadan collection',
+    if (s.can('offer'))
+      (Icons.favorite_outline, SioColors.green, 'Give an offer', 'Ramadan collection, Baithul Mal...',
           () => const NewEntryScreen(forSelf: true)),
+    if (s.can('collect'))
+      (Icons.volunteer_activism, SioColors.red, 'Collection entry', 'Offered, paid now or items, from someone',
+          () => const NewEntryScreen()),
     if (s.can('mark_attendance'))
       (Icons.how_to_reg, SioColors.blue, 'Mark attendance', 'Pick a meeting and mark who came', () => const MeetingsScreen(standalone: true)),
     if (s.can('schedule_meeting'))

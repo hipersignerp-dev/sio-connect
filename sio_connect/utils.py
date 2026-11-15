@@ -70,7 +70,7 @@ class Ctx:
 		return {
 			"rsvp": self.active,
 			"register_events": self.status in ("Active", "Pending Approval"),
-			"pledge": self.status in ("Active", "Pending Approval"),
+			"offer": self.status in ("Active", "Pending Approval"),
 			"collect": self.is_member,
 			"claim_expense": self.is_member,
 			"view_members": self.is_unit_admin,

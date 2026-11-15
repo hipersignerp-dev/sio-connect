@@ -12,7 +12,7 @@ SHORTCUTS = [
 	("Weekly Meetings", "SIO Meeting", "DocType"),
 	("Events", "SIO Event", "DocType"),
 	("Event Registrations", "SIO Event Registration", "DocType"),
-	("Collection Campaigns", "SIO Collection Campaign", "DocType"),
+	("Collections", "SIO Collection", "DocType"),
 	("Collection Entries", "SIO Collection Entry", "DocType"),
 	("Expense Claims", "SIO Expense Claim", "DocType"),
 	("Notices", "SIO Notice", "DocType"),

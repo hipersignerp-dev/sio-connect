@@ -20,7 +20,7 @@ args = frappe.form_dict
 
 '''
 
-LIBS = ["ctx", "events", "notices", "totals"]
+LIBS = ["ctx", "events", "notices", "totals", "collections"]
 
 GUEST_API = {
     # file: (method, rate limit (count, seconds) or None)

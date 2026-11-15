@@ -192,7 +192,8 @@ class StatusChip extends StatelessWidget {
       case 'Part Paid':
       case 'Scheduled':
         return Tone.blue;
-      case 'Pledged':
+      case 'Offered':
+        return Tone.amber;
       case 'Rejected':
       case 'Absent':
       case 'Not Attending':

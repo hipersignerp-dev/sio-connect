@@ -5,10 +5,12 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "campaign_name",
+  "collection_name",
+  "collection_type",
   "is_active",
-  "target_amount",
   "col_a",
+  "unit",
+  "target_amount",
   "starts_on",
   "ends_on",
   "desc_section",
@@ -16,30 +18,47 @@
  ],
  "fields": [
   {
-   "fieldname": "campaign_name",
+   "fieldname": "collection_name",
    "fieldtype": "Data",
-   "label": "Campaign",
+   "label": "Collection",
    "reqd": 1,
    "unique": 1,
    "in_list_view": 1,
-   "description": "e.g. Ramadan Collection 1448"
+   "description": "e.g. Ramadan Collection 1448, Baithul Mal 2026-27"
+  },
+  {
+   "fieldname": "collection_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Ramadan Collection\nBaithul Mal\nZakat\nRelief Fund\nOther",
+   "default": "Ramadan Collection",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "is_active",
    "fieldtype": "Check",
-   "label": "Active",
+   "label": "Open",
    "default": "1",
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "target_amount",
-   "fieldtype": "Currency",
-   "label": "Target",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "description": "Open collections show in the app"
   },
   {
    "fieldname": "col_a",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "unit",
+   "fieldtype": "Link",
+   "label": "Unit (blank = all units)",
+   "options": "SIO Unit",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "target_amount",
+   "fieldtype": "Currency",
+   "label": "Target (optional)"
   },
   {
    "fieldname": "starts_on",
@@ -58,7 +77,8 @@
   {
    "fieldname": "description",
    "fieldtype": "Small Text",
-   "label": "Description"
+   "label": "Description",
+   "description": "Shown to members in the app"
   }
  ],
  "index_web_pages_for_search": 0,
@@ -66,7 +86,7 @@
  "modified": "2026-11-15 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "SIO Connect",
- "name": "SIO Collection Campaign",
+ "name": "SIO Collection",
  "owner": "Administrator",
  "permissions": [
   {
@@ -118,7 +138,8 @@
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1,
- "autoname": "field:campaign_name",
- "title_field": "campaign_name",
+ "autoname": "field:collection_name",
+ "title_field": "collection_name",
+ "search_fields": "collection_type",
  "naming_rule": "By fieldname"
 }

@@ -3,8 +3,9 @@
 # SIO Connect
 
 Student organisation management inside **Hipersign ERP**, with a phone app for every member.
-Weekly meetings and attendance, members and new associates, events and registrations, the Ramadan
-collection (pledges, payments, in-kind), expense claims with approval, and updates to members.
+Weekly meetings and attendance, members and new associates, events and registrations, collections
+(Ramadan Collection, Baithul Mal, Zakat, ...: offers, payments and items), expense claims with approval,
+and updates to members.
 
 **Live site:** https://siootp.hipersignerp.cloud (built with the server-script install below; desk workspace
 *SIO Connect*). The phone app points there by default.
@@ -24,13 +25,26 @@ what the person may do (`capabilities`) and builds its tabs, the **+** menu and 
 
 | Role (on SIO Member) | What they see in the app |
 | --- | --- |
-| **Associate** (self-registered, waiting approval or approved) | Home, Events, Give (own pledges), updates, profile |
+| **Associate** (self-registered, waiting approval or approved) | Home, Events, Give (own offers), updates, profile |
 | **Member** | + Meetings with RSVP, own attendance, collection entries they collect, expense claims |
 | **Unit Secretary / Unit President** | + mark attendance and minutes, schedule meetings, approve new associates in their unit, unit collection totals, send updates to the unit |
 | **Finance** | + collection totals for all units, approve and pay expense claims |
 | **District Admin** | Everything, all units, any role, updates to everyone |
 
 The server checks every request; hiding a screen in the app is only for convenience.
+
+## Collections
+
+Any number of collections can be open at once, each with a type (Ramadan Collection, Baithul Mal, Zakat,
+Relief Fund, Other), an optional target and dates, and optionally limited to one unit. Each entry is:
+
+- **Offer**: someone promises an amount and pays later; status goes *Offered → Part Paid → Paid* as the
+  collector records money received,
+- **Payment**: paid on the spot (*Paid*),
+- **Items**: food kits, clothes and so on, with an approximate value (*Items Received*).
+
+Everyone can give their own offer from the app; members record what they collect from others; unit admins
+see their unit's totals; finance and district admins see all units.
 
 ## Sign-up and fingerprint sign-in
 
@@ -57,8 +71,8 @@ Needs `server_script_enabled` on the site. Create, in this order:
 2. The 12 DocTypes as custom DocTypes from `sio_connect/sio_connect/doctype/*/*.json` (set `custom: 1`).
    Order: SIO Unit (without president/secretary, add them last), SIO Member, the two child tables, then
    the rest.
-3. The 42 Server Scripts: `python3 server_scripts/build.py` writes one JSON per script to
-   `server_scripts/dist/` (4 library scripts, 25 API scripts with the same method names as the Python
+3. The 43 Server Scripts: `python3 server_scripts/build.py` writes one JSON per script to
+   `server_scripts/dist/` (5 library scripts, 25 API scripts with the same method names as the Python
    app, 13 document event scripts).
 4. Point the workspace **SIO Connect** at the doctypes.
 
@@ -78,7 +92,7 @@ bench --site <your-site> migrate
 Installing creates:
 
 - doctypes **SIO Unit, SIO Member, SIO Meeting** (with attendance), **SIO Event, SIO Event Registration,
-  SIO Collection Campaign, SIO Collection Entry** (with payments), **SIO Expense Claim, SIO Notice,
+  SIO Collection, SIO Collection Entry** (with payments), **SIO Expense Claim, SIO Notice,
   SIO Device Token**
 - roles **SIO Associate, SIO Member** (phone only), **SIO Unit Admin, SIO Finance, SIO Admin** (desk too)
 - the **SIO Connect** workspace
@@ -88,7 +102,8 @@ Then, in the desk:
 1. Add the **units** (SIO Unit).
 2. Create an **SIO Member** for each office bearer, link their **User**, set the role
    (Unit President, Finance, District Admin) and status *Active*.
-3. Create the **Collection Campaign** (e.g. *Ramadan Collection 1448*, target, dates, Active).
+3. Create the **Collections** that are open (SIO Collection: e.g. *Ramadan Collection 1448*, *Baithul Mal
+   2026-27*; type, optional target and dates, optional unit, Open ticked). Several can be open at once.
 4. Optional: in System Settings turn on *Allow Login using Mobile Number* so people can sign in with
    their mobile as well as email.
 
@@ -111,11 +126,11 @@ Every push to `main` builds the APK with GitHub Actions and publishes it as the
 ```bash
 cd mobile && flutter test                                   # widgets and role-based tabs
 flutter test test_live --dart-define=SIO_PASSWORD=...        # the app's API client against the live site
-python3 server_scripts/e2e_test.py https://siootp.hipersignerp.cloud PASSWORD   # 32 checks, 3 roles
+python3 server_scripts/e2e_test.py https://siootp.hipersignerp.cloud PASSWORD   # 35 checks, 3 roles
 ```
 
-The live tests use the accounts `sio.test.{assoc1,president,finance}@example.com` in unit Feroke.
-`e2e_test.py` changes data (approves the associate, adds entries), so run it on fresh test accounts.
+The live tests use `sio.test.president@example.com` and `sio.test.finance@example.com` in unit Feroke;
+`e2e_test.py` registers a new test associate each run and adds test entries, so run it on a test site.
 
 ### Build it yourself
 

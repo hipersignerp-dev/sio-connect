@@ -32,7 +32,7 @@ void main() {
     AppState.i.me = {
       'full_name': 'Sinan Ali',
       'status': 'Pending Approval',
-      'capabilities': {'register_events': true, 'pledge': true},
+      'capabilities': {'register_events': true, 'offer': true},
     };
     await tester.pumpWidget(wrap(const HomeShell()));
     expect(find.text('Events'), findsWidgets);
@@ -46,7 +46,7 @@ void main() {
       'status': 'Active',
       'member_role': 'Unit President',
       'capabilities': {
-        'rsvp': true, 'collect': true, 'pledge': true, 'mark_attendance': true, 'schedule_meeting': true,
+        'rsvp': true, 'collect': true, 'offer': true, 'mark_attendance': true, 'schedule_meeting': true,
         'view_members': true, 'send_notice': true, 'claim_expense': true, 'view_collection_totals': true,
       },
     };
@@ -56,6 +56,8 @@ void main() {
     await tester.tap(find.byTooltip('Add new'));
     await tester.pumpAndSettle();
     expect(find.text('Mark attendance'), findsOneWidget);
+    expect(find.text('Give an offer'), findsOneWidget);
+    expect(find.text('Collection entry'), findsOneWidget);
     expect(find.text('Send update'), findsOneWidget);
   });
 }

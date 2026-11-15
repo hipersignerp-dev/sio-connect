@@ -25,9 +25,12 @@ void main() {
     expect((me['capabilities'] as Map)['mark_attendance'], isTrue);
 
     final home = await Api.call('${Api.m}home') as Map;
-    expect((home['campaign'] as Map)['collected'], greaterThan(0));
-    final col = await Api.call('${Api.m}collection') as Map;
+    final cols = home['collections'] as List;
+    expect(cols.map((c) => c['collection_type']), containsAll(['Ramadan Collection', 'Baithul Mal']));
+    final col = await Api.call('${Api.m}collection', {'collection': 'Ramadan Collection 1448'}) as Map;
+    expect((col['collection'] as Map)['name'], 'Ramadan Collection 1448');
     expect((col['entries'] as List), isNotEmpty);
+    expect((col['totals'] as Map)['collected'], greaterThan(0));
 
     // a refused action comes back as a readable message
     try {

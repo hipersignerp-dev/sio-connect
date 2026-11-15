@@ -1,42 +1,46 @@
-# for_self=1: the signed-in person pledges themselves. Otherwise a collector records someone else's gift.
+# A new entry in a collection. entry_type: Offer (will pay later), Payment (paid now) or Items.
+# for_self=1: the signed-in person makes their own offer. Otherwise a collector records someone else's.
 member = ctx["member"]
-camp = frappe.db.get_value("SIO Collection Campaign", {"is_active": 1}, "name", order_by="creation desc")
-if args.get("campaign"):
-    camp = args.get("campaign")
-if not camp or not frappe.db.get_value("SIO Collection Campaign", camp, "is_active"):
-    frappe.throw(_("There is no open collection campaign."))
+visible = [c["name"] for c in run_script("SIO lib collections").sio_collections]
+collection = args.get("collection") or (visible[0] if visible else None)
+if not collection or collection not in visible:
+    frappe.throw(_("Pick an open collection."))
 entry_type = args.get("entry_type")
-if entry_type not in ("Pledge", "Payment", "In-kind"):
+if entry_type not in ("Offer", "Payment", "Items"):
     frappe.throw(_("Unknown entry type."))
 paid = frappe.utils.flt(args.get("paid_amount"))
-doc = frappe.get_doc({"doctype": "SIO Collection Entry", "campaign": camp, "entry_type": entry_type,
+doc = frappe.get_doc({"doctype": "SIO Collection Entry", "collection": collection, "entry_type": entry_type,
                       "unit": ctx["unit"]})
 if frappe.utils.cint(args.get("for_self")):
-    if not ctx["caps"]["pledge"]:
+    if not ctx["caps"]["offer"]:
         frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
+    if entry_type != "Offer":
+        frappe.throw(_("Give your offer; the collector marks it paid when you pay."))
     doc.contributor_name = member.full_name
     doc.contributor_type = "Member" if ctx["is_member"] else "Associate"
     doc.contributor_member = member.name
     doc.contributor_mobile = member.mobile
-    paid = 0  # the collector confirms money received later
+    paid = 0
 else:
     if not ctx["caps"]["collect"]:
         frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
     name = (args.get("contributor_name") or "").strip()
     if not name:
-        frappe.throw(_("Enter the contributor's name."))
+        frappe.throw(_("Enter the name of the person giving."))
     doc.contributor_name = name
     doc.contributor_type = args.get("contributor_type") or "Well-wisher"
     doc.contributor_mobile = args.get("contributor_mobile")
     doc.collected_by = member.name if member else None
-if entry_type == "Pledge":
-    doc.pledged_amount = frappe.utils.flt(args.get("pledged_amount"))
-    if doc.pledged_amount <= 0:
-        frappe.throw(_("Enter the pledged amount."))
-elif entry_type == "In-kind":
-    doc.in_kind_value = frappe.utils.flt(args.get("in_kind_value"))
-    doc.in_kind_details = args.get("in_kind_details")
-if entry_type != "In-kind" and paid > 0:
+if entry_type == "Offer":
+    doc.offered_amount = frappe.utils.flt(args.get("offered_amount"))
+    if doc.offered_amount <= 0:
+        frappe.throw(_("Enter the amount offered."))
+elif entry_type == "Items":
+    doc.items_given = args.get("items_given")
+    doc.items_value = frappe.utils.flt(args.get("items_value"))
+    if not (doc.items_given or "").strip():
+        frappe.throw(_("Enter the items given."))
+if entry_type != "Items" and paid > 0:
     doc.append("payments", {"payment_date": frappe.utils.nowdate(), "amount": paid,
                             "mode": args.get("payment_mode") or "Cash", "reference_no": args.get("reference_no"),
                             "received_by": doc.collected_by})

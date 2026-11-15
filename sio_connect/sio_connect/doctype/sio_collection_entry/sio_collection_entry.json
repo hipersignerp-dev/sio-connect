@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "campaign",
+  "collection",
   "entry_type",
   "contributor_name",
   "contributor_type",
@@ -17,9 +17,9 @@
   "collected_by",
   "status",
   "amount_section",
-  "pledged_amount",
-  "in_kind_value",
-  "in_kind_details",
+  "offered_amount",
+  "items_given",
+  "items_value",
   "col_b",
   "paid_amount",
   "balance_amount",
@@ -36,47 +36,49 @@
    "hidden": 1
   },
   {
-   "fieldname": "campaign",
+   "fieldname": "collection",
    "fieldtype": "Link",
-   "label": "Campaign",
-   "options": "SIO Collection Campaign",
-   "reqd": 1,
-   "in_standard_filter": 1
-  },
-  {
-   "fieldname": "entry_type",
-   "fieldtype": "Select",
-   "label": "Entry Type",
-   "options": "Pledge\nPayment\nIn-kind",
-   "default": "Pledge",
+   "label": "Collection",
+   "options": "SIO Collection",
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1
   },
   {
+   "fieldname": "entry_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Offer\nPayment\nItems",
+   "default": "Offer",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Offer: will pay later. Payment: paid now. Items: food kits, clothes, etc."
+  },
+  {
    "fieldname": "contributor_name",
    "fieldtype": "Data",
-   "label": "Contributor",
+   "label": "Given By",
    "reqd": 1,
    "in_list_view": 1
   },
   {
    "fieldname": "contributor_type",
    "fieldtype": "Select",
-   "label": "Contributor Type",
+   "label": "Giver Type",
    "options": "Member\nAssociate\nAlumni\nWell-wisher\nBusiness\nUnit",
    "default": "Well-wisher"
   },
   {
    "fieldname": "contributor_member",
    "fieldtype": "Link",
-   "label": "Contributor (if member)",
+   "label": "Member (if a member)",
    "options": "SIO Member"
   },
   {
    "fieldname": "contributor_mobile",
    "fieldtype": "Data",
-   "label": "Contributor Mobile",
+   "label": "Mobile",
    "options": "Phone"
   },
   {
@@ -100,7 +102,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Pledged\nPart Paid\nPaid\nIn-kind Received",
+   "options": "Offered\nPart Paid\nPaid\nItems Received",
    "read_only": 1,
    "in_list_view": 1,
    "in_standard_filter": 1
@@ -111,22 +113,22 @@
    "label": "Amounts"
   },
   {
-   "fieldname": "pledged_amount",
+   "fieldname": "offered_amount",
    "fieldtype": "Currency",
-   "label": "Pledged Amount",
-   "depends_on": "eval:doc.entry_type=='Pledge'"
+   "label": "Amount Offered",
+   "depends_on": "eval:doc.entry_type=='Offer'"
   },
   {
-   "fieldname": "in_kind_value",
-   "fieldtype": "Currency",
-   "label": "Estimated Value",
-   "depends_on": "eval:doc.entry_type=='In-kind'"
-  },
-  {
-   "fieldname": "in_kind_details",
+   "fieldname": "items_given",
    "fieldtype": "Small Text",
    "label": "Items Given",
-   "depends_on": "eval:doc.entry_type=='In-kind'"
+   "depends_on": "eval:doc.entry_type=='Items'"
+  },
+  {
+   "fieldname": "items_value",
+   "fieldtype": "Currency",
+   "label": "Value of Items (approx.)",
+   "depends_on": "eval:doc.entry_type=='Items'"
   },
   {
    "fieldname": "col_b",
@@ -142,14 +144,14 @@
   {
    "fieldname": "balance_amount",
    "fieldtype": "Currency",
-   "label": "Balance",
+   "label": "Still to Receive",
    "read_only": 1
   },
   {
    "fieldname": "payments_section",
    "fieldtype": "Section Break",
    "label": "Payments received",
-   "depends_on": "eval:doc.entry_type!='In-kind'"
+   "depends_on": "eval:doc.entry_type!='Items'"
   },
   {
    "fieldname": "payments",

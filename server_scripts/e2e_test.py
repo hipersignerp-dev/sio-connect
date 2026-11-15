@@ -2,15 +2,19 @@
 
     python3 server_scripts/e2e_test.py https://siootp.hipersignerp.cloud PASSWORD
 
-Uses the test accounts sio.test.{assoc1,president,finance}@example.com (all in unit Feroke):
-the president approves the associate, schedules and marks a meeting, records collections and sends
-an update; the new member RSVPs, registers for an event, pledges and claims an expense; finance
-approves it. Also checks that people are refused what their role does not allow.
+Uses sio.test.president@example.com (Unit President) and sio.test.finance@example.com (Finance) in unit
+Feroke, and registers a fresh associate each run (so it can be run again): the president approves the
+associate, schedules and marks a meeting and sends an update; the new member RSVPs, registers for an
+event, gives an offer, records collections in Ramadan Collection 1448 and Baithul Mal 2026-27 and
+claims an expense; finance approves it. Totals are checked as differences, so existing data is fine.
+Also checks that people are refused what their role does not allow.
 """
 
 import http.cookiejar
 import json
+import random
 import sys
+import time
 import urllib.parse
 import urllib.request
 from datetime import date, timedelta
@@ -79,9 +83,30 @@ def err(resp):
     return b.get("exc_type") or b.get("exception") or b
 
 
+RAMADAN, BAITHUL_MAL = "Ramadan Collection 1448", "Baithul Mal 2026-27"
 pres = Client("sio.test.president@example.com").login()
 fin = Client("sio.test.finance@example.com").login()
-assoc = Client("sio.test.assoc1@example.com").login()
+
+stamp = str(int(time.time()))
+assoc_email = f"sio.test.a{stamp}@example.com"
+code, body = Client("Guest").post(
+    "sio_connect.api.auth.register", full_name=f"Test Associate {stamp[-4:]}",
+    mobile="9" + "".join(random.choice("0123456789") for _ in range(9)), email=assoc_email, password=PASSWORD,
+    unit="Feroke", campus="Farook College", course="BSc Physics", year_of_study="2nd Year")
+assert code == 200, (code, body)
+assoc_member = body["message"]["member"]
+assoc = Client(assoc_email).login()
+
+def totals(client, collection):
+    return (msg(client.m("collection", collection=collection)) or {}).get("totals") or {}
+
+def event_counts():
+    e = msg(pres.m("event", name="EVT-00001")) or {}
+    return e.get("registered_count", 0), float(e.get("spent") or 0)
+
+ram_before = totals(pres, RAMADAN)
+bm_before = totals(pres, BAITHUL_MAL)
+reg_before, spent_before = event_counts()
 
 print("Roles and capabilities")
 p_me, f_me, a_me = msg(pres.m("me")), msg(fin.m("me")), msg(assoc.m("me"))
@@ -91,14 +116,14 @@ check("president is Unit President, can mark attendance and approve members",
 check("finance can approve expenses, sees all units, cannot mark attendance",
       f_me["capabilities"]["approve_expense"] and f_me["capabilities"]["all_units"]
       and not f_me["capabilities"]["mark_attendance"], f_me)
-check("associate (pending) can pledge and register, nothing else",
-      a_me["status"] == "Pending Approval" and a_me["capabilities"]["pledge"]
+check("associate (pending) can give an offer and register, nothing else",
+      a_me["status"] == "Pending Approval" and a_me["capabilities"]["offer"]
       and not a_me["capabilities"]["collect"] and not a_me["capabilities"]["view_members"], a_me)
 
 print("Refusals")
 r = assoc.m("members")
 check("associate cannot list members", r[0] == 403, r)
-r = assoc.m("add_collection_entry", entry_type="Pledge", contributor_name="X", pledged_amount=100)
+r = assoc.m("add_collection_entry", collection=RAMADAN, entry_type="Offer", contributor_name="X", offered_amount=100)
 check("associate cannot record collections for others", r[0] == 403, r)
 r = pres.m("set_expense_status", name="nothing", status="Approved")
 check("unit president cannot approve expenses", r[0] == 403, r)
@@ -106,18 +131,21 @@ r = pres.m("send_notice", title="t", message="m", audience="Everyone")
 check("unit president cannot send to everyone", r[0] == 403, r)
 
 print("Associate before approval")
-r = assoc.m("add_collection_entry", entry_type="Pledge", for_self=1, pledged_amount=5000)
-check("associate makes own pledge", r[0] == 200 and msg(r)["status"] == "Pledged", r)
+c = msg(assoc.m("collection"))
+names = [x["name"] for x in (c or {}).get("collections", [])]
+check("associate sees both open collections", RAMADAN in names and BAITHUL_MAL in names, names)
+r = assoc.m("add_collection_entry", collection=RAMADAN, entry_type="Offer", for_self=1, offered_amount=5000)
+check("associate gives own offer", r[0] == 200 and msg(r)["status"] == "Offered", r)
 r = assoc.m("register_event", event="EVT-00001")
 check("associate registers for event", r[0] == 200 and msg(r)["registered"], r)
 
 print("President approves and runs the unit")
 r = pres.m("members", status="Pending Approval")
 pending = [x["name"] for x in (msg(r) or [])]
-check("president sees the pending associate", "SIO-MEM-00001" in pending, r)
-r = pres.m("approve_member", name="SIO-MEM-00001", action="approve", member_role="Member")
+check("president sees the pending associate", assoc_member in pending, r)
+r = pres.m("approve_member", name=assoc_member, action="approve", member_role="Member")
 check("president approves associate as Member", r[0] == 200 and msg(r)["status"] == "Active", r)
-r = pres.m("approve_member", name="SIO-MEM-00001", action="approve", member_role="District Admin")
+r = pres.m("approve_member", name=assoc_member, action="approve", member_role="District Admin")
 check("president cannot make someone District Admin", r[0] == 403, r)
 a_me = msg(assoc.m("me"))
 check("approved member now can RSVP, collect and claim",
@@ -136,38 +164,46 @@ check("home shows the next meeting and event",
       h and h["next_meeting"] and h["next_meeting"]["name"] == meeting and h["next_event"], h)
 r = assoc.m("rsvp", name=meeting, attending=1)
 check("member RSVPs", r[0] == 200 and msg(r)["rsvp"] == "Attending", r)
-r = assoc.m("add_collection_entry", entry_type="Payment", contributor_name="Abdul Gafoor T",
+r = assoc.m("add_collection_entry", collection=BAITHUL_MAL, entry_type="Payment", contributor_name="Abdul Gafoor T",
             contributor_type="Well-wisher", paid_amount=2000, payment_mode="UPI")
-check("member records a payment collected", r[0] == 200 and msg(r)["status"] == "Paid", r)
-r = assoc.m("add_collection_entry", entry_type="Pledge", contributor_name="Al-Huda Traders",
-            contributor_type="Business", pledged_amount=10000, paid_amount=4000, payment_mode="Cash")
-check("member records a part-paid pledge", r[0] == 200 and msg(r)["status"] == "Part Paid", r)
+check("member records a Baithul Mal payment", r[0] == 200 and msg(r)["status"] == "Paid", r)
+r = assoc.m("add_collection_entry", collection=RAMADAN, entry_type="Offer", contributor_name="Al-Huda Traders",
+            contributor_type="Business", offered_amount=10000, paid_amount=4000, payment_mode="Cash")
+check("member records an offer, part paid", r[0] == 200 and msg(r)["status"] == "Part Paid", r)
 entry = (msg(r) or {}).get("name")
 r = assoc.m("add_payment", entry=entry, amount=6000, mode="UPI")
-check("member adds the rest; pledge becomes Paid", r[0] == 200 and msg(r)["status"] == "Paid", r)
+check("member adds the rest; offer becomes Paid", r[0] == 200 and msg(r)["status"] == "Paid", r)
+r = assoc.m("add_collection_entry", collection=RAMADAN, entry_type="Items", contributor_name="Kozhikode Traders",
+            items_given="20 food kits", items_value=16000)
+check("member records items", r[0] == 200 and msg(r)["status"] == "Items Received", r)
 r = assoc.m("claim_expense", description="Posters for Campus Dialogue", amount=1200, category="Printing",
             event="EVT-00001")
 check("member claims an expense", r[0] == 200, r)
 claim = (msg(r) or {}).get("name")
-c = msg(assoc.m("collection"))
-check("member sees own pledge and what they collected",
-      c and len(c["my_pledges"]) == 1 and c["totals"]["scope"] == "collected_by_me"
-      and c["totals"]["collected"] == 12000, c and c.get("totals"))
+c = msg(assoc.m("collection", collection=RAMADAN))
+check("member sees own offer and what they collected in Ramadan",
+      c and len(c["my_offers"]) == 1 and c["my_offers"][0]["status"] == "Offered"
+      and c["totals"]["scope"] == "collected_by_me" and c["totals"]["collected"] == 10000
+      and c["totals"]["items"] == 16000, c and c.get("totals"))
 
 print("President marks attendance and sends an update")
 d = msg(pres.m("meeting", name=meeting))
 roster = [x["member"] for x in d.get("roster", [])]
-check("roster lists active unit members", "SIO-MEM-00001" in roster and "SIO-MEM-00002" in roster, d)
-r = pres.m("save_attendance", name=meeting, present=["SIO-MEM-00001", "SIO-MEM-00002"], minutes="Discussed the dialogue.")
+check("roster lists active unit members", assoc_member in roster and "SIO-MEM-00002" in roster, d)
+r = pres.m("save_attendance", name=meeting, present=[assoc_member, "SIO-MEM-00002"], minutes="Discussed the dialogue.")
 check("attendance saved", r[0] == 200 and msg(r)["present"] == 2, r)
 r = pres.m("send_notice", title="Volunteers meet Saturday", message="Campus Dialogue volunteers meet at 4 pm.",
            audience="Unit")
 check("unit update sent", r[0] == 200 and msg(r)["recipients"] >= 2, r)
 n = msg(assoc.m("notices"))
 check("member receives the unit update", n and any(x["title"] == "Volunteers meet Saturday" for x in n), n)
-c = msg(pres.m("collection"))
-check("president sees unit collection totals", c and c["totals"]["collected"] == 12000 and "scope" not in c["totals"],
-      c and c.get("totals"))
+ram, bm = totals(pres, RAMADAN), totals(pres, BAITHUL_MAL)
+check("president's Ramadan totals: +15,000 offered, +10,000 received, +16,000 items",
+      ram.get("offered", 0) - ram_before.get("offered", 0) == 15000
+      and ram.get("collected", 0) - ram_before.get("collected", 0) == 10000
+      and ram.get("items", 0) - ram_before.get("items", 0) == 16000 and "scope" not in ram, (ram_before, ram))
+check("president's Baithul Mal totals: +2,000 received", bm.get("collected", 0) - bm_before.get("collected", 0) == 2000,
+      (bm_before, bm))
 
 print("Finance approves")
 e = msg(fin.m("expenses"))
@@ -176,17 +212,17 @@ r = fin.m("set_expense_status", name=claim, status="Approved")
 check("finance approves", r[0] == 200 and msg(r)["status"] == "Approved", r)
 r = fin.m("set_expense_status", name=claim, status="Paid", payment_mode="UPI")
 check("finance marks paid", r[0] == 200 and msg(r)["status"] == "Paid", r)
-ev = msg(pres.m("event", name="EVT-00001"))
-check("event shows 1 registered and approved spend 1200",
-      ev and ev["registered_count"] == 1 and float(ev["spent"]) == 1200, ev)
+reg_after, spent_after = event_counts()
+check("event: +1 registered, +1,200 approved spend",
+      reg_after - reg_before == 1 and spent_after - spent_before == 1200, (reg_before, spent_before, reg_after, spent_after))
 
 print("Fingerprint sign-in (API key)")
 r = assoc.post("sio_connect.api.auth.enable_biometric", device_name="Test phone")
 keys = msg(r) or {}
-phone = Client("sio.test.assoc1@example.com")
+phone = Client(assoc_email)
 phone.token = f"{keys.get('api_key')}:{keys.get('api_secret')}"
 r = phone.m("me")
-check("token sign-in works without a password", r[0] == 200 and msg(r)["member"] == "SIO-MEM-00001", r)
+check("token sign-in works without a password", r[0] == 200 and msg(r)["member"] == assoc_member, r)
 assoc.post("sio_connect.api.auth.disable_biometric")
 r = phone.m("me")
 check("after turning it off the old token is refused", r[0] in (401, 403), r)
