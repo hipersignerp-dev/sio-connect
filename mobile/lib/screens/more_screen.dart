@@ -6,6 +6,7 @@ import '../biometric.dart';
 import '../theme.dart';
 import '../update_service.dart';
 import '../widgets.dart';
+import 'accounts_screen.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
 import 'meeting_screens.dart';
@@ -56,6 +57,13 @@ class MoreScreen extends StatelessWidget {
                 title: 'Expense claims',
                 subtitle: s.can('approve_expense') ? 'Approve and pay claims' : 'Claim bills for events and meetings',
                 onTap: () => push(context, const ExpensesScreen()),
+              ),
+            if (s.can('view_accounts'))
+              SioTile(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Accounts',
+                subtitle: 'Money in, money out and balance',
+                onTap: () => push(context, const AccountsScreen()),
               ),
             SioTile(
               icon: Icons.campaign_outlined,

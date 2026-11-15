@@ -12,9 +12,11 @@ else:
     filters["claimed_by"] = ctx["member"].name
 rows = frappe.get_all("SIO Expense Claim", filters=filters,
                       fields=["name", "description", "category", "amount", "expense_date", "status", "claimed_by",
-                              "claimed_by_name", "unit", "event", "bill", "remarks"],
+                              "claimed_by_name", "unit", "event", "paid_from", "bill", "remarks"],
                       order_by="creation desc", limit=200)
 totals = {}
 for r in rows:
     totals[r.status] = totals.get(r.status, 0) + frappe.utils.flt(r.amount)
-frappe.response["message"] = {"claims": rows, "totals": totals, "can_approve": caps["approve_expense"]}
+funds = [c.name for c in frappe.get_all("SIO Collection", filters={"is_active": 1}, fields=["name"])] \
+    if caps["approve_expense"] else []
+frappe.response["message"] = {"claims": rows, "totals": totals, "can_approve": caps["approve_expense"], "funds": funds}

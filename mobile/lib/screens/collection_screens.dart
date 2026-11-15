@@ -46,6 +46,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
           final entries =
               ((d['entries'] as List?) ?? []).where((e) => _filter == 'All' || e['status'] == _filter).toList();
           final target = numOf(sel['target']);
+          final units = ((d['units'] as List?) ?? []).where((u) => numOf(u['target']) > 0 || numOf(u['collected']) > 0).toList();
           return [
             if (collections.length > 1) ...[
               SizedBox(
@@ -143,6 +144,10 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   ),
                 ),
             ]),
+            if (units.isNotEmpty) ...[
+              SectionTitle(units.length > 1 ? 'Units' : 'My unit\'s target'),
+              PanelList(children: [for (final u in units) UnitProgressRow(u: Map<String, dynamic>.from(u))]),
+            ],
             if (mine.isNotEmpty) ...[
               const SectionTitle('My offers'),
               PanelList(children: [for (final e in mine) _EntryRow(e: Map<String, dynamic>.from(e), canPay: false)]),
@@ -414,6 +419,43 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
         ],
         const SizedBox(height: 20),
         FilledButton(onPressed: _busy ? null : _save, child: Text(self ? 'Save my offer' : 'Save')),
+      ]),
+    );
+  }
+}
+
+
+/// One unit's collection against its target.
+class UnitProgressRow extends StatelessWidget {
+  const UnitProgressRow({super.key, required this.u});
+  final Map<String, dynamic> u;
+
+  @override
+  Widget build(BuildContext context) {
+    final target = numOf(u['target']);
+    final got = numOf(u['collected']);
+    final left = numOf(u['to_target']);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(child: Text(u['unit'].toString(), style: const TextStyle(fontWeight: FontWeight.w700))),
+          Text(target > 0 ? '${inr(got)} of ${inr(target)}' : inr(got),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        ]),
+        if (target > 0) ...[
+          const SizedBox(height: 8),
+          ProgressBar(got / target),
+        ],
+        const SizedBox(height: 6),
+        Text(
+          [
+            if (target > 0) '${numOf(u['pct']).toInt()}%',
+            if (target > 0) left > 0 ? '${inr(left)} still to target' : 'Target reached',
+            if (numOf(u['balance']) > 0) '${inr(u['balance'])} offered, not yet paid',
+          ].join(' · '),
+          style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+        ),
       ]),
     );
   }

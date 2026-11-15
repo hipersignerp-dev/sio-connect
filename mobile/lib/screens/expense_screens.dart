@@ -28,6 +28,7 @@ class ExpensesScreen extends StatelessWidget {
           final claims = (d['claims'] as List?) ?? [];
           final totals = (d['totals'] as Map?) ?? {};
           final canApprove = d['can_approve'] == true;
+          final funds = [for (final f in (d['funds'] as List?) ?? []) f is Map ? f['name'].toString() : f.toString()];
           return [
             SioPanel(
               child: Row(children: [
@@ -38,7 +39,7 @@ class ExpensesScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (claims.isEmpty) const EmptyNote('No claims yet.'),
-            for (final c in claims) ...[_ClaimCard(c: Map<String, dynamic>.from(c), canApprove: canApprove), const SizedBox(height: 10)],
+            for (final c in claims) ...[ClaimCard(c: Map<String, dynamic>.from(c), canApprove: canApprove, funds: funds), const SizedBox(height: 10)],
           ];
         },
       ),
@@ -46,25 +47,30 @@ class ExpensesScreen extends StatelessWidget {
   }
 }
 
-class _ClaimCard extends StatelessWidget {
-  const _ClaimCard({required this.c, required this.canApprove});
+class ClaimCard extends StatelessWidget {
+  const ClaimCard({super.key, required this.c, required this.canApprove, this.funds = const []});
   final Map<String, dynamic> c;
   final bool canApprove;
+  final List<String> funds;
 
   Future<void> _set(BuildContext context, String status) async {
     String? mode;
+    String? fund;
     if (status == 'Paid') {
-      mode = await showDialog<String>(
+      final r = await showModalBottomSheet<(String, String?)>(
         context: context,
-        builder: (ctx) => SimpleDialog(title: const Text('Paid by'), children: [
-          for (final m in const ['Cash', 'UPI', 'Bank Transfer'])
-            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, m), child: Padding(padding: const EdgeInsets.all(8), child: Text(m))),
-        ]),
+        showDragHandle: true,
+        builder: (sheet) => _PaySheet(amount: c['amount'], funds: funds),
       );
-      if (mode == null) return;
+      if (r == null) return;
+      mode = r.$1;
+      fund = r.$2;
     }
     if (!context.mounted) return;
-    await run(context, () => Api.call('${Api.m}set_expense_status', {'name': c['name'], 'status': status, 'payment_mode': mode}),
+    await run(
+        context,
+        () => Api.call('${Api.m}set_expense_status',
+            {'name': c['name'], 'status': status, 'payment_mode': mode, 'paid_from': fund}),
         done: 'Claim ${status.toLowerCase()}.');
   }
 
@@ -81,7 +87,7 @@ class _ClaimCard extends StatelessWidget {
         const SizedBox(height: 6),
         Row(children: [
           Expanded(
-            child: Text([c['category'], c['event'], c['claimed_by_name'], fmtDate(c['expense_date'], 'd MMM')].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+            child: Text([c['category'], c['event'], c['claimed_by_name'], fmtDate(c['expense_date'], 'd MMM'), if (c['paid_from'] != null) 'from ${c['paid_from']}'].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
                 style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
           ),
           StatusChip(status, tone: StatusChip.toneFor(status)),
@@ -116,7 +122,8 @@ class _ClaimCard extends StatelessWidget {
 }
 
 class NewClaimScreen extends StatefulWidget {
-  const NewClaimScreen({super.key});
+  const NewClaimScreen({super.key, this.event});
+  final String? event;
 
   @override
   State<NewClaimScreen> createState() => _NewClaimScreenState();
@@ -137,6 +144,7 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
   @override
   void initState() {
     super.initState();
+    _event = widget.event;
     Api.call('${Api.m}events').then((v) {
       if (mounted) setState(() => _events = (v as List?) ?? []);
     }).catchError((_) {});
@@ -194,6 +202,8 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
           decoration: const InputDecoration(labelText: 'Event (optional)'),
           items: [
             const DropdownMenuItem<String?>(value: null, child: Text('Not for an event')),
+            if (_event != null && !_events.any((e) => e['name'] == _event))
+              DropdownMenuItem<String?>(value: _event, child: Text(_event!)),
             for (final e in _events) DropdownMenuItem<String?>(value: e['name'].toString(), child: Text(e['title'].toString(), overflow: TextOverflow.ellipsis)),
           ],
           onChanged: (v) => setState(() => _event = v),
@@ -228,4 +238,48 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
       ]),
     );
   }
+}
+
+
+/// Finance marks a claim paid: how it was paid and, optionally, which fund paid it.
+class _PaySheet extends StatefulWidget {
+  const _PaySheet({required this.amount, required this.funds});
+  final dynamic amount;
+  final List<String> funds;
+
+  @override
+  State<_PaySheet> createState() => _PaySheetState();
+}
+
+class _PaySheetState extends State<_PaySheet> {
+  String _mode = 'Cash';
+  String? _fund;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Pay ${inr(widget.amount)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            initialValue: _mode,
+            decoration: const InputDecoration(labelText: 'Paid by'),
+            items: [for (final m in const ['Cash', 'UPI', 'Bank Transfer']) DropdownMenuItem(value: m, child: Text(m))],
+            onChanged: (v) => setState(() => _mode = v ?? _mode),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            initialValue: _fund,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Paid from (fund)'),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('General account')),
+              for (final f in widget.funds) DropdownMenuItem<String?>(value: f, child: Text(f, overflow: TextOverflow.ellipsis)),
+            ],
+            onChanged: (v) => setState(() => _fund = v),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(onPressed: () => Navigator.pop(context, (_mode, _fund)), child: const Text('Mark paid')),
+        ]),
+      );
 }

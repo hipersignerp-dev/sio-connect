@@ -20,7 +20,7 @@ args = frappe.form_dict
 
 '''
 
-LIBS = ["ctx", "events", "notices", "totals", "collections"]
+LIBS = ["ctx", "events", "notices", "totals", "collections", "unit_progress", "accounts"]
 
 GUEST_API = {
     # file: (method, rate limit (count, seconds) or None)
@@ -33,7 +33,7 @@ API = {
 }
 MOBILE = ["me", "update_my_profile", "home", "meetings", "meeting", "rsvp", "save_attendance", "schedule_meeting",
           "events", "event", "register_event", "collection", "add_collection_entry", "add_payment", "expenses",
-          "claim_expense", "set_expense_status", "notices", "send_notice", "members", "approve_member"]
+          "claim_expense", "set_expense_status", "notices", "send_notice", "members", "approve_member", "accounts"]
 for m in MOBILE:
     API[m] = f"sio_connect.api.mobile.{m}"
 
@@ -52,7 +52,35 @@ EVENTS = [
     ("SIO Notice recipients", "SIO Notice", "Before Insert", "notice_before_insert"),
     ("SIO Notice email", "SIO Notice", "After Insert", "notice_after_insert"),
     ("SIO Device revoke", "SIO Device Token", "After Save", "device_after_save"),
+    ("SIO Collection targets", "SIO Collection", "Before Save", "collection_targets"),
 ]
+
+
+REPORTS = [
+    # (report name, ref doctype, file, filters)
+    ("SIO Accounts", "SIO Expense Claim", "accounts", [
+        ("from_date", "From Date", "Date", None), ("to_date", "To Date", "Date", None),
+        ("unit", "Unit", "Link", "SIO Unit"), ("collection", "Collection / Fund", "Link", "SIO Collection"),
+        ("event", "Event", "Link", "SIO Event")]),
+    ("SIO Collection Progress", "SIO Collection Entry", "collection_progress", [
+        ("collection", "Collection", "Link", "SIO Collection")]),
+    ("SIO Event Expenses", "SIO Expense Claim", "event_expenses", [
+        ("from_date", "Events From", "Date", None), ("to_date", "Events To", "Date", None),
+        ("unit", "Unit", "Link", "SIO Unit")]),
+]
+REPORT_ROLES = ["SIO Unit Admin", "SIO Finance", "SIO Admin", "System Manager"]
+
+
+def reports():
+    out = []
+    for name, ref, f, flt in REPORTS:
+        out.append({
+            "report_name": name, "ref_doctype": ref, "report_type": "Script Report", "is_standard": "No",
+            "module": "SIO Connect", "report_script": read("reports", f"{f}.py"),
+            "filters": [{"fieldname": a, "label": b, "fieldtype": c, "options": d} for a, b, c, d in flt],
+            "roles": [{"role": r} for r in REPORT_ROLES],
+        })
+    return out
 
 
 def read(*parts):
@@ -90,3 +118,7 @@ if __name__ == "__main__":
         with open(os.path.join(dist, r["name"].replace(" ", "_") + ".json"), "w") as fh:
             json.dump(r, fh, indent=1)
     print(len(recs), "server scripts")
+    for r in reports():
+        with open(os.path.join(dist, "report_" + r["report_name"].replace(" ", "_") + ".json"), "w") as fh:
+            json.dump(r, fh, indent=1)
+    print(len(reports()), "reports")

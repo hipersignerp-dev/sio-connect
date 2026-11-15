@@ -17,6 +17,7 @@
   "claimed_by_name",
   "unit",
   "event",
+  "paid_from",
   "approval_section",
   "approved_by",
   "paid_on",
@@ -105,7 +106,16 @@
    "fieldname": "event",
    "fieldtype": "Link",
    "label": "Event",
-   "options": "SIO Event"
+   "options": "SIO Event",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "paid_from",
+   "fieldtype": "Link",
+   "label": "Paid From (fund)",
+   "options": "SIO Collection",
+   "in_standard_filter": 1,
+   "description": "Which collection's money paid this, e.g. Baithul Mal for relief. Shows in that fund's accounts."
   },
   {
    "fieldname": "approval_section",

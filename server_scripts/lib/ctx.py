@@ -41,6 +41,7 @@ caps = {
     "approve_expense": is_finance,
     "send_notice": is_unit_admin,
     "all_units": is_admin or is_finance,
+    "view_accounts": is_unit_admin or is_finance,
 }
 
 scope = None  # None = every unit

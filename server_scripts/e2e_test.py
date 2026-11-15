@@ -86,6 +86,23 @@ def err(resp):
 RAMADAN, BAITHUL_MAL = "Ramadan Collection 1448", "Baithul Mal 2026-27"
 pres = Client("sio.test.president@example.com").login()
 fin = Client("sio.test.finance@example.com").login()
+kpres = Client("sio.test.kpres@example.com").login()  # Unit President of Kalamassery
+TODAY = date.today().isoformat()
+MONTH = (date.today().replace(day=1).isoformat(), TODAY)
+
+
+def accounts(client, **a):
+    return msg(client.m("accounts", from_date=MONTH[0], to_date=TODAY, **a)) or {}
+
+
+def unit_row(client, unit):
+    c = msg(client.m("collection", collection=RAMADAN)) or {}
+    return next((u for u in c.get("units", []) if u["unit"] == unit), None), c
+
+
+acc_before = accounts(fin)
+acc_bm_before = accounts(fin, collection=BAITHUL_MAL)
+fer_before, _ = unit_row(fin, "Feroke")
 
 stamp = str(int(time.time()))
 assoc_email = f"sio.test.a{stamp}@example.com"
@@ -215,6 +232,49 @@ check("finance marks paid", r[0] == 200 and msg(r)["status"] == "Paid", r)
 reg_after, spent_after = event_counts()
 check("event: +1 registered, +1,200 approved spend",
       reg_after - reg_before == 1 and spent_after - spent_before == 1200, (reg_before, spent_before, reg_after, spent_after))
+
+print("Units, targets and accounts")
+fer, c = unit_row(pres, "Feroke")
+check("president sees only Feroke's progress, with its target",
+      [u["unit"] for u in c.get("units", [])] == ["Feroke"] and fer and fer["target"] > 0, c.get("units"))
+fer_f, c = unit_row(fin, "Feroke")
+check("finance sees every unit's progress", len(c.get("units", [])) >= 4, c.get("units"))
+check("Feroke progress: +10,000 received", fer_f["collected"] - fer_before["collected"] == 10000, (fer_before, fer_f))
+k, c = unit_row(kpres, "Kalamassery")
+check("Kalamassery president sees only Kalamassery", [u["unit"] for u in c.get("units", [])] == ["Kalamassery"],
+      c.get("units"))
+r = kpres.m("members")
+check("Kalamassery president does not see Feroke members",
+      r[0] == 200 and assoc_member not in [x["name"] for x in msg(r)], r)
+ev = msg(kpres.m("event", name="EVT-00001")) or {}
+check("Kalamassery president does not see Feroke's event expenses",
+      claim not in [x["name"] for x in ev.get("expenses", [])], ev.get("expenses"))
+ev = msg(pres.m("event", name="EVT-00001")) or {}
+check("Feroke president sees the event's expenses and summary",
+      claim in [x["name"] for x in ev.get("expenses", [])] and ev.get("expense_summary", {}).get("paid", 0) >= 1200,
+      ev.get("expense_summary"))
+ka = accounts(kpres, unit="Feroke")
+check("Kalamassery president's accounts stay on Kalamassery", ka.get("unit") == "Kalamassery", ka.get("unit"))
+r = assoc.m("accounts")
+check("a member cannot open accounts", r[0] == 403, r)
+r = assoc.m("claim_expense", description="Relief kit", amount=800, category="Materials", expense_date=TODAY)
+relief = (msg(r) or {}).get("name")
+fin.m("set_expense_status", name=relief, status="Approved")
+r = fin.m("set_expense_status", name=relief, status="Paid", payment_mode="Cash", paid_from=BAITHUL_MAL)
+check("finance pays a claim from the Baithul Mal fund", r[0] == 200 and msg(r)["status"] == "Paid", r)
+acc = accounts(fin)
+check("accounts: +12,000 in, +2,000 out this month",
+      acc["in"] - acc_before["in"] == 12000 and acc["out"] - acc_before["out"] == 2000, (acc_before, acc))
+check("accounts: closing = opening + in - out, running balance ends at closing",
+      abs(acc["opening"] + acc["in"] - acc["out"] - acc["closing"]) < 0.01
+      and (not acc["rows"] or abs(acc["rows"][-1]["balance"] - acc["closing"]) < 0.01), acc)
+bm = accounts(fin, collection=BAITHUL_MAL)
+check("Baithul Mal fund: +2,000 in, +800 out",
+      bm["in"] - acc_bm_before["in"] == 2000 and bm["out"] - acc_bm_before["out"] == 800, (acc_bm_before, bm))
+ea = accounts(fin, event="EVT-00001")
+check("event filter shows only that event's spending",
+      ea["in"] == 0 and all(x["event"] == "EVT-00001" for x in ea["rows"]) and claim in [x["ref"] for x in ea["rows"]],
+      ea)
 
 print("Fingerprint sign-in (API key)")
 r = assoc.post("sio_connect.api.auth.enable_biometric", device_name="Test phone")

@@ -14,7 +14,10 @@
   "starts_on",
   "ends_on",
   "desc_section",
-  "description"
+  "description",
+  "targets_section",
+  "unit_targets",
+  "unit_targets_total"
  ],
  "fields": [
   {
@@ -79,6 +82,24 @@
    "fieldtype": "Small Text",
    "label": "Description",
    "description": "Shown to members in the app"
+  },
+  {
+   "fieldname": "targets_section",
+   "fieldtype": "Section Break",
+   "label": "Unit targets",
+   "description": "Split the area target among units. Each unit's progress is tracked against its target."
+  },
+  {
+   "fieldname": "unit_targets",
+   "fieldtype": "Table",
+   "label": "Unit Targets",
+   "options": "SIO Collection Unit Target"
+  },
+  {
+   "fieldname": "unit_targets_total",
+   "fieldtype": "Currency",
+   "label": "Total of unit targets",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 0,

@@ -9,5 +9,9 @@ if args.get("remarks"):
     doc.remarks = args.get("remarks")
 if args.get("payment_mode"):
     doc.payment_mode = args.get("payment_mode")
+if args.get("paid_from"):
+    if not frappe.db.exists("SIO Collection", args.get("paid_from")):
+        frappe.throw(_("Pick a collection for Paid From."))
+    doc.paid_from = args.get("paid_from")
 doc.save(ignore_permissions=True)
 frappe.response["message"] = {"status": doc.status}

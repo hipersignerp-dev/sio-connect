@@ -5,6 +5,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'event_detail_screen.dart';
 
 class EventsScreen extends StatelessWidget {
   const EventsScreen({super.key, this.standalone = false});
@@ -46,6 +47,7 @@ class _EventCardState extends State<_EventCard> {
     final open = e['status'] == 'Registrations Open';
     final canRegister = AppState.i.can('register_events');
     return SioPanel(
+      onTap: () => push(context, EventDetailScreen(name: e['name'].toString(), title: e['title'].toString())),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: Text(e['title'].toString(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink))),

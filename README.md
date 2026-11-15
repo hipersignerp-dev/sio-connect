@@ -46,6 +46,18 @@ Relief Fund, Other), an optional target and dates, and optionally limited to one
 Everyone can give their own offer from the app; members record what they collect from others; unit admins
 see their unit's totals; finance and district admins see all units.
 
+## Units, targets, event expenses and accounts
+
+- **Unit targets.** Open a collection on the desk, fill **Unit Targets** (or press *Split target among units*).
+  Each unit sees its own target and progress in the app; finance and district admins see every unit.
+- **Event expenses.** Tap an event in the app to see its budget, what is spent, waiting approval and left,
+  by category, with every claim. *Add expense* claims a bill against that event.
+- **Which fund paid.** When finance marks a claim paid they can pick the fund (for example Baithul Mal),
+  so each fund has its own in / out / balance.
+- **Accounts.** App: More → Accounts (unit admins see their unit, finance sees all). Desk reports:
+  *SIO Accounts* (opening, in, out, running balance, closing; filter by dates, unit, fund, event),
+  *SIO Collection Progress* (each unit against its target) and *SIO Event Expenses* (budget vs spent per event).
+
 ## Sign-up and fingerprint sign-in
 
 1. **Register as an associate** from the app: name, mobile, email, password, unit, college and course.

@@ -13,7 +13,11 @@ for c in rows:
         continue
     item = {"name": c.name, "collection_type": c.collection_type, "target": frappe.utils.flt(c.target_amount),
             "starts_on": c.starts_on, "ends_on": c.ends_on, "description": c.description, "unit": c.unit,
-            "totals": None, "my_offered": 0, "my_paid": 0}
+            "totals": None, "my_offered": 0, "my_paid": 0, "unit_target": None}
+    if ctx["unit"]:
+        ut = frappe.db.get_value("SIO Collection Unit Target",
+                                 {"parent": c.name, "parenttype": "SIO Collection", "unit": ctx["unit"]}, "target")
+        item["unit_target"] = frappe.utils.flt(ut) if ut else None
     if caps["view_collection_totals"]:
         item["totals"] = run_script("SIO lib totals", collection=c.name, unit=ctx["scope"] or "").sio_totals
     elif caps["collect"] and member:

@@ -109,18 +109,25 @@ ThemeData buildTheme() {
 
 /// Rounded soft panel used for every card (Hipersign style).
 class SioPanel extends StatelessWidget {
-  const SioPanel({super.key, required this.child, this.color, this.padding = const EdgeInsets.all(16)});
+  const SioPanel({super.key, required this.child, this.color, this.padding = const EdgeInsets.all(16), this.onTap});
   final Widget child;
   final Color? color;
   final EdgeInsets padding;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: padding,
-        decoration: BoxDecoration(color: color ?? SioColors.card, borderRadius: BorderRadius.circular(18)),
-        child: child,
-      );
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(18);
+    return Material(
+      color: color ?? SioColors.card,
+      borderRadius: radius,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: Container(width: double.infinity, padding: padding, child: child),
+      ),
+    );
+  }
 }
 
 /// Info / error strip.

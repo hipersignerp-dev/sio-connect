@@ -10,6 +10,7 @@ doc = frappe.get_doc({
     "category": args.get("category") or "Other",
     "expense_date": args.get("expense_date") or frappe.utils.nowdate(),
     "event": args.get("event") or None,
+    "paid_from": args.get("paid_from") or None,
     "unit": ctx["unit"],
     "claimed_by": ctx["member"].name,
 }).insert(ignore_permissions=True)
