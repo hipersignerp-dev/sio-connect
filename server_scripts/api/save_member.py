@@ -21,7 +21,7 @@ if ctx["scope"]:
     unit = ctx["scope"]
 role = args.get("member_role") or doc.member_role or "Associate"
 if not ctx["is_admin"] and role != doc.member_role and role not in ("Associate", "Member"):
-    frappe.throw(_("Only district admins can give that role."), frappe.PermissionError)
+    frappe.throw(_("Only area admins can give that role."), frappe.PermissionError)
 doc.full_name = full_name
 doc.mobile = mobile
 doc.email = (args.get("email") or "").strip().lower() or None

@@ -56,7 +56,7 @@ if not (is_admin or is_finance):
 if member:
     role_label = member.member_role
 elif is_admin:
-    role_label = "District Admin"
+    role_label = "Area Admin"
 else:
     role_label = None
 

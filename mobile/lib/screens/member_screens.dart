@@ -6,7 +6,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'manage_screens.dart';
 
-/// Members of the unit (or all units for district admins). New associates waiting for approval come first.
+/// Members of the unit (or all units for area admins). New associates waiting for approval come first.
 class MembersScreen extends StatefulWidget {
   const MembersScreen({super.key});
 
@@ -94,8 +94,8 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   Future<void> _open(BuildContext context, Map<String, dynamic> m) async {
-    final admin = AppState.i.role == 'District Admin';
-    final roles = admin ? const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'District Admin'] : const ['Associate', 'Member'];
+    final admin = AppState.i.role == 'Area Admin';
+    final roles = admin ? const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin'] : const ['Associate', 'Member'];
     var role = roles.contains(m['member_role']) ? m['member_role'].toString() : 'Associate';
     await showModalBottomSheet<void>(
       context: context,

@@ -9,7 +9,7 @@ entry_type = args.get("entry_type")
 if entry_type not in ("Offer", "Payment", "Items"):
     frappe.throw(_("Unknown entry type."))
 paid = frappe.utils.flt(args.get("paid_amount"))
-# Which unit this money counts for: your own unit; finance and district admins pick any unit.
+# Which unit this money counts for: your own unit; finance and area admins pick any unit.
 unit = ctx["unit"]
 if ctx["caps"]["all_units"] and args.get("unit"):
     unit = args.get("unit")

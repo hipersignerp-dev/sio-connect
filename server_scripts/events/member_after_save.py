@@ -5,7 +5,7 @@ role_map = {
     "Unit Secretary": ["SIO Member", "SIO Unit Admin"],
     "Unit President": ["SIO Member", "SIO Unit Admin"],
     "Finance": ["SIO Member", "SIO Finance"],
-    "District Admin": ["SIO Member", "SIO Unit Admin", "SIO Finance", "SIO Admin"],
+    "Area Admin": ["SIO Member", "SIO Unit Admin", "SIO Finance", "SIO Admin"],
 }
 sio_roles = ["SIO Associate", "SIO Member", "SIO Unit Admin", "SIO Finance", "SIO Admin"]
 if doc.user and frappe.db.exists("User", doc.user):

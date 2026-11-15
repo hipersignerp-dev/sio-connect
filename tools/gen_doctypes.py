@@ -51,7 +51,7 @@ def section(n, label=None, **kw):
 	return F(n, "Section Break", label, **kw)
 
 
-ROLES = ["Associate", "Member", "Unit Secretary", "Unit President", "Finance", "District Admin"]
+ROLES = ["Associate", "Member", "Unit Secretary", "Unit President", "Finance", "Area Admin"]
 
 DOCTYPES = [
 	dict(
@@ -61,8 +61,8 @@ DOCTYPES = [
 		search_fields="district",
 		fields=[
 			F("unit_name", "Data", "Unit Name", reqd=1, unique=1, in_list_view=1),
-			F("district", "Data", "District", in_list_view=1, in_standard_filter=1),
-			F("area", "Data", "Area / Campus Zone"),
+			F("district", "Data", "Area", in_list_view=1, in_standard_filter=1),
+			F("area", "Data", "Campus / Zone (optional)"),
 			colbreak("col_a"),
 			F("president", "Link", "President", options="SIO Member"),
 			F("secretary", "Link", "Secretary", options="SIO Member"),

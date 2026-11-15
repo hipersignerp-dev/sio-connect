@@ -8,7 +8,7 @@ if args.get("action") == "reject":
 else:
     role = args.get("member_role") or "Associate"
     if not ctx["is_admin"] and role not in ("Associate", "Member"):
-        frappe.throw(_("Only district admins can give that role."), frappe.PermissionError)
+        frappe.throw(_("Only area admins can give that role."), frappe.PermissionError)
     doc.status = "Active"
     doc.member_role = role
 doc.save(ignore_permissions=True)

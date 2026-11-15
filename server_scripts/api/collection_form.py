@@ -1,5 +1,5 @@
 # One collection with its unit targets (for the add / edit screen), and every unit with its active members,
-# so the target can be split by members. Without a name: just the units. Finance and district admins.
+# so the target can be split by members. Without a name: just the units. Finance and area admins.
 if not ctx["caps"]["manage_collections"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 units = frappe.db.sql(

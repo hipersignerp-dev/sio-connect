@@ -63,7 +63,7 @@ class _SendNoticeScreenState extends State<SendNoticeScreen> {
   bool _busy = false;
   List<dynamic> _events = [];
 
-  bool get _admin => AppState.i.can('all_units') && AppState.i.role == 'District Admin';
+  bool get _admin => AppState.i.can('all_units') && AppState.i.role == 'Area Admin';
   List<String> get _audiences => _admin ? const ['Everyone', 'Unit', 'Role', 'Event Registrants'] : const ['Unit', 'Event Registrants'];
 
   @override
@@ -132,7 +132,7 @@ class _SendNoticeScreenState extends State<SendNoticeScreen> {
             initialValue: _role,
             decoration: const InputDecoration(labelText: 'Role'),
             items: [
-              for (final r in const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'District Admin'])
+              for (final r in const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin'])
                 DropdownMenuItem(value: r, child: Text(r))
             ],
             onChanged: (v) => setState(() => _role = v ?? _role),

@@ -5,7 +5,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
-/// All units with their president, secretary and members. District admins add and change units here.
+/// All units with their president, secretary and members. Area admins add and change units here.
 class UnitsScreen extends StatelessWidget {
   const UnitsScreen({super.key});
 
@@ -130,9 +130,9 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
           decoration: const InputDecoration(labelText: 'Unit name', hintText: 'e.g. Feroke'),
         ),
         const SizedBox(height: 14),
-        TextField(controller: _district, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'District')),
+        TextField(controller: _district, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Area')),
         const SizedBox(height: 14),
-        TextField(controller: _area, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Area / campus zone (optional)')),
+        TextField(controller: _area, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Campus / zone (optional)')),
         if (_u != null) ...[
           const SectionTitle('Office bearers'),
           if (_members.isEmpty)

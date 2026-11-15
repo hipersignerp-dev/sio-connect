@@ -92,7 +92,7 @@ class MoreScreen extends StatelessWidget {
             SioTile(
               icon: Icons.campaign_outlined,
               title: 'Updates & notices',
-              subtitle: s.can('send_notice') ? 'Read and send updates' : 'News from your unit and district',
+              subtitle: s.can('send_notice') ? 'Read and send updates' : 'News from your unit and area',
               onTap: () => push(context, const NoticesScreen()),
             ),
             const _BiometricTile(),

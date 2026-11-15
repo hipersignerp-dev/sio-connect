@@ -1,11 +1,11 @@
-# Add or change an event. Unit admins manage their own unit's events; district admins any event.
+# Add or change an event. Unit admins manage their own unit's events; area admins any event.
 if not ctx["caps"]["manage_events"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 name = args.get("name")
 if name:
     doc = frappe.get_doc("SIO Event", name)
     if ctx["scope"] and doc.unit != ctx["scope"]:
-        frappe.throw(_("Only district admins can change events for all units or other units."), frappe.PermissionError)
+        frappe.throw(_("Only area admins can change events for all units or other units."), frappe.PermissionError)
 else:
     doc = frappe.get_doc({"doctype": "SIO Event"})
 title = (args.get("title") or "").strip()

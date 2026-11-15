@@ -1,6 +1,6 @@
-# Add or change a unit. District admins only. A unit's name can't be changed once added.
+# Add or change a unit. Area admins only. A unit's name can't be changed once added.
 if not ctx["caps"]["manage_units"]:
-    frappe.throw(_("Only district admins can add or change units."), frappe.PermissionError)
+    frappe.throw(_("Only area admins can add or change units."), frappe.PermissionError)
 name = args.get("name")
 if name:
     doc = frappe.get_doc("SIO Unit", name)

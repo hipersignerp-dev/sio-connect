@@ -26,7 +26,7 @@ Future<bool> confirm(BuildContext context, String title, String body, {String ye
     ) ==
     true;
 
-/// Every collection, open and closed. Finance and district admins add, change, close and delete them here.
+/// Every collection, open and closed. Finance and area admins add, change, close and delete them here.
 class ManageCollectionsScreen extends StatelessWidget {
   const ManageCollectionsScreen({super.key});
 
@@ -355,7 +355,7 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
   }
 }
 
-/// Add or change an event. Unit admins: their unit's events. District admins: any unit or all units.
+/// Add or change an event. Unit admins: their unit's events. Area admins: any unit or all units.
 class EventFormScreen extends StatefulWidget {
   const EventFormScreen({super.key, this.event});
   final Map<String, dynamic>? event;
@@ -607,9 +607,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final admin = AppState.i.role == 'District Admin';
+    final admin = AppState.i.role == 'Area Admin';
     final roles = admin
-        ? const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'District Admin']
+        ? const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin']
         : <String>{'Associate', 'Member', _role}.toList();
     return Scaffold(
       appBar: AppBar(title: Text(_m == null ? 'Add student' : 'Edit details')),

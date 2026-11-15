@@ -1,4 +1,4 @@
-# Every collection, open and closed, with what came in. Finance and district admins.
+# Every collection, open and closed, with what came in. Finance and area admins.
 if not ctx["caps"]["manage_collections"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 rows = frappe.get_all("SIO Collection",

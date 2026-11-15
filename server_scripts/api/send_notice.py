@@ -2,7 +2,7 @@ if not ctx["caps"]["send_notice"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 audience = args.get("audience") or "Unit"
 if audience in ("Everyone", "Role") and not ctx["is_admin"]:
-    frappe.throw(_("Only district admins can send to everyone or by role."), frappe.PermissionError)
+    frappe.throw(_("Only area admins can send to everyone or by role."), frappe.PermissionError)
 unit = None
 if audience == "Unit":
     unit = args.get("unit") or ctx["unit"]

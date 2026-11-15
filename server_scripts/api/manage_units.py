@@ -1,4 +1,4 @@
-# Every unit with its office bearers and member counts. Anyone signed in gets the list; district admins
+# Every unit with its office bearers and member counts. Anyone signed in gets the list; area admins
 # also get the inactive ones.
 rows = frappe.db.sql(
     """select u.name, u.district, u.area, u.active, u.president, u.secretary,
