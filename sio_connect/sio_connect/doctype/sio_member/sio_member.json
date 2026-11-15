@@ -1,0 +1,206 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-11-15 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "full_name",
+  "mobile",
+  "email",
+  "user",
+  "col_a",
+  "member_role",
+  "status",
+  "unit",
+  "joined_on",
+  "study_section",
+  "campus",
+  "course",
+  "col_b",
+  "year_of_study",
+  "home_town",
+  "approval_section",
+  "approved_by",
+  "approved_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SIO-MEM-.#####",
+   "default": "SIO-MEM-.#####",
+   "hidden": 1
+  },
+  {
+   "fieldname": "full_name",
+   "fieldtype": "Data",
+   "label": "Full Name",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_global_search": 1
+  },
+  {
+   "fieldname": "mobile",
+   "fieldtype": "Data",
+   "label": "Mobile",
+   "options": "Phone",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "unique": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "member_role",
+   "fieldtype": "Select",
+   "label": "Role",
+   "options": "Associate\nMember\nUnit Secretary\nUnit President\nFinance\nDistrict Admin",
+   "default": "Associate",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending Approval\nActive\nInactive\nRejected",
+   "default": "Pending Approval",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "unit",
+   "fieldtype": "Link",
+   "label": "Unit",
+   "options": "SIO Unit",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "joined_on",
+   "fieldtype": "Date",
+   "label": "Joined On"
+  },
+  {
+   "fieldname": "study_section",
+   "fieldtype": "Section Break",
+   "label": "Study"
+  },
+  {
+   "fieldname": "campus",
+   "fieldtype": "Data",
+   "label": "Campus / College"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Data",
+   "label": "Course"
+  },
+  {
+   "fieldname": "col_b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "year_of_study",
+   "fieldtype": "Select",
+   "label": "Year",
+   "options": "\n1st Year\n2nd Year\n3rd Year\n4th Year\n5th Year\nPG 1st Year\nPG 2nd Year\nResearch\nOther"
+  },
+  {
+   "fieldname": "home_town",
+   "fieldtype": "Data",
+   "label": "Home Town"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-15 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SIO Connect",
+ "name": "SIO Member",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "SIO Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "SIO Unit Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "naming_series:",
+ "title_field": "full_name",
+ "search_fields": "full_name,mobile,unit",
+ "show_title_field_in_link": 1,
+ "naming_rule": "By \"Naming Series\" field"
+}

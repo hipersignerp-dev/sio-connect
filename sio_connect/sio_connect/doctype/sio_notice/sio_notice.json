@@ -1,0 +1,171 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-11-15 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "title",
+  "message",
+  "col_a",
+  "audience",
+  "unit",
+  "member_role",
+  "event",
+  "delivery_section",
+  "send_whatsapp",
+  "send_email",
+  "col_b",
+  "sent_by",
+  "sent_on",
+  "recipient_count"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "NTC-.YYYY.-.#####",
+   "default": "NTC-.YYYY.-.#####",
+   "hidden": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Small Text",
+   "label": "Message",
+   "reqd": 1
+  },
+  {
+   "fieldname": "col_a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "audience",
+   "fieldtype": "Select",
+   "label": "Send To",
+   "options": "Everyone\nUnit\nRole\nEvent Registrants",
+   "default": "Everyone",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "unit",
+   "fieldtype": "Link",
+   "label": "Unit",
+   "options": "SIO Unit",
+   "depends_on": "eval:doc.audience=='Unit'"
+  },
+  {
+   "fieldname": "member_role",
+   "fieldtype": "Select",
+   "label": "Role",
+   "options": "\nAssociate\nMember\nUnit Secretary\nUnit President\nFinance\nDistrict Admin",
+   "depends_on": "eval:doc.audience=='Role'"
+  },
+  {
+   "fieldname": "event",
+   "fieldtype": "Link",
+   "label": "Event",
+   "options": "SIO Event",
+   "depends_on": "eval:doc.audience=='Event Registrants'"
+  },
+  {
+   "fieldname": "delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery"
+  },
+  {
+   "fieldname": "send_whatsapp",
+   "fieldtype": "Check",
+   "label": "Also send on WhatsApp"
+  },
+  {
+   "fieldname": "send_email",
+   "fieldtype": "Check",
+   "label": "Also send by email"
+  },
+  {
+   "fieldname": "col_b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sent_by",
+   "fieldtype": "Link",
+   "label": "Sent By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sent_on",
+   "fieldtype": "Datetime",
+   "label": "Sent On",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "recipient_count",
+   "fieldtype": "Int",
+   "label": "Recipients",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-15 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SIO Connect",
+ "name": "SIO Notice",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "SIO Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "SIO Unit Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "naming_series:",
+ "title_field": "title",
+ "naming_rule": "By \"Naming Series\" field"
+}

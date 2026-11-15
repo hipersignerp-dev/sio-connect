@@ -1,0 +1,227 @@
+import 'package:material_ui/material_ui.dart';
+
+import '../api.dart';
+import '../app_state.dart';
+import '../biometric.dart';
+import '../theme.dart';
+import '../widgets.dart';
+import 'events_screen.dart';
+import 'expense_screens.dart';
+import 'meeting_screens.dart';
+import 'member_screens.dart';
+import 'notice_screens.dart';
+
+/// More tab, laid out like the Hipersign mobile app: profile card, then rows for this person's role.
+class MoreScreen extends StatelessWidget {
+  const MoreScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: AppState.i,
+      builder: (context, _) {
+        final s = AppState.i;
+        final me = s.me;
+        final meetingsTab = s.can('rsvp') || s.can('mark_attendance');
+        return Scaffold(
+          appBar: AppBar(title: const Text('More')),
+          body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
+            SioPanel(
+              child: Row(children: [
+                Avatar((me['full_name'] ?? '').toString(), radius: 26),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text((me['full_name'] ?? '').toString(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                    Text([s.pending ? 'Associate · waiting approval' : me['member_role'], me['unit']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+                        style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+                    if (me['member'] != null)
+                      Text('Member ID ${me['member']}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+                  ]),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 16),
+            SioTile(icon: Icons.person_outline, title: 'My profile', subtitle: 'College, course, unit', onTap: () => push(context, const ProfileScreen())),
+            if (s.can('view_members'))
+              SioTile(icon: Icons.groups_outlined, title: 'Students & members', subtitle: 'Approve new associates, roles', onTap: () => push(context, const MembersScreen())),
+            if (meetingsTab)
+              SioTile(icon: Icons.event_outlined, title: 'Events', subtitle: 'Programmes and registrations', onTap: () => push(context, const EventsScreen(standalone: true)))
+            else if (s.can('mark_attendance'))
+              SioTile(icon: Icons.event_note_outlined, title: 'Meetings', subtitle: 'Weekly meetings', onTap: () => push(context, const MeetingsScreen(standalone: true))),
+            if (s.can('claim_expense') || s.can('approve_expense'))
+              SioTile(
+                icon: Icons.receipt_long_outlined,
+                title: 'Expense claims',
+                subtitle: s.can('approve_expense') ? 'Approve and pay claims' : 'Claim bills for events and meetings',
+                onTap: () => push(context, const ExpensesScreen()),
+              ),
+            SioTile(
+              icon: Icons.campaign_outlined,
+              title: 'Updates & notices',
+              subtitle: s.can('send_notice') ? 'Read and send updates' : 'News from your unit and district',
+              onTap: () => push(context, const NoticesScreen()),
+            ),
+            const _BiometricTile(),
+            SioTile(icon: Icons.dns_outlined, title: 'Server', subtitle: Api.baseUrl.replaceFirst('https://', ''), onTap: () {}),
+            const SizedBox(height: 8),
+            SioTile(
+              icon: Icons.logout,
+              title: 'Sign out',
+              danger: true,
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Sign out?'),
+                    content: const Text('Fingerprint sign-in will be turned off on this phone.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign out')),
+                    ],
+                  ),
+                );
+                if (ok == true) await AppState.i.signOut();
+              },
+            ),
+          ]),
+        );
+      },
+    );
+  }
+}
+
+class _BiometricTile extends StatefulWidget {
+  const _BiometricTile();
+
+  @override
+  State<_BiometricTile> createState() => _BiometricTileState();
+}
+
+class _BiometricTileState extends State<_BiometricTile> {
+  bool? _available;
+
+  @override
+  void initState() {
+    super.initState();
+    Biometric.available().then((v) {
+      if (mounted) setState(() => _available = v);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_available != true) return const SizedBox.shrink();
+    final on = AppState.i.biometricOn;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SwitchListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        tileColor: SioColors.card,
+        secondary: const Icon(Icons.fingerprint, color: SioColors.blue),
+        title: const Text('Fingerprint sign-in'),
+        subtitle: Text(on ? 'Open the app with your fingerprint' : 'Off', style: const TextStyle(color: SioColors.textSecondary)),
+        value: on,
+        onChanged: (v) async {
+          if (v) {
+            await run(context, AppState.i.enableBiometric, done: 'Fingerprint sign-in is on.');
+          } else {
+            await AppState.i.disableBiometric();
+          }
+          if (mounted) setState(() {});
+        },
+      ),
+    );
+  }
+}
+
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final me = AppState.i.me;
+  late final _campus = TextEditingController(text: (me['campus'] ?? '').toString());
+  late final _course = TextEditingController(text: (me['course'] ?? '').toString());
+  late final _town = TextEditingController(text: (me['home_town'] ?? '').toString());
+  late String? _year = (me['year_of_study'] ?? '').toString().isEmpty ? null : me['year_of_study'].toString();
+  late String? _unit = me['unit']?.toString();
+  List<dynamic> _units = [];
+  bool _busy = false;
+
+  static const years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', 'PG 1st Year', 'PG 2nd Year', 'Research', 'Other'];
+
+  @override
+  void initState() {
+    super.initState();
+    if (AppState.i.pending) {
+      Api.units().then((u) {
+        if (mounted) setState(() => _units = u);
+      }).catchError((_) {});
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    final ok = await run(context, () async {
+      final r = await Api.call('${Api.m}update_my_profile', {
+        'campus': _campus.text.trim(),
+        'course': _course.text.trim(),
+        'year_of_study': _year,
+        'home_town': _town.text.trim().isEmpty ? null : _town.text.trim(),
+        'unit': AppState.i.pending ? _unit : null,
+      });
+      AppState.i.me = Map<String, dynamic>.from(r as Map);
+    }, done: 'Profile saved.');
+    if (mounted) {
+      setState(() => _busy = false);
+      if (ok) Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = AppState.i.pending;
+    return Scaffold(
+      appBar: AppBar(title: const Text('My profile')),
+      body: ListView(padding: const EdgeInsets.all(16), children: [
+        SioPanel(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text((me['full_name'] ?? '').toString(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text([me['mobile'], me['email']].where((x) => x != null && '$x'.isNotEmpty).join(' · '), style: const TextStyle(color: SioColors.textSecondary)),
+            if (me['joined_on'] != null) Text('Member since ${fmtDate(me['joined_on'])}', style: const TextStyle(color: SioColors.textSecondary)),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        if (pending && _units.isNotEmpty) ...[
+          DropdownButtonFormField<String>(
+            initialValue: _units.any((u) => u['name'] == _unit) ? _unit : null,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Unit'),
+            items: [for (final u in _units) DropdownMenuItem(value: u['name'].toString(), child: Text(u['name'].toString()))],
+            onChanged: (v) => setState(() => _unit = v),
+          ),
+          const SizedBox(height: 14),
+        ],
+        TextField(controller: _campus, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'College / campus')),
+        const SizedBox(height: 14),
+        TextField(controller: _course, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Course')),
+        const SizedBox(height: 14),
+        DropdownButtonFormField<String>(
+          initialValue: years.contains(_year) ? _year : null,
+          decoration: const InputDecoration(labelText: 'Year'),
+          items: [for (final y in years) DropdownMenuItem(value: y, child: Text(y))],
+          onChanged: (v) => setState(() => _year = v),
+        ),
+        const SizedBox(height: 14),
+        TextField(controller: _town, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Home town')),
+        const SizedBox(height: 20),
+        FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
+      ]),
+    );
+  }
+}

@@ -1,0 +1,224 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-11-15 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "campaign",
+  "entry_type",
+  "contributor_name",
+  "contributor_type",
+  "contributor_member",
+  "contributor_mobile",
+  "col_a",
+  "unit",
+  "collected_by",
+  "status",
+  "amount_section",
+  "pledged_amount",
+  "in_kind_value",
+  "in_kind_details",
+  "col_b",
+  "paid_amount",
+  "balance_amount",
+  "payments_section",
+  "payments"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "COL-.YYYY.-.#####",
+   "default": "COL-.YYYY.-.#####",
+   "hidden": 1
+  },
+  {
+   "fieldname": "campaign",
+   "fieldtype": "Link",
+   "label": "Campaign",
+   "options": "SIO Collection Campaign",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "entry_type",
+   "fieldtype": "Select",
+   "label": "Entry Type",
+   "options": "Pledge\nPayment\nIn-kind",
+   "default": "Pledge",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "contributor_name",
+   "fieldtype": "Data",
+   "label": "Contributor",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "contributor_type",
+   "fieldtype": "Select",
+   "label": "Contributor Type",
+   "options": "Member\nAssociate\nAlumni\nWell-wisher\nBusiness\nUnit",
+   "default": "Well-wisher"
+  },
+  {
+   "fieldname": "contributor_member",
+   "fieldtype": "Link",
+   "label": "Contributor (if member)",
+   "options": "SIO Member"
+  },
+  {
+   "fieldname": "contributor_mobile",
+   "fieldtype": "Data",
+   "label": "Contributor Mobile",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "col_a",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "unit",
+   "fieldtype": "Link",
+   "label": "Unit",
+   "options": "SIO Unit",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "collected_by",
+   "fieldtype": "Link",
+   "label": "Collected By",
+   "options": "SIO Member"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pledged\nPart Paid\nPaid\nIn-kind Received",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "amount_section",
+   "fieldtype": "Section Break",
+   "label": "Amounts"
+  },
+  {
+   "fieldname": "pledged_amount",
+   "fieldtype": "Currency",
+   "label": "Pledged Amount",
+   "depends_on": "eval:doc.entry_type=='Pledge'"
+  },
+  {
+   "fieldname": "in_kind_value",
+   "fieldtype": "Currency",
+   "label": "Estimated Value",
+   "depends_on": "eval:doc.entry_type=='In-kind'"
+  },
+  {
+   "fieldname": "in_kind_details",
+   "fieldtype": "Small Text",
+   "label": "Items Given",
+   "depends_on": "eval:doc.entry_type=='In-kind'"
+  },
+  {
+   "fieldname": "col_b",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "paid_amount",
+   "fieldtype": "Currency",
+   "label": "Received",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "balance_amount",
+   "fieldtype": "Currency",
+   "label": "Balance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payments_section",
+   "fieldtype": "Section Break",
+   "label": "Payments received",
+   "depends_on": "eval:doc.entry_type!='In-kind'"
+  },
+  {
+   "fieldname": "payments",
+   "fieldtype": "Table",
+   "label": "Payments",
+   "options": "SIO Collection Payment"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-15 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SIO Connect",
+ "name": "SIO Collection Entry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "SIO Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "SIO Finance",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1
+  },
+  {
+   "role": "SIO Unit Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "print": 1,
+   "email": 1,
+   "share": 1,
+   "write": 1,
+   "create": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "autoname": "naming_series:",
+ "title_field": "contributor_name",
+ "search_fields": "contributor_name,contributor_mobile",
+ "naming_rule": "By \"Naming Series\" field"
+}
