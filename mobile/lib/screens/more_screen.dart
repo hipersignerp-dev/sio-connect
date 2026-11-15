@@ -71,8 +71,8 @@ class MoreScreen extends StatelessWidget {
             if (s.can('view_members') || s.can('all_units'))
               SioTile(
                 icon: Icons.apartment_outlined,
-                title: 'Units',
-                subtitle: s.can('manage_units') ? 'Add and change units, office bearers' : 'Units and their members',
+                title: 'Areas & units',
+                subtitle: s.can('manage_units') ? 'Add areas and units, office bearers' : 'Areas, units and their members',
                 onTap: () => push(context, const UnitsScreen()),
               ),
             if (s.can('manage_collections'))
