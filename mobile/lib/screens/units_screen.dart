@@ -67,6 +67,7 @@ class UnitsScreen extends StatelessWidget {
               subtitle: Text(
                 [
                   if (r['president_name'] != null) 'President: ${r['president_name']}',
+                  if (r['approver_name'] != null) 'Approver: ${r['approver_name']}',
                   '${numOf(r['members']).toInt()} members',
                   if (numOf(r['pending']) > 0) '${numOf(r['pending']).toInt()} waiting',
                 ].join(' · '),
@@ -263,6 +264,7 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
   bool _active = true;
   String? _president;
   String? _secretary;
+  String? _approver;
   List<(String, String)> _members = [];
   bool _busy = false;
 
@@ -283,6 +285,7 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
       _active = u['active'] == 1;
       _president = u['president']?.toString();
       _secretary = u['secretary']?.toString();
+      _approver = u['expense_approver']?.toString();
       Api.call('${Api.m}members', {'status': 'Active'}).then((v) {
         final list = [for (final m in (v as List? ?? [])) if (m['unit'] == u['name']) (m['name'].toString(), m['full_name'].toString())];
         if (mounted) setState(() => _members = list);
@@ -307,6 +310,7 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
         'active': _active ? 1 : 0,
         'president': _president,
         'secretary': _secretary,
+        'expense_approver': _approver,
       });
     }, done: _u == null ? 'Unit added.' : 'Unit saved.');
     if (!mounted) return;
@@ -361,6 +365,13 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
             _picker('President', _president, (v) => _president = v),
             const SizedBox(height: 14),
             _picker('Secretary', _secretary, (v) => _secretary = v),
+            const SizedBox(height: 14),
+            _picker('Expense approver', _approver, (v) => _approver = v),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text('Approves and pays this unit\'s expense claims. Finance and area admins can too.',
+                  style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+            ),
           ],
           const SizedBox(height: 6),
           SwitchListTile(

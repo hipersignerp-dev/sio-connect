@@ -14,10 +14,10 @@ else:
 doc.district = (args.get("district") or "").strip() or None
 doc.area = (args.get("area") or "").strip() or None
 doc.active = 0 if str(args.get("active")) in ("0", "false", "False") else 1
-for f in ("president", "secretary"):
+for f in ("president", "secretary", "expense_approver"):
     v = args.get(f) or None
     if v and frappe.db.get_value("SIO Member", v, "unit") != doc.name and name:
-        frappe.throw(_("The president and secretary must be members of this unit."))
+        frappe.throw(_("The president, secretary and expense approver must be members of this unit."))
     doc.set(f, v)
 if name:
     doc.save(ignore_permissions=True)

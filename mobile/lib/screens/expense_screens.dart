@@ -37,7 +37,10 @@ class ExpensesScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (claims.isEmpty) const EmptyNote('No claims yet.'),
-            for (final c in claims) ...[ClaimCard(c: Map<String, dynamic>.from(c), canApprove: canApprove, funds: funds), const SizedBox(height: 10)],
+            for (final c in claims) ...[
+              ClaimCard(c: Map<String, dynamic>.from(c), canApprove: canApprove && c['can_act'] == true, funds: funds),
+              const SizedBox(height: 10),
+            ],
           ];
         },
       ),
@@ -85,7 +88,7 @@ class ClaimCard extends StatelessWidget {
         const SizedBox(height: 6),
         Row(children: [
           Expanded(
-            child: Text([c['category'], c['event'], c['claimed_by_name'], fmtDate(c['expense_date'], 'd MMM'), if (c['paid_from'] != null) 'from ${c['paid_from']}'].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+            child: Text([c['category'], c['event'], c['claimed_by_name'], fmtDate(c['expense_date'], 'd MMM'), if (c['paid_from'] != null) 'from ${c['paid_from']}', if (c['fund_request'] != null) 'programme fund'].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
                 style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
           ),
           StatusChip(status, tone: StatusChip.toneFor(status)),
@@ -135,6 +138,8 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
   DateTime _date = DateTime.now();
   XFile? _bill;
   List<dynamic> _events = [];
+  List<dynamic> _funds = [];
+  String? _fund;
   bool _busy = false;
 
   static const categories = ['Venue', 'Food', 'Printing', 'Travel', 'Rent', 'Materials', 'Other'];
@@ -143,6 +148,10 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
   void initState() {
     super.initState();
     _event = widget.event;
+    Api.call('${Api.m}expenses').then((v) {
+      final list = ((v as Map?)?['fund_requests'] as List?) ?? [];
+      if (mounted) setState(() => _funds = list);
+    }).catchError((_) {});
     Api.call('${Api.m}events').then((v) {
       if (mounted) setState(() => _events = (v as List?) ?? []);
     }).catchError((_) {});
@@ -168,6 +177,7 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
         'category': _category,
         'expense_date': apiDate(_date),
         'event': _event,
+        'fund_request': _fund,
         'bill_data': data,
         'bill_filename': _bill?.name,
       });
@@ -206,6 +216,28 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
           ],
           onChanged: (v) => setState(() => _event = v),
         ),
+        if (_funds.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String?>(
+            initialValue: _fund,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Paid from programme funds?'),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('No, normal claim')),
+              for (final f in _funds)
+                DropdownMenuItem<String?>(
+                  value: f['name'].toString(),
+                  child: Text('${f['title']} (${inr(numOf(f['released_amount']) - numOf(f['spent_amount']))} left)',
+                      overflow: TextOverflow.ellipsis),
+                ),
+            ],
+            onChanged: (v) => setState(() {
+              _fund = v;
+              final f = _funds.firstWhere((x) => x['name'] == v, orElse: () => null);
+              if (f != null && f['event'] != null && _event == null) _event = f['event'].toString();
+            }),
+          ),
+        ],
         const SizedBox(height: 14),
         OutlinedButton.icon(
           icon: const Icon(Icons.calendar_today),

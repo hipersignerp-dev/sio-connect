@@ -15,19 +15,28 @@ collection = f.get("collection") or None
 event = f.get("event") or None
 
 in_cond = ["1=1"]
+# Programme funds the area releases to a unit: for the area (no unit picked) they are money out, and the unit's
+# spending from them is not counted again. For a unit they are money in, and its spending is money out.
 out_cond = ["x.status = 'Paid'"]
+if not unit:
+    out_cond.append("ifnull(x.fund_request, '') = ''")
+fr_cond = ["f.status in ('Released', 'Closed')"]
 params = {"from": from_date, "to": to_date, "unit": unit, "collection": collection, "event": event}
 if unit:
     in_cond.append("e.unit = %(unit)s")
     out_cond.append("x.unit = %(unit)s")
+    fr_cond.append("f.unit = %(unit)s")
 if collection:
     in_cond.append("e.collection = %(collection)s")
     out_cond.append("x.paid_from = %(collection)s")
+    fr_cond.append("f.paid_from = %(collection)s")
 if event:
     in_cond.append("1=0")
     out_cond.append("x.event = %(event)s")
+    fr_cond.append("f.event = %(event)s")
 in_where = " and ".join(in_cond)
 out_where = " and ".join(out_cond)
+fr_where = " and ".join(fr_cond)
 
 def total_in(date_cond):
     return frappe.utils.flt(frappe.db.sql(
@@ -40,7 +49,14 @@ def total_out(date_cond):
         "select coalesce(sum(x.amount), 0) from `tabSIO Expense Claim` x where " + out_where + " and " + date_cond,
         params)[0][0])
 
-opening = total_in("p.payment_date < %(from)s") - total_out("x.paid_on < %(from)s")
+def total_fr(date_cond):
+    return frappe.utils.flt(frappe.db.sql(
+        "select coalesce(sum(f.released_amount), 0) from `tabSIO Fund Request` f where " + fr_where + " and "
+        + date_cond, params)[0][0])
+
+fr_sign = 1 if unit else -1
+opening = total_in("p.payment_date < %(from)s") - total_out("x.paid_on < %(from)s") \
+    + fr_sign * total_fr("f.released_on < %(from)s")
 
 ins = frappe.db.sql(
     """select p.payment_date as date, p.amount, p.mode, p.reference_no, e.name as ref, e.contributor_name as party,
@@ -56,7 +72,20 @@ outs = frappe.db.sql(
     where """ + out_where + """ and x.paid_on between %(from)s and %(to)s
     order by x.paid_on, x.name""", params, as_dict=True)
 
+frs = frappe.db.sql(
+    """select f.released_on as date, f.released_amount as amount, f.payment_mode as mode, f.name as ref, f.title,
+        f.unit, f.event, f.paid_from
+    from `tabSIO Fund Request` f
+    where """ + fr_where + """ and f.released_on between %(from)s and %(to)s
+    order by f.released_on, f.name""", params, as_dict=True)
+
 rows = []
+for r in frs:
+    rows.append({"date": r.date, "type": "In" if unit else "Out", "amount": frappe.utils.flt(r.amount),
+                 "title": "Programme fund: " + (r.title or ""),
+                 "party": "From the area" if unit else (r.unit or "") + " unit", "unit": r.unit,
+                 "collection": r.paid_from, "event": r.event, "category": "Programme fund", "mode": r.mode,
+                 "ref": r.ref, "doctype": "SIO Fund Request"})
 for r in ins:
     rows.append({"date": r.date, "type": "In", "amount": frappe.utils.flt(r.amount), "title": r.collection,
                  "party": r.party, "unit": r.unit, "collection": r.collection, "event": None, "category": None,
@@ -77,6 +106,8 @@ for r in rows:
         balance += r["amount"]
         total_in_amt += r["amount"]
         k = r["collection"] or "Other"
+        if r["doctype"] == "SIO Fund Request":
+            k = "Programme funds from the area"
         in_by_collection[k] = in_by_collection.get(k, 0) + r["amount"]
     else:
         balance -= r["amount"]
@@ -89,7 +120,10 @@ for r in rows:
 
 to_pay = frappe.utils.flt(frappe.db.sql(
     "select coalesce(sum(x.amount), 0) from `tabSIO Expense Claim` x where "
-    + out_where.replace("x.status = 'Paid'", "x.status = 'Approved'"), params)[0][0])
+    + out_where.replace("x.status = 'Paid'", "x.status = 'Approved'"), params)[0][0]) \
+    + (0 if unit else frappe.utils.flt(frappe.db.sql(
+        "select coalesce(sum(f.approved_amount), 0) from `tabSIO Fund Request` f where "
+        + fr_where.replace("f.status in ('Released', 'Closed')", "f.status = 'Approved'"), params)[0][0]))
 
 def as_list(d):
     return sorted([{"name": k, "amount": d[k]} for k in d], key=lambda x: -x["amount"])

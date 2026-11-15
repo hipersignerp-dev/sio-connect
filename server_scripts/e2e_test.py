@@ -384,6 +384,67 @@ one = [x for x in d.get("donors", []) if x["key"] == new_mobile]
 check("when they give, it joins the same donor line", len(one) == 1 and one[0]["given"] == 500
       and one[0]["name"].startswith("Haji Test "), one)
 
+print("Unit expense approver")
+appr = Client("sio.test.assoc1@example.com").login()          # an ordinary Member of Feroke
+r = adm.m("save_unit", name="Feroke", active=1, expense_approver="SIO-MEM-00001")
+check("area admin makes a member Feroke's expense approver", r[0] == 200, r)
+me_appr = msg(appr.m("me")) or {}
+check("the approver now can approve expenses", me_appr.get("capabilities", {}).get("approve_expense") is True, me_appr)
+r = pres.m("claim_expense", description="Banner printing", amount=700, category="Printing", expense_date=TODAY)
+c1 = (msg(r) or {}).get("name")
+lst = msg(appr.m("expenses")) or {}
+row = [x for x in lst.get("claims", []) if x["name"] == c1]
+check("the approver sees Feroke's claims and may act on them", row and row[0]["can_act"], row)
+r = appr.m("set_expense_status", name=c1, status="Approved")
+check("the approver approves the president's claim", r[0] == 200 and msg(r)["status"] == "Approved", r)
+r = appr.m("claim_expense", description="My own tea", amount=90, category="Food", expense_date=TODAY)
+c2 = (msg(r) or {}).get("name")
+r = appr.m("set_expense_status", name=c2, status="Approved")
+check("the approver can't approve their own claim", r[0] == 403, r)
+r = kpres.m("claim_expense", description="Kalamassery bill", amount=300, category="Other", expense_date=TODAY)
+c3 = (msg(r) or {}).get("name")
+r = appr.m("set_expense_status", name=c3, status="Approved")
+check("the approver can't approve another unit's claim", r[0] == 403, r)
+
+print("Programme fund requests")
+r = assoc.m("request_fund", title="X", purpose="y", amount_requested=100)
+check("a member can't ask for programme funds", r[0] == 403, r)
+r = pres.m("request_fund", title="Campus quiz " + stamp[-4:], purpose="Prizes, printing and hall",
+           amount_requested=5000, breakdown="Prizes 3000, printing 1000, hall 1000", needed_by="2030-01-10")
+fr = (msg(r) or {}).get("name")
+check("unit president asks the area for 5,000", r[0] == 200 and msg(r)["status"] == "Pending", r)
+lst = msg(kpres.m("fund_requests")) or {}
+check("another unit doesn't see it", all(x["name"] != fr for x in lst.get("requests", [])), lst.get("counts"))
+r = pres.m("set_fund_request", name=fr, action="approve", approved_amount=4000)
+check("the unit can't approve its own request", r[0] == 403, r)
+acc0 = accounts(fin)
+fer0 = accounts(fin, unit="Feroke")
+r = fin.m("set_fund_request", name=fr, action="approve", approved_amount=4000, remarks="Hall not needed")
+check("finance approves 4,000 of it", r[0] == 200 and msg(r)["status"] == "Approved", r)
+acc_mid = accounts(fin)
+check("approved-not-released shows in 'to pay' for the area", acc_mid["to_pay"] - acc0["to_pay"] == 4000,
+      (acc0["to_pay"], acc_mid["to_pay"]))
+r = fin.m("set_fund_request", name=fr, action="release", payment_mode="UPI", paid_from=BAITHUL_MAL)
+check("finance releases it from Baithul Mal", r[0] == 200 and msg(r)["status"] == "Released", r)
+r = pres.m("claim_expense", description="Quiz prizes", amount=1500, category="Materials", expense_date=TODAY,
+           fund_request=fr)
+c4 = (msg(r) or {}).get("name")
+check("the unit claims 1,500 against the released fund", r[0] == 200, r)
+appr.m("set_expense_status", name=c4, status="Approved")
+r = appr.m("set_expense_status", name=c4, status="Paid", payment_mode="Cash")
+lst = msg(pres.m("fund_requests")) or {}
+one = [x for x in lst.get("requests", []) if x["name"] == fr]
+check("the fund request shows 4,000 released, 1,500 spent, 2,500 left",
+      one and one[0]["released_amount"] == 4000 and one[0]["spent_amount"] == 1500 and one[0]["balance"] == 2500, one)
+acc1 = accounts(fin)
+check("area accounts: the release is 4,000 out; the unit's spending isn't counted again",
+      acc1["out"] - acc0["out"] == 4000, (acc0["out"], acc1["out"]))
+fer1 = accounts(fin, unit="Feroke")
+check("Feroke's accounts: 4,000 in from the area, 1,500 out",
+      fer1["in"] - fer0["in"] == 4000 and fer1["out"] - fer0["out"] == 1500, (fer0, fer1))
+r = adm.m("save_unit", name="Feroke", active=1, expense_approver="")
+check("approver removed again", r[0] == 200 and not (msg(appr.m("me")) or {}).get("capabilities", {}).get("approve_expense"), r)
+
 print("Desk / REST access is locked to the right people")
 code, body = pres.post("frappe.client.rename_doc", doctype="SIO Unit", old_name="Kalamassery", new_name="X")
 check("a unit president cannot rename units", code != 200, body)

@@ -44,7 +44,14 @@ if caps["view_members"]:
     out["members"] = {"active": frappe.db.count("SIO Member", active_f),
                       "pending": frappe.db.count("SIO Member", pending_f)}
 if caps["approve_expense"]:
-    pend = frappe.db.sql(
-        "select count(*), coalesce(sum(amount), 0) from `tabSIO Expense Claim` where status = 'Pending'")[0]
+    if ctx["is_finance"]:
+        pend = frappe.db.sql(
+            "select count(*), coalesce(sum(amount), 0) from `tabSIO Expense Claim` where status = 'Pending'")[0]
+    else:
+        pend = frappe.db.sql(
+            """select count(*), coalesce(sum(amount), 0) from `tabSIO Expense Claim`
+            where status = 'Pending' and unit in %(u)s""", {"u": ctx["approver_units"]})[0]
     out["pending_expenses"] = {"count": frappe.utils.cint(pend[0]), "amount": frappe.utils.flt(pend[1])}
+if caps["approve_funds"]:
+    out["pending_funds"] = frappe.db.count("SIO Fund Request", {"status": "Pending"})
 frappe.response["message"] = out

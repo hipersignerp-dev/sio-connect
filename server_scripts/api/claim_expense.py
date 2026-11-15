@@ -3,6 +3,13 @@ if not ctx["caps"]["claim_expense"]:
 amount = frappe.utils.flt(args.get("amount"))
 if amount <= 0 or not (args.get("description") or "").strip():
     frappe.throw(_("Enter what it was for and the amount."))
+fund_request = args.get("fund_request") or None
+if fund_request:
+    fr = frappe.db.get_value("SIO Fund Request", fund_request, ["status", "unit", "event"], as_dict=True)
+    if not fr or fr.status != "Released":
+        frappe.throw(_("Pick a fund request whose money has been released."))
+    if not ctx["caps"]["all_units"] and fr.unit != ctx["unit"]:
+        frappe.throw(_("That fund request belongs to another unit."), frappe.PermissionError)
 doc = frappe.get_doc({
     "doctype": "SIO Expense Claim",
     "description": args.get("description").strip(),
@@ -10,7 +17,8 @@ doc = frappe.get_doc({
     "category": args.get("category") or "Other",
     "expense_date": args.get("expense_date") or frappe.utils.nowdate(),
     "event": args.get("event") or None,
-    "paid_from": args.get("paid_from") or None,
+    "paid_from": None,
+    "fund_request": fund_request,
     "unit": ctx["unit"],
     "claimed_by": ctx["member"].name,
 }).insert(ignore_permissions=True)

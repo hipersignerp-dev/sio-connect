@@ -8,6 +8,7 @@ import '../update_service.dart';
 import '../widgets.dart';
 import 'accounts_screen.dart';
 import 'donors_screen.dart';
+import 'fund_screens.dart';
 import 'manage_screens.dart';
 import 'units_screen.dart';
 import 'events_screen.dart';
@@ -81,6 +82,13 @@ class MoreScreen extends StatelessWidget {
                 title: 'Collections & targets',
                 subtitle: 'Add, close or delete collections; split targets to units',
                 onTap: () => push(context, const ManageCollectionsScreen()),
+              ),
+            if (s.can('request_funds') || s.can('approve_funds'))
+              SioTile(
+                icon: Icons.request_quote_outlined,
+                title: 'Programme funds',
+                subtitle: s.can('approve_funds') ? 'Approve and release money units ask for' : 'Ask the area for programme money',
+                onTap: () => push(context, const FundRequestsScreen()),
               ),
             if (s.can('view_accounts'))
               SioTile(

@@ -35,7 +35,7 @@ MOBILE = ["me", "update_my_profile", "home", "meetings", "meeting", "rsvp", "sav
           "events", "event", "register_event", "collection", "add_collection_entry", "add_payment", "expenses",
           "claim_expense", "set_expense_status", "notices", "send_notice", "members", "approve_member", "accounts",
           "collection_form", "manage_collections", "save_collection", "delete_collection", "save_event",
-          "delete_event", "save_member", "manage_units", "save_unit", "donors", "manage_areas", "save_area", "save_donor"]
+          "delete_event", "save_member", "manage_units", "save_unit", "donors", "manage_areas", "save_area", "save_donor", "fund_requests", "request_fund", "set_fund_request"]
 for m in MOBILE:
     API[m] = f"sio_connect.api.mobile.{m}"
 
@@ -51,6 +51,8 @@ EVENTS = [
     ("SIO Expense validate", "SIO Expense Claim", "Before Save", "expense_before_save"),
     ("SIO Expense totals", "SIO Expense Claim", "After Save", "event_totals"),
     ("SIO Expense totals on delete", "SIO Expense Claim", "After Delete", "event_totals"),
+    ("SIO Fund Request spent", "SIO Expense Claim", "After Save", "fund_request_spent"),
+    ("SIO Fund Request spent on delete", "SIO Expense Claim", "After Delete", "fund_request_spent"),
     ("SIO Notice recipients", "SIO Notice", "Before Insert", "notice_before_insert"),
     ("SIO Notice email", "SIO Notice", "After Insert", "notice_after_insert"),
     ("SIO Device revoke", "SIO Device Token", "After Save", "device_after_save"),
