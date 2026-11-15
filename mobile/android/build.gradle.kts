@@ -22,3 +22,9 @@ subprojects {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
+
+// The release "lint vital" check crashes inside some plugins (image_picker_android) with the
+// current Android lint; it is not needed to build the APK, so it is switched off for every module.
+subprojects {
+    tasks.matching { it.name.startsWith("lintVital") }.configureEach { enabled = false }
+}

@@ -48,6 +48,10 @@ android {
         }
     }
 
+    lint {
+        checkReleaseBuilds = false
+    }
+
     buildTypes {
         release {
             signingConfig = if (keyProps.containsKey("storeFile")) signingConfigs.getByName("release")
