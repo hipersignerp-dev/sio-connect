@@ -312,6 +312,49 @@ code, body = Client("Guest").post("sio_connect.api.auth.register", full_name="Ad
 check("student signs up later with the same mobile and gets the same record",
       code == 200 and body["message"]["member"] == added and body["message"]["status"] == "Active", body)
 
+print("Units, picking the unit, and the donor list")
+adm = Client("sio.test.admin@example.com").login()
+uname = "Test Unit " + stamp[-4:]
+r = adm.m("save_unit", unit_name=uname, district="Kozhikode", area="Test campus")
+check("district admin adds a unit", r[0] == 200, r)
+r = pres.m("save_unit", unit_name="Not allowed " + stamp[-4:])
+check("unit president cannot add units", r[0] == 403, r)
+units = msg(pres.m("manage_units")) or []
+check("everyone sees the unit list with member counts",
+      any(u["name"] == uname for u in units) and all("members" in u for u in units), units[:2])
+r = adm.m("save_unit", name=uname, district="Kozhikode", active=0)
+check("district admin can deactivate a unit", r[0] == 200, r)
+donor_mobile = "96" + stamp[-8:]
+r = fin.m("add_collection_entry", collection=RAMADAN, entry_type="Payment", contributor_name="Donor " + stamp[-4:],
+          contributor_mobile=donor_mobile, contributor_place="Kondotty", paid_amount=1500, unit="Kalamassery")
+check("finance records money for a unit they pick", r[0] == 200, r)
+entry_unit = (msg(kpres.m("collection", collection=RAMADAN)) or {}).get("entries") or []
+check("it counts for Kalamassery and its president sees it",
+      any(e["contributor_mobile"] == donor_mobile and e["unit"] == "Kalamassery" for e in entry_unit), entry_unit[:2])
+r = pres.m("add_collection_entry", collection=RAMADAN, entry_type="Payment", contributor_name="X", paid_amount=10,
+           unit="Kalamassery", contributor_mobile="95" + stamp[-8:])
+x = [e for e in ((msg(pres.m("collection", collection=RAMADAN)) or {}).get("entries") or []) if e["contributor_name"] == "X"]
+check("a unit president's entry always counts for their own unit", r[0] == 200 and x and x[0]["unit"] == "Feroke", x)
+r = fin.m("add_collection_entry", collection=BAITHUL_MAL, entry_type="Offer", contributor_name="Donor " + stamp[-4:],
+          contributor_mobile="+91 " + donor_mobile, offered_amount=2000, unit="Kalamassery")
+d = msg(fin.m("donors", q=donor_mobile)) or {}
+one = [x for x in d.get("donors", []) if x["key"] == donor_mobile]
+check("donor list joins the same person by mobile across collections",
+      one and one[0]["times"] == 2 and one[0]["given"] == 1500 and one[0]["balance"] == 2000
+      and one[0]["offered"] == 2000      and one[0]["place"] == "Kondotty", one)
+d = msg(kpres.m("donors", collection=RAMADAN, show="not_yet")) or {}
+check("'not given this time' leaves out people who gave in Ramadan",
+      all(x["key"] != donor_mobile for x in d.get("donors", [])), d.get("count"))
+d = msg(kpres.m("donors", show="to_pay")) or {}
+check("'still to pay' lists the open offer", any(x["key"] == donor_mobile for x in d.get("donors", [])), d.get("count"))
+d = msg(pres.m("donors", q=donor_mobile)) or {}
+check("Feroke president does not see Kalamassery's donor", not [x for x in d.get("donors", []) if x["key"] == donor_mobile
+                                                                and x["unit"] == "Kalamassery"], d)
+r = assoc.m("donors")
+check("a member sees only the people they collected from",
+      r[0] == 200 and all(x["name"] in ("Abdul Gafoor T", "Al-Huda Traders", "Kozhikode Traders") for x in msg(r)["donors"]),
+      msg(r))
+
 print("Fingerprint sign-in (API key)")
 r = assoc.post("sio_connect.api.auth.enable_biometric", device_name="Test phone")
 keys = msg(r) or {}

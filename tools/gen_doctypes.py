@@ -254,6 +254,7 @@ DOCTYPES = [
 			  options=["Member", "Associate", "Alumni", "Well-wisher", "Business", "Unit"], default="Well-wisher"),
 			F("contributor_member", "Link", "Member (if a member)", options="SIO Member"),
 			F("contributor_mobile", "Data", "Mobile", options="Phone"),
+			F("contributor_place", "Data", "Place / Address"),
 			colbreak("col_a"),
 			F("unit", "Link", "Unit", options="SIO Unit", in_standard_filter=1),
 			F("collected_by", "Link", "Collected By", options="SIO Member"),

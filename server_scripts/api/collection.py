@@ -1,7 +1,7 @@
 # Open collections, and the entries of one of them (args: collection, status).
 caps = ctx["caps"]
 member = ctx["member"]
-fields = ["name", "collection", "entry_type", "contributor_name", "contributor_type", "contributor_mobile", "unit",
+fields = ["name", "collection", "entry_type", "contributor_name", "contributor_type", "contributor_mobile", "contributor_place", "unit",
           "offered_amount", "paid_amount", "balance_amount", "items_value", "items_given", "status",
           "collected_by", "creation"]
 collections = run_script("SIO lib collections").sio_collections

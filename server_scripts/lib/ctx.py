@@ -45,6 +45,8 @@ caps = {
     "manage_collections": is_admin or is_finance,
     "manage_events": is_unit_admin,
     "add_members": is_unit_admin,
+    "manage_units": is_admin,
+    "view_donors": is_unit_admin or is_finance or is_member,
 }
 
 scope = None  # None = every unit

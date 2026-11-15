@@ -9,8 +9,16 @@ entry_type = args.get("entry_type")
 if entry_type not in ("Offer", "Payment", "Items"):
     frappe.throw(_("Unknown entry type."))
 paid = frappe.utils.flt(args.get("paid_amount"))
+# Which unit this money counts for: your own unit; finance and district admins pick any unit.
+unit = ctx["unit"]
+if ctx["caps"]["all_units"] and args.get("unit"):
+    unit = args.get("unit")
+    if not frappe.db.exists("SIO Unit", unit):
+        frappe.throw(_("Pick a unit from the list."))
+if not unit and not frappe.utils.cint(args.get("for_self")):
+    frappe.throw(_("Pick the unit this collection is for."))
 doc = frappe.get_doc({"doctype": "SIO Collection Entry", "collection": collection, "entry_type": entry_type,
-                      "unit": ctx["unit"]})
+                      "unit": unit})
 if frappe.utils.cint(args.get("for_self")):
     if not ctx["caps"]["offer"]:
         frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
@@ -29,7 +37,8 @@ else:
         frappe.throw(_("Enter the name of the person giving."))
     doc.contributor_name = name
     doc.contributor_type = args.get("contributor_type") or "Well-wisher"
-    doc.contributor_mobile = args.get("contributor_mobile")
+    doc.contributor_mobile = "".join([c for c in (args.get("contributor_mobile") or "") if c.isdigit() or c == "+"]) or None
+    doc.contributor_place = (args.get("contributor_place") or "").strip() or None
     doc.collected_by = member.name if member else None
 if entry_type == "Offer":
     doc.offered_amount = frappe.utils.flt(args.get("offered_amount"))

@@ -4,6 +4,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'donors_screen.dart';
 import 'manage_screens.dart';
 
 IconData collectionIcon(String? type) => switch (type) {
@@ -180,6 +181,14 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   ),
                 ),
             ]),
+            if (s.can('view_donors')) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => push(context, DonorsScreen(collection: sel['name'].toString())),
+                icon: const Icon(Icons.contacts_outlined),
+                label: const Text('Donor list: ask again'),
+              ),
+            ],
             if (units.isNotEmpty) ...[
               SectionTitle(units.length > 1 ? 'Units' : 'My unit\'s target'),
               PanelList(children: [for (final u in units) UnitProgressRow(u: Map<String, dynamic>.from(u))]),
@@ -232,7 +241,11 @@ class _EntryRow extends StatelessWidget {
             : numOf(e['paid_amount']) > 0
                 ? '${inr(e['paid_amount'])} of ${inr(e['offered_amount'])}'
                 : inr(e['offered_amount']);
-    final sub = [e['contributor_type'], if (type == 'Items') e['items_given'] else if (type == 'Payment') 'Paid now' else 'Offer']
+    final sub = [
+      if (AppState.i.can('all_units')) e['unit'],
+      e['contributor_place'] ?? e['contributor_type'],
+      if (type == 'Items') e['items_given'] else if (type == 'Payment') 'Paid now' else 'Offer'
+    ]
         .where((x) => x != null && '$x'.isNotEmpty)
         .join(' · ');
     return ListTile(
@@ -297,8 +310,9 @@ class _EntryRow extends StatelessWidget {
 
 /// New entry in a collection (by a collector), or the signed-in person's own offer ([forSelf]).
 class NewEntryScreen extends StatefulWidget {
-  const NewEntryScreen({super.key, this.forSelf = false, this.collection, this.collections});
+  const NewEntryScreen({super.key, this.forSelf = false, this.collection, this.collections, this.contributor});
   final bool forSelf;
+  final Map<String, dynamic>? contributor;
   final String? collection;
   final List<dynamic>? collections;
 
@@ -314,6 +328,11 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   List<dynamic> _collections = [];
   final _name = TextEditingController();
   final _mobile = TextEditingController();
+  final _place = TextEditingController();
+  String? _unit;
+  List<String> _units = [];
+  List<Map<String, dynamic>> _donors = [];
+  bool _hooked = false;
   final _offered = TextEditingController();
   final _paid = TextEditingController();
   final _value = TextEditingController();
@@ -326,6 +345,27 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     super.initState();
     _collection = widget.collection;
     _collections = widget.collections ?? [];
+    final c = widget.contributor;
+    if (c != null) {
+      _name.text = '${c['name'] ?? ''}';
+      _mobile.text = '${c['mobile'] ?? ''}';
+      _place.text = '${c['place'] ?? ''}';
+      const types = ['Well-wisher', 'Member', 'Associate', 'Alumni', 'Business', 'Unit'];
+      if (types.contains(c['type'])) _ctype = c['type'].toString();
+    }
+    final s = AppState.i;
+    if (s.can('all_units') && !widget.forSelf) {
+      _unit = (c?['unit'] ?? s.me['unit'])?.toString();
+      Api.units().then((v) {
+        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
+      }).catchError((_) {});
+    }
+    if (!widget.forSelf && s.can('view_donors')) {
+      Api.call('${Api.m}donors').then((v) {
+        final list = ((v as Map?)?['donors'] as List?) ?? [];
+        if (mounted) setState(() => _donors = [for (final d in list) Map<String, dynamic>.from(d)]);
+      }).catchError((_) {});
+    }
     if (_collections.isEmpty) {
       Api.call('${Api.m}collection').then((v) {
         final list = ((v as Map)['collections'] as List?) ?? [];
@@ -344,6 +384,10 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
       toast(context, 'No collection is open right now.');
       return;
     }
+    if (!widget.forSelf && AppState.i.can('all_units') && _unit == null) {
+      toast(context, 'Pick the unit this collection is for.');
+      return;
+    }
     setState(() => _busy = true);
     final self = widget.forSelf;
     final ok = await run(
@@ -355,6 +399,8 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
         'contributor_name': _name.text.trim(),
         'contributor_type': _ctype,
         'contributor_mobile': _mobile.text.trim(),
+        'contributor_place': _place.text.trim(),
+        'unit': _unit,
         'offered_amount': _offered.text,
         'paid_amount': _paid.text,
         'payment_mode': _mode,
@@ -414,7 +460,64 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
             onSelectionChanged: (v) => setState(() => _kind = v.first),
           ),
           const SizedBox(height: 16),
-          TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Given by')),
+          if (AppState.i.can('all_units'))
+            DropdownButtonFormField<String?>(
+              initialValue: _units.contains(_unit) ? _unit : null,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'For which unit'),
+              items: [for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u))],
+              onChanged: (v) => setState(() => _unit = v),
+            )
+          else
+            SioBanner(text: 'This counts for ${AppState.i.me['unit'] ?? 'your'} unit.'),
+          const SizedBox(height: 14),
+          Autocomplete<Map<String, dynamic>>(
+            initialValue: TextEditingValue(text: _name.text),
+            displayStringForOption: (d) => '${d['name']}',
+            optionsBuilder: (v) {
+              final q = v.text.trim().toLowerCase();
+              if (q.length < 2) return const Iterable.empty();
+              return _donors.where((d) => '${d['name']}'.toLowerCase().contains(q) || '${d['mobile'] ?? ''}'.contains(q)).take(6);
+            },
+            onSelected: (d) => setState(() {
+              _name.text = '${d['name']}';
+              _mobile.text = '${d['mobile'] ?? ''}';
+              _place.text = '${d['place'] ?? ''}';
+              const types = ['Well-wisher', 'Member', 'Associate', 'Alumni', 'Business', 'Unit'];
+              if (types.contains(d['type'])) _ctype = d['type'].toString();
+            }),
+            optionsViewBuilder: (context, onSelected, options) => Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280, maxWidth: 360),
+                  child: ListView(padding: EdgeInsets.zero, shrinkWrap: true, children: [
+                    for (final d in options)
+                      ListTile(
+                        dense: true,
+                        title: Text('${d['name']}'),
+                        subtitle: Text([d['mobile'], d['place'], 'gave ${inr(d['given'])}'].where((x) => x != null && '$x'.isNotEmpty).join(' · ')),
+                        onTap: () => onSelected(d),
+                      ),
+                  ]),
+                ),
+              ),
+            ),
+            fieldViewBuilder: (context, ctrl, focus, onSubmit) {
+              if (!_hooked) {
+                _hooked = true;
+                ctrl.addListener(() => _name.text = ctrl.text);
+              }
+              return TextField(
+                controller: ctrl,
+                focusNode: focus,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Given by', helperText: 'Type a name or mobile to pick someone who gave before'),
+              );
+            },
+          ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
             initialValue: _ctype,
@@ -426,7 +529,9 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
             onChanged: (v) => setState(() => _ctype = v ?? _ctype),
           ),
           const SizedBox(height: 14),
-          TextField(controller: _mobile, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile (for the receipt)')),
+          TextField(controller: _mobile, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile (to ask again next time)')),
+          const SizedBox(height: 14),
+          TextField(controller: _place, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Place / address')),
         ],
         const SizedBox(height: 14),
         if (kind == 'Offer')
