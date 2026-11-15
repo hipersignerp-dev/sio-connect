@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../app_state.dart';
 import '../theme.dart';
+import '../update_service.dart';
 import '../widgets.dart';
 import 'collection_screens.dart';
 import 'events_screen.dart';
@@ -21,8 +22,29 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // like the HiperTracker app: look for a new version when the app opens (at most every few hours)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) UpdateService.check(context);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) UpdateService.check(context);
+  }
 
   @override
   Widget build(BuildContext context) {

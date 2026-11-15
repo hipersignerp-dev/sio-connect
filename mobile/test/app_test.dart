@@ -5,6 +5,7 @@ import 'package:sio_connect/api.dart';
 import 'package:sio_connect/app_state.dart';
 import 'package:sio_connect/screens/auth_screens.dart';
 import 'package:sio_connect/screens/home_shell.dart';
+import 'package:sio_connect/screens/more_screen.dart';
 import 'package:sio_connect/theme.dart';
 
 Widget wrap(Widget w) => MaterialApp(theme: buildTheme(), home: w);
@@ -59,5 +60,13 @@ void main() {
     expect(find.text('Give an offer'), findsOneWidget);
     expect(find.text('Collection entry'), findsOneWidget);
     expect(find.text('Send update'), findsOneWidget);
+  });
+
+  testWidgets('More has Check for updates', (tester) async {
+    AppState.i.me = {'full_name': 'Sinan Ali', 'status': 'Active', 'capabilities': {}};
+    await tester.pumpWidget(wrap(const MoreScreen()));
+    await tester.scrollUntilVisible(find.text('Check for updates'), 200);
+    expect(find.text('Check for updates'), findsOneWidget);
+    expect(find.text('Development build'), findsOneWidget);
   });
 }

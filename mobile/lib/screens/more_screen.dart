@@ -4,6 +4,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../biometric.dart';
 import '../theme.dart';
+import '../update_service.dart';
 import '../widgets.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
@@ -63,6 +64,12 @@ class MoreScreen extends StatelessWidget {
               onTap: () => push(context, const NoticesScreen()),
             ),
             const _BiometricTile(),
+            SioTile(
+              icon: Icons.system_update_outlined,
+              title: 'Check for updates',
+              subtitle: UpdateService.versionLabel,
+              onTap: () => UpdateService.check(context, force: true),
+            ),
             SioTile(icon: Icons.dns_outlined, title: 'Server', subtitle: Api.baseUrl.replaceFirst('https://', ''), onTap: () {}),
             const SizedBox(height: 8),
             SioTile(

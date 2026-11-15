@@ -116,10 +116,14 @@ and the list of member IDs.
 The app talks to `https://siootp.hipersignerp.cloud` by default (changeable on the sign-in screen
 under *Server*).
 
-### Download
+### Download and updates
 
-Every push to `main` builds the APK with GitHub Actions and publishes it as the
-[latest release](../../releases/latest).
+Every push to `main` builds the APK with GitHub Actions and publishes it as a numbered release
+(`build-N`, marked latest): **https://github.com/hipersignerp-dev/sio-connect/releases/latest/download/SIO-Connect.apk**
+
+In the app, **More → Check for updates** looks for a newer build, downloads it and opens Android's
+installer (the app also checks quietly when it opens, at most every few hours). The first time,
+Android asks to allow SIO Connect to install apps. Same mechanism as the HiperTracker app.
 
 ### Tests
 
@@ -141,9 +145,11 @@ flutter test
 flutter build apk --release
 ```
 
-For release signing, add these repository secrets and the workflow signs the APK with your key
-(otherwise it uses a debug key, fine for testing): `ANDROID_KEYSTORE_BASE64`,
-`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+**Signing key (needed for updates):** Android installs an update over the app only when both are
+signed with the same key. Add these repository secrets (Settings → Secrets and variables → Actions)
+and every build is signed with your release key: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`,
+`ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. Without them the build uses a throwaway debug key and
+updates will not install. Keep a backup of the key store: if it is lost, everyone has to reinstall.
 
 ### Code map
 
