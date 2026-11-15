@@ -11,13 +11,10 @@ class NoticesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Updates'),
-        actions: [
-          if (AppState.i.can('send_notice'))
-            IconButton(tooltip: 'Send update', icon: const Icon(Icons.campaign_outlined), onPressed: () => push(context, const SendNoticeScreen())),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Updates')),
+      floatingActionButton: AppState.i.can('send_notice')
+          ? AddFab(tooltip: 'Send update', onPressed: () => push(context, const SendNoticeScreen()))
+          : null,
       body: Loader<List<dynamic>>(
         load: () async => (await Api.call('${Api.m}notices') as List?) ?? [],
         builder: (context, list) => [

@@ -84,6 +84,12 @@ def err(resp):
 
 
 RAMADAN, BAITHUL_MAL = "Ramadan Collection 1448", "Baithul Mal 2026-27"
+# the test units are kept inactive on the live site; switch them on for the run, off again at the end
+adm0 = Client("sio.test.admin@example.com").login()
+for u in ("Feroke", "Kalamassery"):
+    adm0.m("save_unit", name=u, active=1)
+import atexit
+atexit.register(lambda: [adm0.m("save_unit", name=u, active=0) for u in ("Feroke", "Kalamassery")])
 pres = Client("sio.test.president@example.com").login()
 fin = Client("sio.test.finance@example.com").login()
 kpres = Client("sio.test.kpres@example.com").login()  # Unit President of Kalamassery
@@ -315,14 +321,14 @@ check("student signs up later with the same mobile and gets the same record",
 print("Units, picking the unit, and the donor list")
 adm = Client("sio.test.admin@example.com").login()
 uname = "Test Unit " + stamp[-4:]
-r = adm.m("save_unit", unit_name=uname, district="Kozhikode", area="Test campus")
+r = adm.m("save_unit", unit_name=uname, area="Test campus")
 check("district admin adds a unit", r[0] == 200, r)
 r = pres.m("save_unit", unit_name="Not allowed " + stamp[-4:])
 check("unit president cannot add units", r[0] == 403, r)
 units = msg(pres.m("manage_units")) or []
 check("everyone sees the unit list with member counts",
       any(u["name"] == uname for u in units) and all("members" in u for u in units), units[:2])
-r = adm.m("save_unit", name=uname, district="Kozhikode", active=0)
+r = adm.m("save_unit", name=uname, active=0)
 check("district admin can deactivate a unit", r[0] == 200, r)
 donor_mobile = "96" + stamp[-8:]
 r = fin.m("add_collection_entry", collection=RAMADAN, entry_type="Payment", contributor_name="Donor " + stamp[-4:],
@@ -354,6 +360,35 @@ r = assoc.m("donors")
 check("a member sees only the people they collected from",
       r[0] == 200 and all(x["name"] in ("Abdul Gafoor T", "Al-Huda Traders", "Kozhikode Traders") for x in msg(r)["donors"]),
       msg(r))
+
+print("Adding donors before they give")
+new_mobile = "93" + stamp[-8:]
+r = pres.m("save_donor", donor_name="Haji Test " + stamp[-4:], mobile=new_mobile, place="Feroke town",
+           notes="gives every Ramadan", unit="Kalamassery")
+donor_id = (msg(r) or {}).get("name")
+check("president adds a donor (kept in their own unit)", r[0] == 200, r)
+d = msg(pres.m("donors", q=new_mobile)) or {}
+one = [x for x in d.get("donors", []) if x["key"] == new_mobile]
+check("the new donor shows in the list with nothing given yet",
+      one and one[0]["given"] == 0 and one[0]["unit"] == "Feroke" and one[0]["notes"] == "gives every Ramadan", one)
+d = msg(pres.m("donors", collection=RAMADAN, show="not_yet")) or {}
+check("and in 'not given yet'", any(x["key"] == new_mobile for x in d.get("donors", [])), d.get("count"))
+r = pres.m("save_donor", donor_name="Someone Else", mobile="+91 " + new_mobile)
+check("the same mobile can't be added twice", r[0] != 200, r)
+r = kpres.m("save_donor", name=donor_id, donor_name="Hijack", mobile=new_mobile)
+check("another unit can't change this donor", r[0] == 403, r)
+pres.m("add_collection_entry", collection=RAMADAN, entry_type="Payment", contributor_name="Haji Test",
+       contributor_mobile=new_mobile, paid_amount=500)
+d = msg(pres.m("donors", q=new_mobile)) or {}
+one = [x for x in d.get("donors", []) if x["key"] == new_mobile]
+check("when they give, it joins the same donor line", len(one) == 1 and one[0]["given"] == 500
+      and one[0]["name"].startswith("Haji Test "), one)
+
+print("Desk / REST access is locked to the right people")
+code, body = pres.post("frappe.client.rename_doc", doctype="SIO Unit", old_name="Kalamassery", new_name="X")
+check("a unit president cannot rename units", code != 200, body)
+code, body = adm.post("frappe.client.rename_doc", doctype="SIO Unit", old_name=uname, new_name=uname + " B")
+check("an area admin can rename a unit", code == 200, body)
 
 print("Fingerprint sign-in (API key)")
 r = assoc.post("sio_connect.api.auth.enable_biometric", device_name="Test phone")

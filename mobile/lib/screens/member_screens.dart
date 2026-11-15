@@ -22,17 +22,16 @@ class _MembersScreenState extends State<MembersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Students & members'), actions: [
-        if (AppState.i.can('add_members'))
-          IconButton(
-            tooltip: 'Add student',
-            icon: const Icon(Icons.person_add_alt_1),
-            onPressed: () async {
-              final ok = await push(context, const MemberFormScreen());
-              if (ok == true) setState(() => _version++);
-            },
-          ),
-      ]),
+      appBar: AppBar(title: const Text('Students & members')),
+      floatingActionButton: AppState.i.can('add_members')
+          ? AddFab(
+              tooltip: 'Add student',
+              onPressed: () async {
+                final ok = await push(context, const MemberFormScreen());
+                if (ok == true) setState(() => _version++);
+              },
+            )
+          : null,
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),

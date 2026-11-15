@@ -64,6 +64,13 @@ class _DonorsScreenState extends State<DonorsScreen> {
     final s = AppState.i;
     return Scaffold(
       appBar: AppBar(title: const Text('Donors')),
+      floatingActionButton: AddFab(
+        tooltip: 'Add donor',
+        onPressed: () async {
+          final ok = await push(context, const DonorFormScreen());
+          if (ok == true) setState(() => _version++);
+        },
+      ),
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -153,7 +160,10 @@ class _DonorsScreenState extends State<DonorsScreen> {
                 ),
                 if (list.isEmpty) EmptyNote(_show == 'not_yet' ? 'Everyone has given this time. Alhamdulillah!' : 'No one yet.'),
                 if (list.isNotEmpty)
-                  PanelList(children: [for (final x in list) _DonorRow(d: Map<String, dynamic>.from(x), collection: _collection)]),
+                  PanelList(children: [
+                    for (final x in list)
+                      _DonorRow(d: Map<String, dynamic>.from(x), collection: _collection, changed: () => setState(() => _version++)),
+                  ]),
               ];
             },
           ),
@@ -164,9 +174,10 @@ class _DonorsScreenState extends State<DonorsScreen> {
 }
 
 class _DonorRow extends StatelessWidget {
-  const _DonorRow({required this.d, required this.collection});
+  const _DonorRow({required this.d, required this.collection, required this.changed});
   final Map<String, dynamic> d;
   final String? collection;
+  final VoidCallback changed;
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +192,8 @@ class _DonorRow extends StatelessWidget {
         if (numOf(d['balance']) > 0)
           Text('${inr(d['balance'])} to pay', style: const TextStyle(color: SioColors.danger, fontSize: 11.5))
         else
-          Text('${d['times']}× given', style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5)),
+          Text(numOf(d['times']) > 0 ? '${d['times']}× given' : 'Not given yet',
+              style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5)),
       ]),
     );
   }
@@ -218,7 +230,12 @@ class _DonorRow extends StatelessWidget {
                   Text(inr(c['amount']), style: const TextStyle(fontWeight: FontWeight.w600)),
                 ]),
               ),
-            Text('Last: ${fmtDate(d['last_date'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+            if (d['last_date'] != null)
+              Text('Last: ${fmtDate(d['last_date'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+            if ((d['notes'] ?? '').toString().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SioBanner(text: '${d['notes']}'),
+            ],
             const SizedBox(height: 16),
             if (hasMobile)
               Row(children: [
@@ -234,6 +251,16 @@ class _DonorRow extends StatelessWidget {
                   ),
                 ),
               ]),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: () async {
+                Navigator.pop(sheet);
+                final ok = await push(context, DonorFormScreen(donor: d));
+                if (ok == true) changed();
+              },
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Edit details'),
+            ),
             if (AppState.i.can('collect')) ...[
               const SizedBox(height: 10),
               FilledButton.icon(
@@ -254,6 +281,110 @@ class _DonorRow extends StatelessWidget {
           ]),
         ),
       ),
+    );
+  }
+}
+
+
+/// Add someone to the donor list (before they give), or change their details.
+class DonorFormScreen extends StatefulWidget {
+  const DonorFormScreen({super.key, this.donor});
+  final Map<String, dynamic>? donor;
+
+  @override
+  State<DonorFormScreen> createState() => _DonorFormScreenState();
+}
+
+class _DonorFormScreenState extends State<DonorFormScreen> {
+  static const types = ['Well-wisher', 'Member', 'Associate', 'Alumni', 'Business', 'Unit'];
+  final _name = TextEditingController();
+  final _mobile = TextEditingController();
+  final _place = TextEditingController();
+  final _notes = TextEditingController();
+  String _type = 'Well-wisher';
+  String? _unit;
+  List<String> _units = [];
+  bool _busy = false;
+
+  Map<String, dynamic>? get _d => widget.donor;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = _d;
+    if (d != null) {
+      _name.text = '${d['name'] ?? ''}';
+      _mobile.text = '${d['mobile'] ?? ''}';
+      _place.text = '${d['place'] ?? ''}';
+      _notes.text = '${d['notes'] ?? ''}';
+      if (types.contains(d['type'])) _type = d['type'].toString();
+      _unit = d['unit']?.toString();
+    }
+    final s = AppState.i;
+    _unit ??= s.me['unit']?.toString();
+    if (s.can('all_units')) {
+      Api.units().then((v) {
+        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
+      }).catchError((_) {});
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    final ok = await run(context, () async {
+      await Api.call('${Api.m}save_donor', {
+        'name': _d?['donor'],
+        'donor_name': _name.text.trim(),
+        'mobile': _mobile.text.trim(),
+        'place': _place.text.trim(),
+        'donor_type': _type,
+        'unit': _unit,
+        'notes': _notes.text.trim(),
+      });
+    }, done: _d == null ? '${_name.text.trim()} added to the donor list.' : 'Saved.');
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_d == null ? 'New donor' : 'Edit donor')),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
+        TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name')),
+        const SizedBox(height: 14),
+        TextField(controller: _mobile, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),
+        const SizedBox(height: 14),
+        TextField(controller: _place, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Place / address')),
+        const SizedBox(height: 14),
+        DropdownButtonFormField<String>(
+          initialValue: _type,
+          decoration: const InputDecoration(labelText: 'Type'),
+          items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t))],
+          onChanged: (v) => setState(() => _type = v ?? _type),
+        ),
+        const SizedBox(height: 14),
+        if (AppState.i.can('all_units'))
+          DropdownButtonFormField<String?>(
+            initialValue: _units.contains(_unit) ? _unit : null,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Unit'),
+            items: [for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u))],
+            onChanged: (v) => setState(() => _unit = v),
+          )
+        else
+          InputDecorator(decoration: const InputDecoration(labelText: 'Unit'), child: Text(_unit ?? 'My unit')),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _notes,
+          maxLines: 2,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(labelText: 'Notes (optional)', hintText: 'e.g. gives every Ramadan, call after Asr'),
+        ),
+        const SizedBox(height: 20),
+        FilledButton(onPressed: _busy ? null : _save, child: Text(_d == null ? 'Add donor' : 'Save')),
+      ]),
     );
   }
 }

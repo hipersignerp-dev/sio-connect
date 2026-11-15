@@ -41,9 +41,8 @@ class UnitsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final admin = AppState.i.can('manage_units');
     return Scaffold(
-      appBar: AppBar(title: const Text('Areas & units'), actions: [
-        if (admin) IconButton(tooltip: 'Add', icon: const Icon(Icons.add), onPressed: () => _add(context)),
-      ]),
+      appBar: AppBar(title: const Text('Areas & units')),
+      floatingActionButton: admin ? AddFab(tooltip: 'New area or unit', onPressed: () => _add(context)) : null,
       body: Loader<Map<String, dynamic>>(
         load: () async {
           final d = Map<String, dynamic>.from(await Api.call('${Api.m}manage_areas') as Map);
@@ -169,8 +168,14 @@ class _AreaFormScreenState extends State<AreaFormScreen> {
   Future<void> _save() async {
     setState(() => _busy = true);
     final ok = await run(context, () async {
+      var name = _a?['name']?.toString();
+      final newName = _name.text.trim();
+      if (name != null && newName.isNotEmpty && newName != name) {
+        await Api.call('frappe.client.rename_doc', {'doctype': 'SIO Area', 'old_name': name, 'new_name': newName});
+        name = newName;
+      }
       await Api.call('${Api.m}save_area', {
-        'name': _a?['name'],
+        'name': name,
         'area_name': _name.text.trim(),
         'district': _district.text.trim(),
         'active': _active ? 1 : 0,
@@ -202,9 +207,11 @@ class _AreaFormScreenState extends State<AreaFormScreen> {
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
         TextField(
           controller: _name,
-          enabled: _a == null,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(labelText: 'Area name'),
+          decoration: InputDecoration(
+            labelText: 'Area name',
+            helperText: _a == null ? null : 'Changing the name updates it everywhere',
+          ),
         ),
         const SizedBox(height: 14),
         TextField(controller: _district, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'District (optional)')),
@@ -286,8 +293,14 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
   Future<void> _save() async {
     setState(() => _busy = true);
     final ok = await run(context, () async {
+      var name = _u?['name']?.toString();
+      final newName = _name.text.trim();
+      if (name != null && newName.isNotEmpty && newName != name) {
+        await Api.call('frappe.client.rename_doc', {'doctype': 'SIO Unit', 'old_name': name, 'new_name': newName});
+        name = newName;
+      }
       await Api.call('${Api.m}save_unit', {
-        'name': _u?['name'],
+        'name': name,
         'unit_name': _name.text.trim(),
         'district': _areaName,
         'area': _area.text.trim(),
@@ -319,9 +332,12 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
         TextField(
           controller: _name,
-          enabled: _u == null,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(labelText: 'Unit name', hintText: 'e.g. Feroke'),
+          decoration: InputDecoration(
+            labelText: 'Unit name',
+            hintText: 'e.g. Mannur',
+            helperText: _u == null ? null : 'Changing the name updates it everywhere (members, entries, targets)',
+          ),
         ),
         const SizedBox(height: 14),
         DropdownButtonFormField<String?>(

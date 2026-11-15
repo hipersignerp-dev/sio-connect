@@ -15,10 +15,10 @@ class EventsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Events'), actions: [
-        if (AppState.i.can('manage_events'))
-          IconButton(tooltip: 'New event', icon: const Icon(Icons.add), onPressed: () => push(context, const EventFormScreen())),
-      ]),
+      appBar: AppBar(title: const Text('Events')),
+      floatingActionButton: standalone && AppState.i.can('manage_events')
+          ? AddFab(tooltip: 'New event', onPressed: () => push(context, const EventFormScreen()))
+          : null,
       body: Loader<List<dynamic>>(
         load: () async => (await Api.call('${Api.m}events') as List?) ?? [],
         builder: (context, list) => [

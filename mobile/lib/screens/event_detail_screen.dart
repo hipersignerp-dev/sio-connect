@@ -21,11 +21,7 @@ class EventDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       floatingActionButton: s.can('claim_expense')
-          ? FloatingActionButton.extended(
-              onPressed: () => push(context, NewClaimScreen(event: name)),
-              icon: const Icon(Icons.add),
-              label: const Text('Add expense'),
-            )
+          ? AddFab(tooltip: 'Add expense', onPressed: () => push(context, NewClaimScreen(event: name)))
           : null,
       body: Loader<Map<String, dynamic>>(
         load: () async => Map<String, dynamic>.from(await Api.call('${Api.m}event', {'name': name}) as Map),

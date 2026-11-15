@@ -41,11 +41,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
             icon: const Icon(Icons.list_alt),
             onPressed: () => push(context, const ManageCollectionsScreen()),
           ),
-          IconButton(
-            tooltip: 'New collection',
-            icon: const Icon(Icons.add),
-            onPressed: () => push(context, const CollectionFormScreen()),
-          ),
         ],
       ]),
       body: Loader<Map<String, dynamic>>(

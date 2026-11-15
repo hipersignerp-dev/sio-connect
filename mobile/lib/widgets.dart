@@ -206,3 +206,21 @@ class ProgressBar extends StatelessWidget {
 
 Future<T?> push<T>(BuildContext context, Widget screen) =>
     Navigator.of(context).push<T>(MaterialPageRoute(builder: (_) => screen));
+
+/// The one "add" button used on every list: a plain round +.
+class AddFab extends StatelessWidget {
+  const AddFab({super.key, required this.onPressed, this.tooltip = 'Add'});
+  final VoidCallback onPressed;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) => FloatingActionButton(
+        heroTag: null,
+        tooltip: tooltip,
+        backgroundColor: SioColors.cardHigh,
+        foregroundColor: SioColors.blue,
+        shape: const CircleBorder(),
+        onPressed: onPressed,
+        child: const Icon(Icons.add, size: 28),
+      );
+}

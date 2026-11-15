@@ -34,11 +34,7 @@ class ManageCollectionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Collections & targets')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => push(context, const CollectionFormScreen()),
-        icon: const Icon(Icons.add),
-        label: const Text('New collection'),
-      ),
+      floatingActionButton: AddFab(tooltip: 'New collection', onPressed: () => push(context, const CollectionFormScreen())),
       body: Loader<List<dynamic>>(
         load: () async => (await Api.call('${Api.m}manage_collections') as List?) ?? [],
         builder: (context, list) => [

@@ -7,6 +7,7 @@ import '../widgets.dart';
 import 'collection_screens.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
+import 'donors_screen.dart';
 import 'home_screen.dart';
 import 'manage_screens.dart';
 import 'meeting_screens.dart';
@@ -142,6 +143,8 @@ Future<void> showQuickAdd(BuildContext context) async {
       (Icons.event_available, SioColors.green, 'New event', 'Programme, camp, iftar...', () => const EventFormScreen()),
     if (s.can('add_members'))
       (Icons.person_add_alt_1, SioColors.blue, 'Add student', 'Add a student or member to your unit', () => const MemberFormScreen()),
+    if (s.can('view_donors'))
+      (Icons.contacts_outlined, SioColors.green, 'New donor', 'Save someone to ask for support', () => const DonorFormScreen()),
     if (s.can('manage_collections'))
       (Icons.savings_outlined, SioColors.red, 'New collection', 'Set a target and split it to units', () => const CollectionFormScreen()),
     if (!s.can('rsvp'))

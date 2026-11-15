@@ -59,6 +59,41 @@ for r in rows:
         amt = max(paid, frappe.utils.flt(r.offered_amount))
     bc = d["by_collection"]
     bc[r.collection] = bc.get(r.collection, 0) + amt
+# people saved in the donor list (some may not have given yet)
+dcond = {}
+if not caps["view_collection_totals"]:
+    dcond["added_by"] = ctx["member"].name if ctx["member"] else "__none__"
+elif ctx["scope"]:
+    dcond["unit"] = ctx["scope"]
+elif args.get("unit"):
+    dcond["unit"] = args.get("unit")
+saved = frappe.get_all("SIO Donor", filters=dcond,
+                       fields=["name", "donor_name", "mobile", "place", "donor_type", "unit", "notes", "creation"],
+                       order_by="creation desc", limit=5000)
+for s in saved:
+    if q and q.lower() not in ((s.donor_name or "") + " " + (s.mobile or "") + " " + (s.place or "")).lower():
+        continue
+    digits = "".join([ch for ch in (s.mobile or "") if ch.isdigit()])
+    if len(digits) >= 10:
+        key = digits[-10:]
+    else:
+        key = "n:" + (s.donor_name or "").strip().lower()
+    d = people.get(key)
+    if not d:
+        d = {"key": key, "name": s.donor_name, "mobile": s.mobile, "place": s.place, "type": s.donor_type,
+             "unit": s.unit, "given": 0, "offered": 0, "balance": 0, "items": 0, "times": 0, "last_date": None,
+             "by_collection": {}}
+        people[key] = d
+        order.append(key)
+    d["donor"] = s.name
+    d["name"] = s.donor_name
+    d["notes"] = s.notes
+    if s.mobile:
+        d["mobile"] = s.mobile
+    if s.place:
+        d["place"] = s.place
+    if s.donor_type:
+        d["type"] = s.donor_type
 selected = args.get("collection")
 show = args.get("show") or "all"
 out = []

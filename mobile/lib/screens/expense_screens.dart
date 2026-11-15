@@ -17,11 +17,9 @@ class ExpensesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Expense claims'),
-        actions: [
-          if (AppState.i.can('claim_expense'))
-            IconButton(tooltip: 'New claim', icon: const Icon(Icons.add), onPressed: () => push(context, const NewClaimScreen())),
-        ],
       ),
+      floatingActionButton:
+          AppState.i.can('claim_expense') ? AddFab(tooltip: 'New claim', onPressed: () => push(context, const NewClaimScreen())) : null,
       body: Loader<Map<String, dynamic>>(
         load: () async => Map<String, dynamic>.from(await Api.call('${Api.m}expenses') as Map),
         builder: (context, d) {

@@ -15,15 +15,10 @@ class MeetingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(standalone ? 'Pick a meeting' : 'Meetings'),
-        actions: [
-          if (s.can('schedule_meeting'))
-            IconButton(
-              tooltip: 'Schedule meeting',
-              icon: const Icon(Icons.edit_calendar),
-              onPressed: () => push(context, const ScheduleMeetingScreen()),
-            ),
-        ],
       ),
+      floatingActionButton: standalone && s.can('schedule_meeting')
+          ? AddFab(tooltip: 'Schedule meeting', onPressed: () => push(context, const ScheduleMeetingScreen()))
+          : null,
       body: Loader<Map<String, dynamic>>(
         load: () async => Map<String, dynamic>.from(await Api.call('${Api.m}meetings') as Map),
         builder: (context, d) {

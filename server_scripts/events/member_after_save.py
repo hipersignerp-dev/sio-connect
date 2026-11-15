@@ -23,3 +23,18 @@ if doc.user and frappe.db.exists("User", doc.user):
         user.set("roles", keep + [{"role": r} for r in sorted(wanted)])
         user.enabled = enabled
         user.save(ignore_permissions=True)
+
+# Unit presidents and secretaries are tied to their own unit on the desk (a User Permission on SIO Unit),
+# so they can't open another unit's records. Everyone else has none.
+if doc.user and frappe.db.exists("User", doc.user):
+    want_unit = None
+    if doc.status == "Active" and doc.member_role in ("Unit President", "Unit Secretary") and doc.unit:
+        want_unit = doc.unit
+    for up in frappe.get_all("User Permission", filters={"user": doc.user, "allow": "SIO Unit"},
+                             fields=["name", "for_value"]):
+        if up.for_value != want_unit:
+            frappe.delete_doc("User Permission", up.name, ignore_permissions=True)
+    if want_unit and not frappe.db.exists("User Permission", {"user": doc.user, "allow": "SIO Unit",
+                                                             "for_value": want_unit}):
+        frappe.get_doc({"doctype": "User Permission", "user": doc.user, "allow": "SIO Unit",
+                        "for_value": want_unit, "apply_to_all_doctypes": 1}).insert(ignore_permissions=True)
