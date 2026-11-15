@@ -55,6 +55,7 @@ class AppState extends ChangeNotifier {
 
   void _expired() {
     if (stage != Stage.signedIn) return;
+    Api.token = null;
     if (biometricOn) {
       _set(Stage.locked);
     } else {
@@ -73,15 +74,16 @@ class AppState extends ChangeNotifier {
       _set(Stage.signedOut);
       return 'Sign in with your password.';
     }
+    Api.token = token;
     try {
-      await Api.loginWithDevice(token);
       await loadMe();
       _set(Stage.signedIn);
       return null;
     } on ApiException catch (e) {
       if (e.status == 401 || e.status == 403) {
+        Api.token = null;
         await _turnOffBiometricLocally();
-        notice = e.message;
+        notice = 'Fingerprint sign-in was turned off for this phone. Sign in with your password.';
         _set(Stage.signedOut);
       }
       return e.message;
@@ -104,16 +106,15 @@ class AppState extends ChangeNotifier {
     if (!await Biometric.check('Confirm to use fingerprint sign-in')) {
       throw const ApiException('Fingerprint not confirmed.');
     }
-    final res = await Api.call('${Api.a}enable_biometric', {'device_name': await Biometric.deviceName()});
-    await Biometric.saveToken((res as Map)['token'].toString());
+    final res = await Api.call('${Api.a}enable_biometric', {'device_name': await Biometric.deviceName()}) as Map;
+    await Biometric.saveToken('${res['api_key']}:${res['api_secret']}');
     await Api.prefs.setBool('biometric_on', true);
     notifyListeners();
   }
 
   Future<void> disableBiometric() async {
-    final token = await Biometric.readToken();
     try {
-      await Api.call('${Api.a}disable_biometric', {'token': token});
+      await Api.call('${Api.a}disable_biometric');
     } catch (_) {}
     await _turnOffBiometricLocally();
     notifyListeners();
@@ -132,6 +133,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> usePasswordInstead() async {
+    Api.token = null;
     _set(Stage.signedOut);
   }
 }

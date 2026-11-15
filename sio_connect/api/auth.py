@@ -1,25 +1,22 @@
 """Sign-up and fingerprint sign-in for the SIO phone app.
 
 Password sign-in uses Frappe's own /api/method/login (device=mobile).
-Fingerprint sign-in: after a password sign-in the app calls enable_biometric(), which returns a
-long random device token. Only its SHA-256 hash is kept in ERP (SIO Device Token). The phone keeps
-the token in its secure storage and releases it only after the fingerprint/face check, then calls
-login_with_device() to get a fresh session. Revoke a phone by ticking Revoked on its record.
+Fingerprint sign-in: after a password sign-in the app calls enable_biometric(), which returns the
+user's API key and a fresh secret. The phone keeps them in its secure storage and releases them only
+after the fingerprint/face check, then sends them as a token. The same flow works on a site set up
+with server scripts only (see server_scripts/). Tick Revoked on a phone's SIO Device Token record to
+block it: the secret is replaced.
 """
 
 import hashlib
 import re
-import secrets
 
 import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
-from frappe.utils import cint, now_datetime, validate_email_address
+from frappe.utils import now_datetime, validate_email_address
 
 from sio_connect.utils import ROLE_ASSOCIATE
-
-MAX_PHONES_PER_USER = 5
-
 
 def _hash(token):
 	return hashlib.sha256((token or "").encode()).hexdigest()
@@ -95,51 +92,44 @@ def register(full_name, mobile, email, password, unit=None, campus=None, course=
 
 @frappe.whitelist(methods=["POST"])
 def enable_biometric(device_name=None):
-	"""Called right after a password sign-in when the person turns on fingerprint sign-in."""
+	"""Called right after a password sign-in when the person turns on fingerprint sign-in.
+	Returns the user's API key and a new secret; the phone keeps them behind the fingerprint and sends
+	them as `Authorization: token key:secret`. One secret per user: a new phone replaces the old one."""
 	user = frappe.session.user
 	if user == "Guest":
 		frappe.throw(_("Please sign in."), frappe.AuthenticationError)
-	token = secrets.token_urlsafe(40)
+	u = frappe.get_doc("User", user)
+	if not u.api_key:
+		u.api_key = frappe.generate_hash(length=15)
+	secret = frappe.generate_hash(length=15)
+	u.api_secret = secret
+	u.save(ignore_permissions=True)
+	for name in frappe.get_all("SIO Device Token", filters={"user": user, "revoked": 0}, pluck="name"):
+		frappe.db.set_value("SIO Device Token", name, "revoked", 1)
 	frappe.get_doc(
 		{
 			"doctype": "SIO Device Token",
 			"user": user,
 			"device_name": (device_name or "Phone")[:140],
-			"token_hash": _hash(token),
+			"token_hash": _hash(secret),
 			"last_used": now_datetime(),
 		}
 	).insert(ignore_permissions=True)
-	# keep only the newest phones
-	old = frappe.get_all(
-		"SIO Device Token", filters={"user": user, "revoked": 0}, order_by="creation desc", pluck="name"
-	)[MAX_PHONES_PER_USER:]
-	for name in old:
-		frappe.db.set_value("SIO Device Token", name, "revoked", 1)
-	return {"token": token}
+	return {"api_key": u.api_key, "api_secret": secret}
 
 
-@frappe.whitelist(allow_guest=True, methods=["POST"])
-@rate_limit(limit=20, seconds=60 * 10)
-def login_with_device(token):
-	"""Fingerprint sign-in: trade the phone's device token for a new session."""
-	row = frappe.db.get_value(
-		"SIO Device Token", {"token_hash": _hash(token), "revoked": 0}, ["name", "user"], as_dict=True
-	)
-	if not row or not cint(frappe.db.get_value("User", row.user, "enabled")):
-		frappe.local.response["http_status_code"] = 401
-		frappe.throw(_("Fingerprint sign-in is no longer active on this phone. Sign in with your password."),
-		             frappe.AuthenticationError)
-	frappe.db.set_value("SIO Device Token", row.name, "last_used", now_datetime(), update_modified=False)
-	frappe.local.login_manager.login_as(row.user)
-	return {"sid": frappe.session.sid, "user": row.user}
+def replace_secret(user):
+	"""Stops fingerprint sign-in for the user: the phone's copy of the secret no longer works."""
+	u = frappe.get_doc("User", user)
+	if u.api_key:
+		u.api_secret = frappe.generate_hash(length=15)
+		u.save(ignore_permissions=True)
 
 
 @frappe.whitelist(methods=["POST"])
-def disable_biometric(token=None):
-	"""Stop fingerprint sign-in on this phone (or all of the user's phones when no token is given)."""
-	filters = {"user": frappe.session.user, "revoked": 0}
-	if token:
-		filters["token_hash"] = _hash(token)
-	for name in frappe.get_all("SIO Device Token", filters=filters, pluck="name"):
+def disable_biometric():
+	"""Turn off fingerprint sign-in for this account."""
+	replace_secret(frappe.session.user)
+	for name in frappe.get_all("SIO Device Token", filters={"user": frappe.session.user, "revoked": 0}, pluck="name"):
 		frappe.db.set_value("SIO Device Token", name, "revoked", 1)
 	return {"ok": True}

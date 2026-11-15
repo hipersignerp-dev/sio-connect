@@ -4,8 +4,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-/// Fingerprint / face sign-in. The device token from ERP lives in the phone's secure storage
-/// (Android Keystore / iOS Keychain) and is only read after the fingerprint check passes.
+/// Fingerprint / face sign-in. The API key + secret ERP gives this phone live in its secure storage
+/// (Android Keystore / iOS Keychain) and are only read after the fingerprint check passes.
 class Biometric {
   static final _auth = LocalAuthentication();
   static const _storage = FlutterSecureStorage();

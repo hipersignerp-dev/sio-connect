@@ -62,7 +62,7 @@
    "label": "User",
    "options": "User",
    "unique": 1,
-   "read_only": 1
+   "description": "The ERP login of this member. Set automatically when they register in the app."
   },
   {
    "fieldname": "col_a",

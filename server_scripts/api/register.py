@@ -1,0 +1,52 @@
+# Self sign-up as an Associate (guest). The unit admin approves later. Rate limited on the script.
+f = frappe.form_dict
+full_name = (f.get("full_name") or "").strip()
+mobile = "".join([c for c in (f.get("mobile") or "") if c.isdigit() or c == "+"])
+email = (f.get("email") or "").strip().lower()
+password = f.get("password") or ""
+unit = f.get("unit") or None
+digits = "".join([c for c in mobile if c.isdigit()])
+if len(full_name) < 3:
+    frappe.throw(_("Enter your full name."))
+if len(digits) < 10:
+    frappe.throw(_("Enter a valid mobile number."))
+if "@" not in email or "." not in email.split("@")[-1]:
+    frappe.throw(_("Enter a valid email address."))
+if len(password) < 8:
+    frappe.throw(_("Password must be at least 8 characters."))
+if unit and not frappe.db.exists("SIO Unit", {"name": unit, "active": 1}):
+    frappe.throw(_("Pick your unit from the list."))
+if frappe.db.exists("User", email) or frappe.db.exists("SIO Member", {"mobile": mobile}):
+    frappe.throw(_("This email or mobile is already registered. Sign in, or use Forgot password."))
+
+parts = full_name.split(" ", 1)
+user = frappe.get_doc({
+    "doctype": "User",
+    "email": email,
+    "first_name": parts[0],
+    "last_name": parts[1] if len(parts) > 1 else "",
+    "mobile_no": mobile,
+    "enabled": 1,
+    "send_welcome_email": 0,
+    "user_type": "Website User",
+    "new_password": password,
+    "roles": [{"role": "SIO Associate"}],
+})
+user.insert(ignore_permissions=True)
+
+member = frappe.get_doc({
+    "doctype": "SIO Member",
+    "full_name": full_name,
+    "mobile": mobile,
+    "email": email,
+    "user": user.name,
+    "member_role": "Associate",
+    "status": "Pending Approval",
+    "unit": unit,
+    "campus": f.get("campus"),
+    "course": f.get("course"),
+    "year_of_study": f.get("year_of_study") or "",
+    "home_town": f.get("home_town"),
+})
+member.insert(ignore_permissions=True)
+frappe.response["message"] = {"user": user.name, "member": member.name, "status": member.status}

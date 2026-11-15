@@ -6,11 +6,15 @@ Student organisation management inside **Hipersign ERP**, with a phone app for e
 Weekly meetings and attendance, members and new associates, events and registrations, the Ramadan
 collection (pledges, payments, in-kind), expense claims with approval, and updates to members.
 
-This repo has two parts:
+**Live site:** https://siootp.hipersignerp.cloud (built with the server-script install below; desk workspace
+*SIO Connect*). The phone app points there by default.
+
+This repo has three parts:
 
 | Folder | What it is |
 | --- | --- |
-| `sio_connect/` | Frappe app: the SIO doctypes, roles, workspace and the API the phone app uses |
+| `sio_connect/` | Frappe app: the SIO doctypes, roles, workspace and the API the phone app uses (install with bench) |
+| `server_scripts/` | The same API and rules as Server Scripts, for a site with no bench access (how the live site is built) |
 | `mobile/` | Flutter phone app (Android and iOS), built like the Hipersign mobile app, in SIO colours |
 
 ## Everyone gets their own app
@@ -36,12 +40,33 @@ The server checks every request; hiding a screen in the app is only for convenie
 2. The unit president or secretary approves them in the app (More → Students & members) or in the desk,
    and can make them a Member. ERP roles follow the member's role and status automatically.
 3. **Fingerprint / face sign-in**: after the first password sign-in the app offers to turn it on. ERP
-   issues a long random device token; only its SHA-256 hash is stored (doctype **SIO Device Token**).
-   The phone keeps the token in the Android Keystore / iOS Keychain and releases it only after the
-   fingerprint check, then exchanges it for a fresh session. Tick **Revoked** on a phone's record to
-   block it. Signing out also turns it off. The phone PIN works as a fallback.
+   gives the person an API key and a fresh secret; the phone keeps them in the Android Keystore / iOS
+   Keychain and releases them only after the fingerprint check, then sends them as
+   `Authorization: token key:secret`. Each phone is listed in **SIO Device Token**; tick **Revoked** to
+   block it (the secret is replaced). Signing out also turns it off. One secret per person, so turning
+   it on for a new phone switches it off on the old one. The phone PIN works as a fallback.
 
-## Install the ERP app
+## Install on a site
+
+### Option A: server scripts (no bench access; how siootp.hipersignerp.cloud is built)
+
+Needs `server_script_enabled` on the site. Create, in this order:
+
+1. Module Def **SIO Connect** (custom) and the five roles (*SIO Associate* and *SIO Member* without desk
+   access; *SIO Unit Admin*, *SIO Finance*, *SIO Admin* with desk access).
+2. The 12 DocTypes as custom DocTypes from `sio_connect/sio_connect/doctype/*/*.json` (set `custom: 1`).
+   Order: SIO Unit (without president/secretary, add them last), SIO Member, the two child tables, then
+   the rest.
+3. The 42 Server Scripts: `python3 server_scripts/build.py` writes one JSON per script to
+   `server_scripts/dist/` (4 library scripts, 25 API scripts with the same method names as the Python
+   app, 13 document event scripts).
+4. Point the workspace **SIO Connect** at the doctypes.
+
+Sandbox notes, learned on Frappe 16: no imports, no `str.format`, no `+=` on dict items, no `a, b = x`
+unpacking; each script has its own `frappe.flags`, so a library script's result is read from the return
+value: `ctx = run_script("SIO lib ctx").sio_ctx`.
+
+### Option B: bench app
 
 ```bash
 cd ~/frappe-bench
@@ -73,13 +98,24 @@ and the list of member IDs.
 
 ## Phone app
 
-The app talks to `https://nexus365.hipersignerp.cloud` by default (changeable on the sign-in screen
+The app talks to `https://siootp.hipersignerp.cloud` by default (changeable on the sign-in screen
 under *Server*).
 
 ### Download
 
 Every push to `main` builds the APK with GitHub Actions and publishes it as the
 [latest release](../../releases/latest).
+
+### Tests
+
+```bash
+cd mobile && flutter test                                   # widgets and role-based tabs
+flutter test test_live --dart-define=SIO_PASSWORD=...        # the app's API client against the live site
+python3 server_scripts/e2e_test.py https://siootp.hipersignerp.cloud PASSWORD   # 32 checks, 3 roles
+```
+
+The live tests use the accounts `sio.test.{assoc1,president,finance}@example.com` in unit Feroke.
+`e2e_test.py` changes data (approves the associate, adds entries), so run it on fresh test accounts.
 
 ### Build it yourself
 
@@ -109,8 +145,7 @@ For release signing, add these repository secrets and the workflow signs the APK
 
 All under `sio_connect.api`:
 
-- `auth.units`, `auth.register` (guest), `auth.enable_biometric`, `auth.login_with_device` (guest),
-  `auth.disable_biometric`
+- `auth.units`, `auth.register` (guest), `auth.enable_biometric`, `auth.disable_biometric`
 - `mobile.me`, `home`, `meetings`, `meeting`, `rsvp`, `save_attendance`, `schedule_meeting`,
   `events`, `event`, `register_event`, `collection`, `add_collection_entry`, `add_payment`,
   `expenses`, `claim_expense`, `set_expense_status`, `notices`, `send_notice`, `members`,

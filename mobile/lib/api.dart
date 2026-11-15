@@ -12,10 +12,11 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Talks to Hipersign ERP (Frappe). Same approach as the Hipersign mobile app: sign in with
-/// /api/method/login and device=mobile, which gives a long session that needs no CSRF token.
+/// Talks to Hipersign ERP (Frappe). Password sign-in is the same as the Hipersign mobile app:
+/// /api/method/login with device=mobile, a long session that needs no CSRF token. Fingerprint
+/// sign-in sends the person's API key as a token instead (see [token]).
 class Api {
-  static const defaultUrl = 'https://nexus365.hipersignerp.cloud';
+  static const defaultUrl = 'https://siootp.hipersignerp.cloud';
   static const m = 'sio_connect.api.mobile.';
   static const a = 'sio_connect.api.auth.';
   static late SharedPreferences prefs;
@@ -37,7 +38,12 @@ class Api {
   }
 
   static String? get sid => prefs.getString('sid');
-  static bool get hasSession => (sid ?? '').isNotEmpty;
+
+  /// Fingerprint sign-in: "api_key:api_secret", held in memory only after the fingerprint check
+  /// (stored in secure storage by Biometric). When set, it is sent instead of the session cookie.
+  static String? token;
+
+  static bool get hasSession => (token ?? '').isNotEmpty || (sid ?? '').isNotEmpty;
 
   static Map<String, String> _fields(Map<String, dynamic> args) {
     final out = <String, String>{};
@@ -61,7 +67,8 @@ class Api {
             Uri.parse('$baseUrl$path'),
             headers: {
               'Accept': 'application/json',
-              if (withSession && hasSession) 'Cookie': 'sid=$sid',
+              if (withSession && (token ?? '').isNotEmpty) 'Authorization': 'token $token'
+              else if (withSession && (sid ?? '').isNotEmpty) 'Cookie': 'sid=$sid',
             },
             body: _fields(args),
           )
@@ -127,8 +134,8 @@ class Api {
 
   static String _strip(String s) => s.replaceAll(RegExp(r'<[^>]*>'), '').trim();
 
-  static Future<void> _saveSid(http.Response res, [String? fromBody]) async {
-    String? sid = fromBody;
+  static Future<void> _saveSid(http.Response res) async {
+    String? sid;
     final header = res.headers['set-cookie'];
     if (header != null) {
       final match = RegExp(r'(?:^|[;,]\s*)sid=([^;,\s]+)').firstMatch(header);
@@ -154,18 +161,11 @@ class Api {
     await _saveSid(res);
   }
 
-  /// Fingerprint sign-in: trade the phone's device token for a new session.
-  static Future<void> loginWithDevice(String token) async {
-    final res = await _post('/api/method/${a}login_with_device', {'token': token, 'device': 'mobile'},
-        withSession: false);
-    final msg = _parse(res);
-    await _saveSid(res, msg is Map ? msg['sid']?.toString() : null);
-  }
-
   static Future<void> logout() async {
     try {
-      await _post('/api/method/logout', {});
+      if ((sid ?? '').isNotEmpty) await _post('/api/method/logout', {});
     } catch (_) {}
+    token = null;
     await prefs.remove('sid');
   }
 
