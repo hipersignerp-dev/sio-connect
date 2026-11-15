@@ -11,6 +11,10 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
+    - test_live/**  # live tests against the ERP site; run by hand, not in CI
+
+analyzer:
+  exclude:
     - build/**
     - android/**
     - ios/**
