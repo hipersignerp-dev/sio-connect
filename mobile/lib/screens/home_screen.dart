@@ -5,6 +5,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'more_screen.dart';
 import 'collection_screens.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
@@ -44,6 +45,18 @@ class HomeScreen extends StatelessWidget {
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () => push(context, const NoticesScreen()),
           ),
+          if (s.me['member'] != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 12, left: 2),
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => push(context, const ProfileScreen()),
+                child: ListenableBuilder(
+                  listenable: s,
+                  builder: (context, _) => Avatar(s.firstName, radius: 18, light: true, photo: s.me['photo']),
+                ),
+              ),
+            ),
         ],
       ),
       body: Loader<Map<String, dynamic>>(

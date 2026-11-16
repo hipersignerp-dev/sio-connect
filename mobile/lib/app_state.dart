@@ -18,6 +18,9 @@ class AppState extends ChangeNotifier {
   final changes = ValueNotifier<int>(0);
   void refreshAll() => changes.value++;
 
+  /// Tell listeners [me] changed (e.g. a new photo).
+  void touch() => notifyListeners();
+
   bool can(String capability) => (me['capabilities'] as Map?)?[capability] == true;
   String get status => (me['status'] ?? '').toString();
   bool get pending => status == 'Pending Approval';

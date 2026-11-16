@@ -198,7 +198,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                         final id = r['member'].toString();
                         final on = _present.contains(id);
                         return ListTile(
-                          leading: Avatar(r['full_name'].toString(), radius: 18, light: true),
+                          leading: Avatar(r['full_name'].toString(), radius: 18, light: true, photo: r['photo']),
                           title: Text(r['full_name'].toString()),
                           subtitle: (r['rsvp'] ?? '').toString().isEmpty ? null : Text('RSVP: ${r['rsvp']}'),
                           trailing: FilledButton(

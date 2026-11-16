@@ -13,7 +13,7 @@ member = None
 if user != "Guest":
     member = frappe.db.get_value(
         "SIO Member", {"user": user},
-        ["name", "full_name", "mobile", "email", "member_role", "status", "unit", "campus", "course",
+        ["name", "full_name", "photo", "mobile", "email", "member_role", "status", "unit", "campus", "course",
          "year_of_study", "home_town", "joined_on"],
         as_dict=True)
 
@@ -71,6 +71,7 @@ me = {
     "user": user,
     "full_name": member.full_name if member else frappe.get_fullname(user),
     "member": member.name if member else None,
+    "photo": member.get("photo") if member else None,
     "member_role": role_label,
     "status": status,
     "unit": unit,

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import '../photo.dart';
 import '../widgets.dart';
 import 'collection_screens.dart';
 
@@ -548,6 +549,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   final _books = TextEditingController();
   final _note = TextEditingController();
   bool _mulakath = false;
+  String? _newPhoto; // picked before the student is saved
   String _year = '';
   String _role = 'Associate';
   String _status = 'Active';
@@ -588,7 +590,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   Future<void> _save() async {
     setState(() => _busy = true);
     final ok = await run(context, () async {
-      await Api.call('${Api.m}save_member', {
+      final r = await Api.call('${Api.m}save_member', {
         'name': _m?['name'],
         'full_name': _name.text.trim(),
         'mobile': _mobile.text.trim(),
@@ -606,6 +608,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           'membership_note': _note.text.trim(),
         },
       });
+      if (_m == null && _newPhoto != null) {
+        await Api.call('${Api.m}set_member_photo', {'member': (r as Map)['name'], 'photo_data': _newPhoto});
+      }
     }, done: _m == null ? '${_name.text.trim()} added.' : 'Saved.');
     if (!mounted) return;
     setState(() => _busy = false);
@@ -626,6 +631,17 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             padding: EdgeInsets.only(bottom: 12),
             child: SioBanner(text: 'They can sign up in the app later with this mobile number to get their own login.'),
           ),
+        PhotoPicker(
+          name: _name.text.isEmpty ? '?' : _name.text,
+          photo: _m?['photo']?.toString(),
+          memberId: _m?['name']?.toString(),
+          onChanged: (u) => _m?['photo'] = u,
+          onPicked: (b) => _newPhoto = b,
+        ),
+        const SizedBox(height: 6),
+        Text(_m == null ? 'Add a photo (optional)' : 'Tap to change the photo',
+            textAlign: TextAlign.center, style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+        const SizedBox(height: 14),
         TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Full name')),
         const SizedBox(height: 14),
         TextField(controller: _mobile, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),

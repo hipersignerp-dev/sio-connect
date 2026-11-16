@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import '../photo.dart';
 import '../widgets.dart';
 import 'manage_screens.dart';
 
@@ -75,7 +76,7 @@ class _MembersScreenState extends State<MembersScreen> {
                   for (final m in list)
                     ListTile(
                       onTap: () => _open(context, Map<String, dynamic>.from(m)),
-                      leading: Avatar(m['full_name'].toString()),
+                      leading: Avatar(m['full_name'].toString(), photo: m['photo']),
                       title: Text(m['full_name'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text([m['campus'], m['unit']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -110,7 +111,19 @@ class _MembersScreenState extends State<MembersScreen> {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
-                Avatar(m['full_name'].toString(), radius: 26),
+                if (AppState.i.can('add_members'))
+                  PhotoPicker(
+                    name: m['full_name'].toString(),
+                    photo: m['photo']?.toString(),
+                    memberId: m['name'].toString(),
+                    radius: 30,
+                    onChanged: (u) {
+                      m['photo'] = u;
+                      setState(() => _version++);
+                    },
+                  )
+                else
+                  Avatar(m['full_name'].toString(), radius: 26, photo: m['photo']),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

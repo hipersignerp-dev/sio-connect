@@ -5,6 +5,7 @@ import '../app_state.dart';
 import '../biometric.dart';
 import '../theme.dart';
 import '../update_service.dart';
+import '../photo.dart';
 import '../widgets.dart';
 import 'accounts_screen.dart';
 import 'donors_screen.dart';
@@ -34,7 +35,7 @@ class MoreScreen extends StatelessWidget {
           body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
             SioPanel(
               child: Row(children: [
-                Avatar((me['full_name'] ?? '').toString(), radius: 26),
+                Avatar((me['full_name'] ?? '').toString(), radius: 26, photo: me['photo']),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -235,6 +236,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('My profile')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
+        if (me['member'] != null) ...[
+          PhotoPicker(
+            name: (me['full_name'] ?? '').toString(),
+            photo: me['photo']?.toString(),
+            self: true,
+            onChanged: (u) {
+              AppState.i.me['photo'] = u;
+              AppState.i.refreshAll();
+              AppState.i.touch();
+            },
+          ),
+          const SizedBox(height: 6),
+          const Text('Tap to add or change your photo', textAlign: TextAlign.center, style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+          const SizedBox(height: 14),
+        ],
         SioPanel(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text((me['full_name'] ?? '').toString(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),

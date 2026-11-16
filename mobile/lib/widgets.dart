@@ -151,13 +151,16 @@ class Stat extends StatelessWidget {
 }
 
 class Avatar extends StatelessWidget {
-  const Avatar(this.name, {super.key, this.radius = 20, this.light = false});
+  const Avatar(this.name, {super.key, this.radius = 20, this.light = false, this.photo});
   final String name;
   final double radius;
   final bool light;
+  final dynamic photo; // a /files/... address, when the person has a photo
 
   @override
-  Widget build(BuildContext context) => CircleAvatar(
+  Widget build(BuildContext context) => '${photo ?? ''}'.isNotEmpty
+      ? CircleAvatar(radius: radius, backgroundColor: SioColors.cardHigh, backgroundImage: NetworkImage('${Api.baseUrl}$photo'))
+      : CircleAvatar(
         radius: radius,
         backgroundColor: light ? SioColors.cardHigh : SioColors.blue,
         foregroundColor: light ? SioColors.blue : Colors.white,
