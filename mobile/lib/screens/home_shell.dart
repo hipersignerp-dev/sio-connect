@@ -122,57 +122,114 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-/// The + button: only the actions this person may do.
+typedef _QuickAction = (IconData, Color, String, Widget Function());
+
+/// Each role's most-used actions, in order. The first four show as big buttons; the rest sit under "More".
+const _priorities = <String, List<String>>{
+  'Area Admin': ['funds', 'collect', 'expense', 'update', 'event', 'collection', 'student', 'donor', 'attendance', 'meeting'],
+  'Finance': ['collect', 'funds', 'expense', 'collection', 'donor', 'offer'],
+  'Unit President': ['attendance', 'collect', 'expense', 'student', 'meeting', 'ask_funds', 'event', 'update', 'donor', 'offer'],
+  'Unit Secretary': ['attendance', 'meeting', 'collect', 'student', 'expense', 'update', 'ask_funds', 'event', 'donor', 'offer'],
+  'Member': ['collect', 'offer', 'expense', 'donor'],
+  'Associate': ['offer', 'events'],
+};
+
+/// The + button: the actions that matter most for this person first, the rest one tap away.
 Future<void> showQuickAdd(BuildContext context) async {
   final s = AppState.i;
-  final items = <(IconData, Color, String, String, Widget Function())>[
-    if (s.can('offer'))
-      (Icons.favorite_outline, SioColors.green, 'Give an offer', 'Ramadan collection, Baithul Mal...',
-          () => const NewEntryScreen(forSelf: true)),
-    if (s.can('collect'))
-      (Icons.volunteer_activism, SioColors.red, 'Collection entry', 'Offered, paid now or items, from someone',
-          () => const NewEntryScreen()),
+  final all = <String, _QuickAction>{
+    if (s.can('offer')) 'offer': (Icons.favorite_outline, SioColors.green, 'Give an offer', () => const NewEntryScreen(forSelf: true)),
+    if (s.can('collect')) 'collect': (Icons.volunteer_activism, SioColors.red, 'Collection entry', () => const NewEntryScreen()),
     if (s.can('mark_attendance'))
-      (Icons.how_to_reg, SioColors.blue, 'Mark attendance', 'Pick a meeting and mark who came', () => const MeetingsScreen(standalone: true)),
-    if (s.can('schedule_meeting'))
-      (Icons.edit_calendar, SioColors.ink, 'Schedule meeting', 'Weekly meeting or study circle', () => const ScheduleMeetingScreen()),
-    if (s.can('claim_expense'))
-      (Icons.receipt_long, SioColors.warning, 'Expense claim', 'Bills for events and meetings', () => const NewClaimScreen()),
-    if (s.can('send_notice'))
-      (Icons.campaign, SioColors.purple, 'Send update', 'Tell members in the app', () => const SendNoticeScreen()),
-    if (s.can('manage_events'))
-      (Icons.event_available, SioColors.green, 'New event', 'Programme, camp, iftar...', () => const EventFormScreen()),
-    if (s.can('add_members'))
-      (Icons.person_add_alt_1, SioColors.blue, 'Add student', 'Add a student or member to your unit', () => const MemberFormScreen()),
+      'attendance': (Icons.how_to_reg, SioColors.blue, 'Attendance', () => const MeetingsScreen(standalone: true)),
+    if (s.can('schedule_meeting')) 'meeting': (Icons.edit_calendar, SioColors.ink, 'New meeting', () => const ScheduleMeetingScreen()),
+    if (s.can('claim_expense')) 'expense': (Icons.receipt_long, SioColors.warning, 'Expense claim', () => const NewClaimScreen()),
+    if (s.can('send_notice')) 'update': (Icons.campaign, SioColors.purple, 'Send update', () => const SendNoticeScreen()),
+    if (s.can('manage_events')) 'event': (Icons.event_available, SioColors.green, 'New event', () => const EventFormScreen()),
+    if (s.can('add_members')) 'student': (Icons.person_add_alt_1, SioColors.blue, 'Add student', () => const MemberFormScreen()),
     if (s.can('request_funds') && !s.can('approve_funds'))
-      (Icons.request_quote_outlined, SioColors.blue, 'Ask for programme funds', 'Request money from the area', () => const FundRequestFormScreen()),
-    if (s.can('approve_funds'))
-      (Icons.request_quote_outlined, SioColors.blue, 'Programme fund requests', 'Approve and release money for units', () => const FundRequestsScreen()),
-    if (s.can('view_donors'))
-      (Icons.contacts_outlined, SioColors.green, 'New donor', 'Save someone to ask for support', () => const DonorFormScreen()),
-    if (s.can('manage_collections'))
-      (Icons.savings_outlined, SioColors.red, 'New collection', 'Set a target and split it to units', () => const CollectionFormScreen()),
-    if (!s.can('rsvp'))
-      (Icons.event, SioColors.blue, 'Events', 'See and register for programmes', () => const EventsScreen(standalone: true)),
+      'ask_funds': (Icons.request_quote_outlined, SioColors.blue, 'Ask for funds', () => const FundRequestFormScreen()),
+    if (s.can('approve_funds')) 'funds': (Icons.request_quote_outlined, SioColors.blue, 'Fund requests', () => const FundRequestsScreen()),
+    if (s.can('view_donors')) 'donor': (Icons.contacts_outlined, SioColors.green, 'New donor', () => const DonorFormScreen()),
+    if (s.can('manage_collections')) 'collection': (Icons.savings_outlined, SioColors.red, 'New collection', () => const CollectionFormScreen()),
+    if (!s.can('rsvp')) 'events': (Icons.event, SioColors.blue, 'Events', () => const EventsScreen(standalone: true)),
+  };
+  final order = <String>[
+    for (final k in _priorities[s.role] ?? const <String>[]) if (all.containsKey(k)) k,
+    for (final k in all.keys) if (!(_priorities[s.role] ?? const <String>[]).contains(k)) k,
   ];
+  final top = order.take(4).toList();
+  final rest = order.skip(4).toList();
+
+  void open(BuildContext sheet, String k) {
+    Navigator.pop(sheet);
+    push(context, all[k]!.$4());
+  }
+
   await showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheet) => SafeArea(
-      child: ListView(shrinkWrap: true, children: [
-        for (final it in items)
-          ListTile(
-            leading: CircleAvatar(backgroundColor: it.$2, child: Icon(it.$1, color: Colors.white)),
-            title: Text(it.$3, style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(it.$4),
-            onTap: () {
-              Navigator.pop(sheet);
-              push(context, it.$5());
-            },
-          ),
-        const SizedBox(height: 8),
-      ]),
+      child: _QuickAddSheet(
+        top: [for (final k in top) (all[k]!, () => open(sheet, k))],
+        rest: [for (final k in rest) (all[k]!, () => open(sheet, k))],
+      ),
     ),
   );
+}
+
+class _QuickAddSheet extends StatefulWidget {
+  const _QuickAddSheet({required this.top, required this.rest});
+  final List<(_QuickAction, VoidCallback)> top;
+  final List<(_QuickAction, VoidCallback)> rest;
+
+  @override
+  State<_QuickAddSheet> createState() => _QuickAddSheetState();
+}
+
+class _QuickAddSheetState extends State<_QuickAddSheet> {
+  bool _more = false;
+
+  Widget _big((_QuickAction, VoidCallback) it) => InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: it.$2,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            CircleAvatar(radius: 28, backgroundColor: it.$1.$2, child: Icon(it.$1.$1, color: Colors.white, size: 28)),
+            const SizedBox(height: 8),
+            Text(it.$1.$3, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          ]),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          for (final it in widget.top) Expanded(child: _big(it)),
+          for (var i = widget.top.length; i < 4; i++) const Expanded(child: SizedBox()),
+        ]),
+        if (widget.rest.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: () => setState(() => _more = !_more),
+            icon: Icon(_more ? Icons.expand_less : Icons.expand_more),
+            label: Text(_more ? 'Less' : 'More'),
+          ),
+          if (_more)
+            for (final it in widget.rest)
+              ListTile(
+                dense: true,
+                leading: CircleAvatar(radius: 18, backgroundColor: it.$1.$2, child: Icon(it.$1.$1, color: Colors.white, size: 20)),
+                title: Text(it.$1.$3, style: const TextStyle(fontWeight: FontWeight.w600)),
+                onTap: it.$2,
+              ),
+        ],
+      ]),
+    );
+  }
 }

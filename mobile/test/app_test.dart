@@ -56,10 +56,33 @@ void main() {
     expect(find.text('Collection'), findsWidgets);
     await tester.tap(find.byTooltip('Add new'));
     await tester.pumpAndSettle();
-    expect(find.text('Mark attendance'), findsOneWidget);
-    expect(find.text('Give an offer'), findsOneWidget);
+    // a unit president's four most-used actions are up front...
+    expect(find.text('Attendance'), findsOneWidget);
     expect(find.text('Collection entry'), findsOneWidget);
+    expect(find.text('Expense claim'), findsOneWidget);
+    expect(find.text('New meeting'), findsOneWidget);
+    // ...the rest wait under More
+    expect(find.text('Send update'), findsNothing);
+    await tester.tap(find.widgetWithText(TextButton, 'More'));
+    await tester.pumpAndSettle();
     expect(find.text('Send update'), findsOneWidget);
+    expect(find.text('Give an offer'), findsOneWidget);
+  });
+
+  testWidgets('an associate sees only their own few actions on +', (tester) async {
+    AppState.i.me = {
+      'full_name': 'Sinan Ali',
+      'status': 'Active',
+      'member_role': 'Associate',
+      'capabilities': {'offer': true, 'register_events': true},
+    };
+    await tester.pumpWidget(wrap(const HomeShell()));
+    await tester.tap(find.byTooltip('Add new'));
+    await tester.pumpAndSettle();
+    expect(find.text('Give an offer'), findsOneWidget);
+    expect(find.text('Events'), findsWidgets);
+    expect(find.widgetWithText(TextButton, 'More'), findsNothing);
+    expect(find.text('Collection entry'), findsNothing);
   });
 
   testWidgets('More has Check for updates', (tester) async {
