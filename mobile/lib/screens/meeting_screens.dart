@@ -280,12 +280,31 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
   DateTime _date = DateTime.now();
   TimeOfDay _time = const TimeOfDay(hour: 19, minute: 30);
   bool _busy = false;
+  String? _unit = AppState.i.me['unit']?.toString();
+  List<String> _units = [];
 
   static const types = ['Weekly Meeting', 'Study Circle', 'Executive Meeting', 'Special Meeting'];
+
+  /// Area admins and finance work across units (and may have no unit of their own), so they pick one.
+  bool get _pickUnit => AppState.i.can('all_units') || _unit == null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_pickUnit) {
+      Api.units().then((v) {
+        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
+      }).catchError((_) {});
+    }
+  }
 
   Future<void> _save() async {
     if (_topic.text.trim().isEmpty) {
       toast(context, 'Enter the topic.');
+      return;
+    }
+    if (_unit == null || _unit!.isEmpty) {
+      toast(context, 'Pick the unit this meeting is for.');
       return;
     }
     setState(() => _busy = true);
@@ -293,13 +312,14 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
       context,
       () => Api.call('${Api.m}schedule_meeting', {
         'topic': _topic.text.trim(),
+        'unit': _unit,
         'meeting_type': _type,
         'meeting_date': apiDate(_date),
         'meeting_time': '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}:00',
         'venue': _venue.text.trim(),
         'agenda': _agenda.text.trim(),
       }),
-      done: 'Meeting scheduled. Your unit can see it now.',
+      done: 'Meeting scheduled. $_unit unit can see it now.',
     );
     if (mounted) {
       setState(() => _busy = false);
@@ -312,6 +332,17 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Schedule meeting')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
+        if (_pickUnit) ...[
+          DropdownButtonFormField<String>(
+            initialValue: _units.contains(_unit) ? _unit : null,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Unit', prefixIcon: Icon(Icons.apartment_outlined)),
+            hint: Text(_units.isEmpty ? 'Loading units…' : 'Pick a unit'),
+            items: [for (final u in _units) DropdownMenuItem(value: u, child: Text(u))],
+            onChanged: (v) => setState(() => _unit = v),
+          ),
+          const SizedBox(height: 14),
+        ],
         TextField(controller: _topic, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'Topic')),
         const SizedBox(height: 14),
         DropdownButtonFormField<String>(
