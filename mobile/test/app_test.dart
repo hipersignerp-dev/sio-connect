@@ -69,7 +69,7 @@ void main() {
     expect(find.text('Give an offer'), findsOneWidget);
   });
 
-  testWidgets('an associate sees only their own few actions on +', (tester) async {
+  testWidgets('an associate\'s + opens Give an offer straight away', (tester) async {
     AppState.i.me = {
       'full_name': 'Sinan Ali',
       'status': 'Active',
@@ -78,10 +78,9 @@ void main() {
     };
     await tester.pumpWidget(wrap(const HomeShell()));
     await tester.tap(find.byTooltip('Add new'));
-    await tester.pumpAndSettle();
-    expect(find.text('Give an offer'), findsOneWidget);
-    expect(find.text('Events'), findsWidgets);
-    expect(find.widgetWithText(TextButton, 'More'), findsNothing);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Give an offer'), findsWidgets);
     expect(find.text('Collection entry'), findsNothing);
   });
 

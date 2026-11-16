@@ -52,6 +52,11 @@ if caps["approve_expense"]:
             """select count(*), coalesce(sum(amount), 0) from `tabSIO Expense Claim`
             where status = 'Pending' and unit in %(u)s""", {"u": ctx["approver_units"]})[0]
     out["pending_expenses"] = {"count": frappe.utils.cint(pend[0]), "amount": frappe.utils.flt(pend[1])}
+if caps["all_units"]:
+    pub = frappe.db.get_value("SIO Settings", "SIO Settings", "public_collection")
+    if pub:
+        out["public_to_confirm"] = frappe.db.count("SIO Collection Entry",
+                                                   {"collection": pub, "status": "Offered", "payment_ref": ["is", "set"]})
 if caps["approve_funds"]:
     out["pending_funds"] = frappe.db.count("SIO Fund Request", {"status": "Pending"})
 frappe.response["message"] = out

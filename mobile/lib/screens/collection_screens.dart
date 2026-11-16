@@ -156,17 +156,24 @@ class _CollectionScreenState extends State<CollectionScreen> {
                 ],
               ]),
             ),
+            if (sel['my_pledge'] != null) ...[
+              const SizedBox(height: 12),
+              _PledgeCard(
+                p: Map<String, dynamic>.from(sel['my_pledge'] as Map),
+                change: () => push(context, NewEntryScreen(forSelf: true, collection: sel['name'].toString(), collections: collections)),
+              ),
+            ],
             const SizedBox(height: 12),
             Row(children: [
-              if (s.can('offer'))
+              if (s.can('offer') && sel['my_pledge'] == null)
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => push(context, NewEntryScreen(forSelf: true, collection: sel['name'].toString(), collections: collections)),
                     icon: const Icon(Icons.favorite_outline),
-                    label: const Text('Give an offer'),
+                    label: Text(sel['collection_type'] == 'Baithul Mal' ? 'Set my Baithul Mal' : 'Give an offer'),
                   ),
                 ),
-              if (s.can('offer') && s.can('collect')) const SizedBox(width: 12),
+              if (s.can('offer') && sel['my_pledge'] == null && s.can('collect')) const SizedBox(width: 12),
               if (s.can('collect'))
                 Expanded(
                   child: FilledButton.icon(
@@ -238,6 +245,7 @@ class _EntryRow extends StatelessWidget {
                 : inr(e['offered_amount']);
     final sub = [
       if (AppState.i.can('all_units')) e['unit'],
+      if ((e['payment_ref'] ?? '').toString().isNotEmpty && e['status'] == 'Offered') 'UPI ref ${e['payment_ref']}: check & confirm',
       e['contributor_place'] ?? e['contributor_type'],
       if (type == 'Items') e['items_given'] else if (type == 'Payment') 'Paid now' else 'Offer'
     ]
@@ -328,6 +336,28 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   List<String> _units = [];
   List<Map<String, dynamic>> _donors = [];
   bool _hooked = false;
+  // Baithul Mal monthly pledge
+  String _basis = 'Pocket money (10%)';
+  final _base = TextEditingController();
+  final _fixed = TextEditingController();
+
+  Map<String, dynamic>? get _sel {
+    for (final c in _collections) {
+      if (c['name'] == _collection) return Map<String, dynamic>.from(c as Map);
+    }
+    return null;
+  }
+
+  bool get _pledge => widget.forSelf && _sel?['collection_type'] == 'Baithul Mal';
+
+  num get _monthly {
+    final base = num.tryParse(_base.text.trim()) ?? 0;
+    return switch (_basis) {
+      'Pocket money (10%)' => (base * 0.10).round(),
+      'Salary (1%)' => (base * 0.01).round(),
+      _ => (num.tryParse(_fixed.text.trim()) ?? 0).round(),
+    };
+  }
   final _offered = TextEditingController();
   final _paid = TextEditingController();
   final _value = TextEditingController();
@@ -379,6 +409,10 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
       toast(context, 'No collection is open right now.');
       return;
     }
+    if (_pledge && _monthly <= 0) {
+      toast(context, _basis == 'Fixed amount' ? 'Enter the monthly amount.' : 'Enter your monthly ${_basis.startsWith('Salary') ? 'salary' : 'pocket money'}.');
+      return;
+    }
     if (!widget.forSelf && AppState.i.can('all_units') && _unit == null) {
       toast(context, 'Pick the unit this collection is for.');
       return;
@@ -402,8 +436,17 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
         'reference_no': _ref.text.trim(),
         'items_given': _items.text.trim(),
         'items_value': _value.text,
+        if (_pledge) ...{
+          'pledge_basis': _basis,
+          'pledge_base': _base.text.trim(),
+          'monthly_amount': _fixed.text.trim(),
+        },
       }),
-      done: self ? 'Jazakallah khair! Your offer is saved.' : 'Saved.',
+      done: _pledge
+          ? 'Jazakallah khair! Your Baithul Mal is ${inr(_monthly)} a month.'
+          : self
+              ? 'Jazakallah khair! Your offer is saved.'
+              : 'Saved.',
     );
     if (mounted) {
       setState(() => _busy = false);
@@ -416,7 +459,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
     final self = widget.forSelf;
     final kind = self ? 'Offer' : _kind;
     return Scaffold(
-      appBar: AppBar(title: Text(self ? 'Give an offer' : 'New collection entry')),
+      appBar: AppBar(title: Text(_pledge ? 'Baithul Mal' : self ? 'Give an offer' : 'New collection entry')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         if (_collections.length > 1 || _collection == null) ...[
           DropdownButtonFormField<String>(
@@ -437,12 +480,49 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
             onChanged: (v) => setState(() => _collection = v),
           ),
           const SizedBox(height: 14),
-        ] else
+        ] else if (AppState.i.role != 'Associate')
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
             child: Text(_collection!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink)),
           ),
-        if (self)
+        if (_pledge) ...[
+          const SioBanner(text: 'Baithul Mal is given every month: 10% of your pocket money, 1% of your salary, or a fixed amount.'),
+          const SizedBox(height: 14),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'Pocket money (10%)', label: Text('Pocket money')),
+              ButtonSegment(value: 'Salary (1%)', label: Text('Salary')),
+              ButtonSegment(value: 'Fixed amount', label: Text('Fixed')),
+            ],
+            selected: {_basis},
+            onSelectionChanged: (v) => setState(() => _basis = v.first),
+          ),
+          const SizedBox(height: 14),
+          if (_basis == 'Fixed amount')
+            TextField(
+              controller: _fixed,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'Amount every month', prefixText: '₹ '),
+            )
+          else
+            TextField(
+              controller: _base,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: _basis.startsWith('Salary') ? 'Your monthly salary' : 'Your monthly pocket money',
+                prefixText: '₹ ',
+              ),
+            ),
+          const SizedBox(height: 16),
+          SioPanel(
+            child: Row(children: [
+              const Expanded(child: Text('You give every month', style: TextStyle(fontWeight: FontWeight.w600))),
+              Text(inr(_monthly), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.green)),
+            ]),
+          ),
+        ] else if (self)
           SioBanner(text: 'How much would you like to give, ${AppState.i.firstName}? Pay it to your unit collector any time; they mark it as received.')
         else ...[
           SegmentedButton<String>(
@@ -529,7 +609,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
           TextField(controller: _place, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Place / address')),
         ],
         const SizedBox(height: 14),
-        if (kind == 'Offer')
+        if (kind == 'Offer' && !_pledge)
           TextField(controller: _offered, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount offered', prefixText: '₹ ')),
         if (kind == 'Items') ...[
           TextField(controller: _items, maxLines: 2, decoration: const InputDecoration(labelText: 'Items given (e.g. 40 food kits)')),
@@ -554,7 +634,9 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
           TextField(controller: _ref, decoration: const InputDecoration(labelText: 'Reference (UPI ID, cheque no.)')),
         ],
         const SizedBox(height: 20),
-        FilledButton(onPressed: _busy ? null : _save, child: Text(self ? 'Save my offer' : 'Save')),
+        FilledButton(
+            onPressed: _busy ? null : _save,
+            child: Text(_pledge ? 'Save my Baithul Mal' : self ? 'Save my offer' : 'Save')),
       ]),
     );
   }
@@ -589,6 +671,41 @@ class UnitProgressRow extends StatelessWidget {
             if (target > 0) '${numOf(u['pct']).toInt()}%',
             if (target > 0) left > 0 ? '${inr(left)} still to target' : 'Target reached',
             if (numOf(u['balance']) > 0) '${inr(u['balance'])} offered, not yet paid',
+          ].join(' · '),
+          style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+        ),
+      ]),
+    );
+  }
+}
+
+
+/// The signed-in person's monthly Baithul Mal: amount, paid so far and what is due now.
+class _PledgeCard extends StatelessWidget {
+  const _PledgeCard({required this.p, required this.change});
+  final Map<String, dynamic> p;
+  final VoidCallback change;
+
+  @override
+  Widget build(BuildContext context) {
+    final due = numOf(p['due_now']);
+    return SioPanel(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Expanded(child: Text('My Baithul Mal', style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink))),
+          TextButton(onPressed: change, child: const Text('Change')),
+        ]),
+        Row(children: [
+          Stat(inr(p['monthly']), 'Every month', color: SioColors.ink),
+          Stat(inr(p['paid']), 'Paid', color: SioColors.green),
+          Stat(inr(due), 'Due now', color: due > 0 ? SioColors.danger : SioColors.green),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          [
+            '${p['basis']}${numOf(p['base']) > 0 ? ' of ${inr(p['base'])}' : ''}',
+            'month ${p['months_so_far']} of ${p['months']}',
+            if (due > 0) 'pay your unit collector' else 'all paid up, Jazakallah khair',
           ].join(' · '),
           style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
         ),

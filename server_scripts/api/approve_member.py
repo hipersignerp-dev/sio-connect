@@ -7,7 +7,9 @@ if args.get("action") == "reject":
     doc.status = "Rejected"
 else:
     role = args.get("member_role") or "Associate"
-    if not ctx["is_admin"] and role not in ("Associate", "Member"):
+    # unit admins make Associates and Workers; becoming an official Member (after Mulakath, books...) and
+    # office roles are given by area admins
+    if not ctx["is_admin"] and role not in ("Associate", "Worker"):
         frappe.throw(_("Only area admins can give that role."), frappe.PermissionError)
     doc.status = "Active"
     doc.member_role = role

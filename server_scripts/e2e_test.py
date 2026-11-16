@@ -112,9 +112,10 @@ fer_before, _ = unit_row(fin, "Feroke")
 
 stamp = str(int(time.time()))
 assoc_email = f"sio.test.a{stamp}@example.com"
+assoc_mobile = "9" + "".join(random.choice("0123456789") for _ in range(9))
 code, body = Client("Guest").post(
     "sio_connect.api.auth.register", full_name=f"Test Associate {stamp[-4:]}",
-    mobile="9" + "".join(random.choice("0123456789") for _ in range(9)), email=assoc_email, password=PASSWORD,
+    mobile=assoc_mobile, email=assoc_email, password=PASSWORD,
     unit="Feroke", campus="Farook College", course="BSc Physics", year_of_study="2nd Year")
 assert code == 200, (code, body)
 assoc_member = body["message"]["member"]
@@ -156,7 +157,10 @@ check("unit president cannot send to everyone", r[0] == 403, r)
 print("Associate before approval")
 c = msg(assoc.m("collection"))
 names = [x["name"] for x in (c or {}).get("collections", [])]
-check("associate sees both open collections", RAMADAN in names and BAITHUL_MAL in names, names)
+check("associate sees Ramadan but not Baithul Mal (workers and above)", RAMADAN in names and BAITHUL_MAL not in names,
+      names)
+r = assoc.m("add_collection_entry", collection=BAITHUL_MAL, entry_type="Offer", for_self=1, offered_amount=100)
+check("associate can't give to Baithul Mal", r[0] != 200, r)
 r = assoc.m("add_collection_entry", collection=RAMADAN, entry_type="Offer", for_self=1, offered_amount=5000)
 check("associate gives own offer", r[0] == 200 and msg(r)["status"] == "Offered", r)
 r = assoc.m("register_event", event="EVT-00001")
@@ -167,11 +171,13 @@ r = pres.m("members", status="Pending Approval")
 pending = [x["name"] for x in (msg(r) or [])]
 check("president sees the pending associate", assoc_member in pending, r)
 r = pres.m("approve_member", name=assoc_member, action="approve", member_role="Member")
-check("president approves associate as Member", r[0] == 200 and msg(r)["status"] == "Active", r)
-r = pres.m("approve_member", name=assoc_member, action="approve", member_role="District Admin")
-check("president cannot make someone District Admin", r[0] == 403, r)
+check("president can't make an official Member (area admins do, after Mulakath etc.)", r[0] == 403, r)
+r = pres.m("approve_member", name=assoc_member, action="approve", member_role="Worker")
+check("president approves associate as Worker", r[0] == 200 and msg(r)["status"] == "Active", r)
+r = pres.m("approve_member", name=assoc_member, action="approve", member_role="Area Admin")
+check("president cannot make someone Area Admin", r[0] == 403, r)
 a_me = msg(assoc.m("me"))
-check("approved member now can RSVP, collect and claim",
+check("a worker can RSVP, collect and claim like a member",
       a_me["status"] == "Active" and a_me["capabilities"]["rsvp"] and a_me["capabilities"]["collect"]
       and a_me["capabilities"]["claim_expense"], a_me)
 
@@ -444,6 +450,53 @@ check("Feroke's accounts: 4,000 in from the area, 1,500 out",
       fer1["in"] - fer0["in"] == 4000 and fer1["out"] - fer0["out"] == 1500, (fer0, fer1))
 r = adm.m("save_unit", name="Feroke", active=1, expense_approver="")
 check("approver removed again", r[0] == 200 and not (msg(appr.m("me")) or {}).get("capabilities", {}).get("approve_expense"), r)
+
+print("Workers, membership path, Baithul Mal pledge")
+names = [x["name"] for x in (msg(assoc.m("collection")) or {}).get("collections", [])]
+check("a worker sees Baithul Mal", BAITHUL_MAL in names, names)
+r = assoc.m("add_collection_entry", collection=BAITHUL_MAL, entry_type="Offer", for_self=1,
+            pledge_basis="Pocket money (10%)", pledge_base=2000)
+check("worker pledges 10% of 2,000 pocket money = 200 a month", r[0] == 200 and msg(r)["monthly"] == 200, r)
+c = msg(assoc.m("collection", collection=BAITHUL_MAL)) or {}
+mp = [x for x in c.get("collections", []) if x["name"] == BAITHUL_MAL][0].get("my_pledge") or {}
+check("their Baithul Mal shows 200 a month, 200 due now", mp.get("monthly") == 200 and mp.get("due_now") == 200, mp)
+r = assoc.m("add_collection_entry", collection=BAITHUL_MAL, entry_type="Offer", for_self=1,
+            pledge_basis="Salary (1%)", pledge_base=30000)
+c = msg(assoc.m("collection", collection=BAITHUL_MAL)) or {}
+mp = [x for x in c.get("collections", []) if x["name"] == BAITHUL_MAL][0].get("my_pledge") or {}
+check("changing to 1% of 30,000 salary updates the same pledge to 300",
+      msg(r).get("updated") == 1 and mp.get("monthly") == 300, (msg(r), mp))
+r = pres.m("save_member", name=assoc_member, full_name="Test Associate", mobile=assoc_mobile, mulakath_done=1,
+           books_read="Book one\nBook two")
+row = [x for x in (msg(pres.m("members", q=assoc_mobile)) or []) if x["name"] == assoc_member]
+check("president records Mulakath and books read", row and row[0]["mulakath_done"] == 1 and "Book two" in row[0]["books_read"],
+      row)
+r = adm0.m("approve_member", name=assoc_member, action="approve", member_role="Member")
+check("area admin makes them an official Member", r[0] == 200 and msg(r)["member_role"] == "Member", r)
+
+print("Public visitors")
+guest = Client("Guest")
+code, body = guest.post("sio_connect.api.public.info")
+check("anyone can see SIO's upcoming public programmes", code == 200 and "events" in body["message"], body)
+if not body["message"]["can_donate"]:
+    print("  (donation checks skipped: set a UPI ID in SIO Settings to run them)")
+else:
+    code, body = guest.post("sio_connect.api.public.donate", full_name="Well Wisher", mobile="9" + stamp[-9:],
+                            amount=501, place="Ottapalam")
+    ref = (body.get("message") or {}).get("ref")
+    check("a visitor donates 501 and gets the UPI details", code == 200 and body["message"]["upi_id"]
+          and body["message"]["amount"] == 501, body)
+    code, body = guest.post("sio_connect.api.public.donation_paid", ref=ref, mobile="9999999999", payment_ref="X1")
+    check("someone else's mobile can't touch that donation", code != 200, body)
+    code, body = guest.post("sio_connect.api.public.donation_paid", ref=ref, mobile="9" + stamp[-9:],
+                            payment_ref="UTR123")
+    check("the visitor adds their UPI reference", code == 200, body)
+    h = msg(fin.m("home")) or {}
+    check("finance sees public donations to confirm", (h.get("public_to_confirm") or 0) >= 1, h.get("public_to_confirm"))
+    r = fin.m("add_payment", entry=ref, amount=501, mode="UPI", reference_no="UTR123")
+    check("finance confirms it", r[0] == 200 and msg(r)["status"] == "Paid", r)
+names = [x["name"] for x in (msg(pres.m("collection")) or {}).get("collections", [])]
+check("the public fund isn't listed for units", "Public Donations" not in names, names)
 
 print("Desk / REST access is locked to the right people")
 code, body = pres.post("frappe.client.rename_doc", doctype="SIO Unit", old_name="Kalamassery", new_name="X")

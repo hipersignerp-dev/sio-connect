@@ -80,7 +80,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         backgroundColor: SioColors.red,
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
-        onPressed: () => showQuickAdd(context),
+        // associates only give offers, so + opens that straight away
+        onPressed: () => s.role == 'Associate' || (s.can('offer') && !s.can('collect') && !s.can('mark_attendance'))
+            ? push(context, const NewEntryScreen(forSelf: true))
+            : showQuickAdd(context),
         child: const Icon(Icons.add, size: 30),
       ),
       bottomNavigationBar: BottomAppBar(
@@ -130,8 +133,8 @@ const _priorities = <String, List<String>>{
   'Finance': ['collect', 'funds', 'expense', 'collection', 'donor', 'offer'],
   'Unit President': ['attendance', 'collect', 'expense', 'student', 'meeting', 'ask_funds', 'event', 'update', 'donor', 'offer'],
   'Unit Secretary': ['attendance', 'meeting', 'collect', 'student', 'expense', 'update', 'ask_funds', 'event', 'donor', 'offer'],
+  'Worker': ['collect', 'offer', 'expense', 'donor'],
   'Member': ['collect', 'offer', 'expense', 'donor'],
-  'Associate': ['offer', 'events'],
 };
 
 /// The + button: the actions that matter most for this person first, the rest one tap away.
@@ -152,7 +155,6 @@ Future<void> showQuickAdd(BuildContext context) async {
     if (s.can('approve_funds')) 'funds': (Icons.request_quote_outlined, SioColors.blue, 'Fund requests', () => const FundRequestsScreen()),
     if (s.can('view_donors')) 'donor': (Icons.contacts_outlined, SioColors.green, 'New donor', () => const DonorFormScreen()),
     if (s.can('manage_collections')) 'collection': (Icons.savings_outlined, SioColors.red, 'New collection', () => const CollectionFormScreen()),
-    if (!s.can('rsvp')) 'events': (Icons.event, SioColors.blue, 'Events', () => const EventsScreen(standalone: true)),
   };
   final order = <String>[
     for (final k in _priorities[s.role] ?? const <String>[]) if (all.containsKey(k)) k,

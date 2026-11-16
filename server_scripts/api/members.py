@@ -12,7 +12,8 @@ if q:
     or_filters = {"full_name": ["like", like], "mobile": ["like", like], "name": ["like", like]}
 rows = frappe.get_all("SIO Member", filters=filters, or_filters=or_filters,
                       fields=["name", "full_name", "mobile", "email", "member_role", "status", "unit", "campus",
-                              "course", "year_of_study", "joined_on", "creation"],
+                              "course", "year_of_study", "joined_on", "creation", "home_town", "mulakath_done", "mulakath_on",
+                              "books_read", "membership_note"],
                       order_by="full_name asc", limit=300)
 pending = [r for r in rows if r.status == "Pending Approval"]
 others = [r for r in rows if r.status != "Pending Approval"]

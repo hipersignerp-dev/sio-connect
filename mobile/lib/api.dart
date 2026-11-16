@@ -175,6 +175,12 @@ class Api {
     _parse(res);
   }
 
+  /// Calls that work without signing in (public visitors).
+  static Future<dynamic> guest(String method, [Map<String, dynamic> args = const {}]) async {
+    final res = await _post('/api/method/sio_connect.api.public.$method', args, withSession: false);
+    return _parse(res);
+  }
+
   static Future<List<dynamic>> units() async {
     final res = await _post('/api/method/${a}units', {}, withSession: false);
     return (_parse(res) as List?) ?? [];

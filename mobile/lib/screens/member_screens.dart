@@ -94,8 +94,12 @@ class _MembersScreenState extends State<MembersScreen> {
 
   Future<void> _open(BuildContext context, Map<String, dynamic> m) async {
     final admin = AppState.i.role == 'Area Admin';
-    final roles = admin ? const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin'] : const ['Associate', 'Member'];
+    final roles = admin
+        ? const ['Associate', 'Worker', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin']
+        : <String>{'Associate', 'Worker', '${m['member_role'] ?? 'Associate'}'}.toList();
     var role = roles.contains(m['member_role']) ? m['member_role'].toString() : 'Associate';
+    final onPath = m['status'] == 'Active' && (m['member_role'] == 'Worker' || m['member_role'] == 'Associate');
+    final books = '${m['books_read'] ?? ''}'.split('\n').where((b) => b.trim().isNotEmpty).toList();
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -132,6 +136,39 @@ class _MembersScreenState extends State<MembersScreen> {
                       Expanded(child: Text(line[1].toString())),
                     ]),
                   ),
+              if (onPath) ...[
+                const SizedBox(height: 12),
+                SioPanel(
+                  color: SioColors.cardHigh,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    const Text('Path to membership', style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink)),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Icon(m['mulakath_done'] == 1 ? Icons.check_circle : Icons.radio_button_unchecked,
+                          size: 20, color: m['mulakath_done'] == 1 ? SioColors.green : SioColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(m['mulakath_done'] == 1 ? 'Mulakath done ${fmtDate(m['mulakath_on'])}' : 'Mulakath not done yet')),
+                    ]),
+                    const SizedBox(height: 6),
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(books.isNotEmpty ? Icons.menu_book : Icons.menu_book_outlined,
+                          size: 20, color: books.isNotEmpty ? SioColors.green : SioColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(books.isEmpty ? 'No books recorded yet' : '${books.length} books: ${books.join(', ')}')),
+                    ]),
+                    if ('${m['membership_note'] ?? ''}'.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text('${m['membership_note']}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+                    ],
+                    if (!admin && m['member_role'] == 'Worker')
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text('When it is complete, an area admin makes them an official Member.',
+                            style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+                      ),
+                  ]),
+                ),
+              ],
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 initialValue: role,

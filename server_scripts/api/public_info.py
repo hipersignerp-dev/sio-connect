@@ -1,0 +1,29 @@
+# For visitors (no login): about SIO, upcoming public programmes, and whether online donation is set up.
+st = frappe.db.get_value("SIO Settings", "SIO Settings",
+                         ["public_intro", "upi_id", "upi_payee_name", "min_donation", "public_collection"], as_dict=True) or {}
+events = frappe.db.sql(
+    """select name, title, event_type, starts_on, ends_on, venue, unit, description
+    from `tabSIO Event`
+    where open_to = 'Everyone' and status in ('Planning', 'Registrations Open', 'Registrations Closed')
+        and starts_on >= %s
+    order by starts_on asc limit 20""", frappe.utils.nowdate(), as_dict=True)
+def plain(t):
+    out = []
+    inside = False
+    for ch in t or "":
+        if ch == "<":
+            inside = True
+        elif ch == ">":
+            inside = False
+        elif not inside:
+            out.append(ch)
+    return "".join(out).strip()
+
+for e in events:
+    e["description"] = plain(e.description)[:600]
+frappe.response["message"] = {
+    "intro": st.get("public_intro"),
+    "events": events,
+    "can_donate": bool(st.get("upi_id") and st.get("public_collection")),
+    "min_donation": frappe.utils.flt(st.get("min_donation")) or 10,
+}

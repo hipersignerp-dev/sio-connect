@@ -545,6 +545,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   final _campus = TextEditingController();
   final _course = TextEditingController();
   final _town = TextEditingController();
+  final _books = TextEditingController();
+  final _note = TextEditingController();
+  bool _mulakath = false;
   String _year = '';
   String _role = 'Associate';
   String _status = 'Active';
@@ -568,6 +571,9 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       _year = years.contains(m['year_of_study']) ? '${m['year_of_study']}' : '';
       _role = '${m['member_role'] ?? 'Associate'}';
       _status = m['status'] == 'Inactive' ? 'Inactive' : 'Active';
+      _mulakath = m['mulakath_done'] == 1;
+      _books.text = '${m['books_read'] ?? ''}';
+      _note.text = '${m['membership_note'] ?? ''}';
       _unit = m['unit']?.toString();
     } else {
       _unit = AppState.i.me['unit']?.toString();
@@ -594,6 +600,11 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         'course': _course.text.trim(),
         'year_of_study': _year,
         'home_town': _town.text.trim(),
+        if (_m != null) ...{
+          'mulakath_done': _mulakath ? 1 : 0,
+          'books_read': _books.text.trim(),
+          'membership_note': _note.text.trim(),
+        },
       });
     }, done: _m == null ? '${_name.text.trim()} added.' : 'Saved.');
     if (!mounted) return;
@@ -605,8 +616,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   Widget build(BuildContext context) {
     final admin = AppState.i.role == 'Area Admin';
     final roles = admin
-        ? const ['Associate', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin']
-        : <String>{'Associate', 'Member', _role}.toList();
+        ? const ['Associate', 'Worker', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin']
+        : <String>{'Associate', 'Worker', _role}.toList();
     return Scaffold(
       appBar: AppBar(title: Text(_m == null ? 'Add student' : 'Edit details')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
@@ -660,6 +671,29 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         ),
         const SizedBox(height: 14),
         TextField(controller: _town, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Home town')),
+        if (_m != null && (_role == 'Associate' || _role == 'Worker' || _mulakath || _books.text.isNotEmpty)) ...[
+          const SectionTitle('Path to membership'),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Mulakath done'),
+            value: _mulakath,
+            onChanged: (v) => setState(() => _mulakath = v),
+          ),
+          TextField(
+            controller: _books,
+            maxLines: 4,
+            minLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Books read', helperText: 'One book per line'),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _note,
+            maxLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Note (optional)'),
+          ),
+        ],
         const SizedBox(height: 20),
         FilledButton(onPressed: _busy ? null : _save, child: Text(_m == null ? 'Add student' : 'Save')),
       ]),

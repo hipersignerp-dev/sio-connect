@@ -1,6 +1,7 @@
 # SIO Member, After Save: give the linked User exactly the SIO roles their role and status call for.
 role_map = {
     "Associate": ["SIO Associate"],
+    "Worker": ["SIO Member"],
     "Member": ["SIO Member"],
     "Unit Secretary": ["SIO Member", "SIO Unit Admin"],
     "Unit President": ["SIO Member", "SIO Unit Admin"],

@@ -20,7 +20,7 @@ unit = args.get("unit") or doc.unit or ctx["unit"]
 if ctx["scope"]:
     unit = ctx["scope"]
 role = args.get("member_role") or doc.member_role or "Associate"
-if not ctx["is_admin"] and role != doc.member_role and role not in ("Associate", "Member"):
+if not ctx["is_admin"] and role != doc.member_role and role not in ("Associate", "Worker"):
     frappe.throw(_("Only area admins can give that role."), frappe.PermissionError)
 doc.full_name = full_name
 doc.mobile = mobile
@@ -32,6 +32,14 @@ if args.get("status") in ("Active", "Inactive"):
 for f in ("campus", "course", "home_town"):
     doc.set(f, args.get(f) or None)
 doc.year_of_study = args.get("year_of_study") or ""
+# path to membership
+if args.get("mulakath_done") is not None:
+    doc.mulakath_done = frappe.utils.cint(args.get("mulakath_done"))
+    doc.mulakath_on = (args.get("mulakath_on") or doc.mulakath_on or frappe.utils.nowdate()) if doc.mulakath_done else None
+if args.get("books_read") is not None:
+    doc.books_read = (args.get("books_read") or "").strip() or None
+if args.get("membership_note") is not None:
+    doc.membership_note = (args.get("membership_note") or "").strip() or None
 if name:
     doc.save(ignore_permissions=True)
 else:
