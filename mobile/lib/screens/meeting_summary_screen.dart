@@ -28,6 +28,7 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
   bool _ready = false;
   String _partial = '';
   String _base = ''; // notes text before the words being heard right now
+  DateTime _lastAt = DateTime.now(); // when the last words came in
   double _level = 0;
   bool _aiBusy = false;
   bool _saving = false;
@@ -44,7 +45,11 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
 
   Future<void> _toggleMic() async {
     if (_wantListen) {
-      setState(() => _wantListen = false);
+      setState(() {
+        _wantListen = false;
+        _base = _notes.text.trimRight();
+        _partial = '';
+      });
       await _speech.stop();
       return;
     }
@@ -80,16 +85,43 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
     );
   }
 
-  // Words appear in the notes as they are spoken; each finished sentence is kept and the next one follows it.
+  // Words appear in the notes as they are spoken. Android reports only the sentence being heard now, and after
+  // a pause it starts a new sentence from empty; when that happens the previous sentence is kept first.
   void _onResult(SpeechRecognitionResult r) {
     if (!mounted) return;
     final t = r.recognizedWords.trim();
+    final now = DateTime.now();
+    final gap = now.difference(_lastAt);
+    _lastAt = now;
+    if (_partial.isNotEmpty && t.isNotEmpty && _isNewSentence(_partial, t, gap)) {
+      _base = _join(_base, _partial);
+    }
     setState(() {
-      final text = t.isEmpty ? _base : (_base.isEmpty ? t : '$_base $t');
+      final text = _join(_base, t);
       _notes.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
-      _partial = r.finalResult ? '' : t;
-      if (r.finalResult) _base = text;
+      if (r.finalResult) {
+        _base = text;
+        _partial = '';
+      } else {
+        _partial = t;
+      }
     });
+  }
+
+  static String _join(String a, String b) => a.isEmpty ? b : (b.isEmpty ? a : '$a $b');
+
+  /// True when [now] is a fresh sentence rather than a longer or corrected version of [before].
+  static bool _isNewSentence(String before, String now, Duration gap) {
+    final b = before.toLowerCase();
+    final n = now.toLowerCase();
+    final bw = b.split(RegExp(r'\s+'));
+    final nw = n.split(RegExp(r'\s+'));
+    // after a pause, a much shorter text is a new sentence even if it starts with the same word
+    if (gap > const Duration(milliseconds: 1200) && nw.length + 2 <= bw.length) return true;
+    if (n.startsWith(b) || b.startsWith(n)) return false;
+    // the recogniser may revise the last words, but a continuing sentence keeps its first word
+    if (bw.isNotEmpty && nw.isNotEmpty && bw.first == nw.first && nw.length >= bw.length - 2) return false;
+    return true;
   }
 
   // Android stops listening after a pause; keep going until the person taps stop.
