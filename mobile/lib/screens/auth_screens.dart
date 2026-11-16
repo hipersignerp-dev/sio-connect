@@ -5,7 +5,6 @@ import '../app_state.dart';
 import '../biometric.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import 'public_screens.dart';
 
 const _logo = Image(image: AssetImage('assets/sio-logo.png'), width: 96, height: 96);
 
@@ -38,13 +37,7 @@ class WelcomeScreen extends StatelessWidget {
               onPressed: () => push(context, const RegisterScreen()),
               child: const Text('New here? Register as an associate'),
             ),
-            const SizedBox(height: 4),
-            TextButton.icon(
-              onPressed: () => push(context, const PublicScreen()),
-              icon: const Icon(Icons.explore_outlined),
-              label: const Text('Know about SIO · upcoming events · donate'),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             const Text('Powered by Hipersign ERP',
                 textAlign: TextAlign.center, style: TextStyle(color: SioColors.textSecondary, fontSize: 12)),
           ]),

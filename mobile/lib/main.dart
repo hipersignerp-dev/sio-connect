@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'api.dart';
 import 'app_state.dart';
 import 'screens/auth_screens.dart';
+import 'screens/public_screens.dart';
 import 'screens/home_shell.dart';
 import 'theme.dart';
 
@@ -31,7 +32,7 @@ class SioApp extends StatelessWidget {
             case Stage.locked:
               return const UnlockScreen();
             case Stage.signedOut:
-              return const WelcomeScreen();
+              return const PublicScreen(landing: true);
             case Stage.signedIn:
               return HomeShell(key: ValueKey(AppState.i.me['user']));
           }

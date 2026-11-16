@@ -4,48 +4,153 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
 import '../theme.dart';
+import '../app_state.dart';
 import '../widgets.dart';
+import 'auth_screens.dart';
+import 'donors_screen.dart';
 
-/// For anyone, without signing in: what SIO is, upcoming public programmes, and a way to donate.
+/// The first screen for anyone not signed in: about SIO, the area leaders (call / WhatsApp), social media,
+/// units, upcoming programmes and donations, with Sign in and Register at the top.
 class PublicScreen extends StatelessWidget {
-  const PublicScreen({super.key});
+  const PublicScreen({super.key, this.landing = false});
+  final bool landing;
+
+  Future<void> _open(BuildContext context, String url) async {
+    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication).catchError((_) => false);
+    if (!ok && context.mounted) toast(context, 'Could not open the link.');
+  }
 
   @override
   Widget build(BuildContext context) {
+    final notice = AppState.i.notice;
     return Scaffold(
-      appBar: AppBar(title: const Text('About SIO')),
+      appBar: AppBar(
+        toolbarHeight: 64,
+        automaticallyImplyLeading: !landing,
+        title: Row(children: [
+          const Image(image: AssetImage('assets/sio-logo.png'), width: 36, height: 36),
+          const SizedBox(width: 10),
+          const Expanded(child: Text('SIO Connect', overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w800))),
+        ]),
+        actions: [
+          if (landing) ...[
+            TextButton(onPressed: () => push(context, const RegisterScreen()), child: const Text('Register')),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: FilledButton(onPressed: () => push(context, const LoginScreen()), child: const Text('Sign in')),
+            ),
+          ],
+        ],
+      ),
       body: Loader<Map<String, dynamic>>(
         load: () async => Map<String, dynamic>.from(await Api.guest('info') as Map),
         builder: (context, d) {
           final events = (d['events'] as List?) ?? [];
+          final leaders = (d['leaders'] as List?) ?? [];
+          final units = (d['units'] as List?) ?? [];
+          final social = Map<String, dynamic>.from((d['social'] as Map?) ?? {});
+          final links = <(IconData, String, String)>[
+            if (social['instagram'] != null) (Icons.camera_alt_outlined, 'Instagram', 'https://instagram.com/${social['instagram']}'),
+            if (social['threads'] != null) (Icons.alternate_email, 'Threads', 'https://www.threads.net/@${social['threads']}'),
+            if (social['facebook'] != null) (Icons.facebook, 'Facebook', '${social['facebook']}'),
+            if (social['youtube'] != null) (Icons.smart_display_outlined, 'YouTube', '${social['youtube']}'),
+            if (social['whatsapp_channel'] != null) (Icons.chat_outlined, 'WhatsApp', '${social['whatsapp_channel']}'),
+            if (social['website'] != null) (Icons.language, 'Website', '${social['website']}'),
+          ];
           return [
+            if (landing && notice != null) ...[SioBanner(text: notice), const SizedBox(height: 12)],
             SioPanel(
               padding: const EdgeInsets.all(18),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 const Center(child: Image(image: AssetImage('assets/sio-logo.png'), width: 72, height: 72)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+                Text('${d['org_name'] ?? 'SIO'}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink)),
+                const SizedBox(height: 8),
                 Text('${d['intro'] ?? 'Students Islamic Organisation of India'}',
                     textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.4)),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(backgroundColor: SioColors.red),
-                  onPressed: d['can_donate'] == true
-                      ? () => push(context, DonateScreen(minAmount: numOf(d['min_donation'])))
-                      : null,
+                  onPressed: d['can_donate'] == true ? () => push(context, DonateScreen(minAmount: numOf(d['min_donation']))) : null,
                   icon: const Icon(Icons.volunteer_activism),
                   label: Text(d['can_donate'] == true ? 'Donate to SIO' : 'Online donation coming soon'),
                 ),
+                if (landing) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () => push(context, const RegisterScreen()),
+                    child: const Text('Join SIO: register as an associate'),
+                  ),
+                ],
               ]),
             ),
+            if (leaders.isNotEmpty) ...[
+              const SectionTitle('Area leaders'),
+              for (final l in leaders) ...[
+                _LeaderCard(l: Map<String, dynamic>.from(l)),
+                const SizedBox(height: 10),
+              ],
+            ],
+            if (links.isNotEmpty) ...[
+              const SectionTitle('Follow us'),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final x in links) ActionChip(avatar: Icon(x.$1, size: 18), label: Text(x.$2), onPressed: () => _open(context, x.$3)),
+              ]),
+            ],
             const SectionTitle('Upcoming programmes'),
             if (events.isEmpty) const EmptyNote('No public programmes announced right now. Check back soon.'),
             for (final e in events) ...[
               _PublicEvent(e: Map<String, dynamic>.from(e)),
               const SizedBox(height: 10),
             ],
+            if (units.isNotEmpty) ...[
+              const SectionTitle('Our units'),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final u in units) Chip(avatar: const Icon(Icons.apartment_outlined, size: 18), label: Text('${u['name']}')),
+              ]),
+            ],
+            const SizedBox(height: 16),
+            const Text('Powered by Hipersign ERP',
+                textAlign: TextAlign.center, style: TextStyle(color: SioColors.textSecondary, fontSize: 12)),
           ];
         },
       ),
+    );
+  }
+}
+
+class _LeaderCard extends StatelessWidget {
+  const _LeaderCard({required this.l});
+  final Map<String, dynamic> l;
+
+  @override
+  Widget build(BuildContext context) {
+    final phone = '${l['phone'] ?? ''}';
+    final photo = '${l['photo'] ?? ''}';
+    return SioPanel(
+      child: Row(children: [
+        photo.isNotEmpty
+            ? CircleAvatar(radius: 28, backgroundImage: NetworkImage('${Api.baseUrl}$photo'))
+            : Avatar('${l['leader_name']}', radius: 28),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${l['leader_name']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink)),
+            Text('${l['designation']}', style: const TextStyle(color: SioColors.textSecondary)),
+          ]),
+        ),
+        if (phone.isNotEmpty) ...[
+          IconButton.filledTonal(tooltip: 'Call', icon: const Icon(Icons.call), onPressed: () => callNumber(context, phone)),
+          const SizedBox(width: 4),
+          IconButton.filledTonal(
+            tooltip: 'WhatsApp',
+            icon: const Icon(Icons.chat_outlined),
+            onPressed: () => whatsApp(context, phone, 'Assalamu alaikum ${l['leader_name']}, '),
+          ),
+        ],
+      ]),
     );
   }
 }
