@@ -27,6 +27,7 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
   bool _wantListen = false; // the person pressed the mic and has not stopped it
   bool _ready = false;
   String _partial = '';
+  String _base = ''; // notes text before the words being heard right now
   double _level = 0;
   bool _aiBusy = false;
   bool _saving = false;
@@ -60,6 +61,8 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
 
   Future<void> _listen() async {
     if (!_wantListen || !mounted) return;
+    _base = _notes.text.trimRight();
+    _partial = '';
     await _speech.listen(
       onResult: _onResult,
       onSoundLevelChange: (l) {
@@ -77,20 +80,15 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
     );
   }
 
+  // Words appear in the notes as they are spoken; each finished sentence is kept and the next one follows it.
   void _onResult(SpeechRecognitionResult r) {
     if (!mounted) return;
+    final t = r.recognizedWords.trim();
     setState(() {
-      if (r.finalResult) {
-        final t = r.recognizedWords.trim();
-        if (t.isNotEmpty) {
-          final cur = _notes.text.trimRight();
-          _notes.text = cur.isEmpty ? t : '$cur $t';
-          _notes.selection = TextSelection.collapsed(offset: _notes.text.length);
-        }
-        _partial = '';
-      } else {
-        _partial = r.recognizedWords;
-      }
+      final text = t.isEmpty ? _base : (_base.isEmpty ? t : '$_base $t');
+      _notes.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+      _partial = r.finalResult ? '' : t;
+      if (r.finalResult) _base = text;
     });
   }
 
@@ -204,12 +202,6 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(color: _wantListen ? SioColors.red : SioColors.textSecondary, fontWeight: FontWeight.w600),
         ),
-        if (_partial.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(_partial,
-                textAlign: TextAlign.center, style: const TextStyle(fontStyle: FontStyle.italic, color: SioColors.textSecondary)),
-          ),
         const SizedBox(height: 14),
         TextField(
           controller: _notes,
@@ -217,7 +209,7 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
           maxLines: 10,
           textCapitalization: TextCapitalization.sentences,
           decoration: InputDecoration(
-            labelText: 'Rough notes',
+            labelText: _wantListen ? (_partial.isEmpty ? 'Rough notes · listening…' : 'Rough notes · writing…') : 'Rough notes',
             hintText: 'Who came, what was discussed, what was decided, who will do what…',
             alignLabelWithHint: true,
             suffixIcon: _notes.text.isEmpty
