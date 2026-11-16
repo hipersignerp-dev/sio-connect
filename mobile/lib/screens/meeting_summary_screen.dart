@@ -26,9 +26,14 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
   String _lang = 'English';
   bool _wantListen = false; // the person pressed the mic and has not stopped it
   bool _ready = false;
+  // Notes are only ever added to: [_committed] holds every finished sentence, [_partial] the one being heard.
+  String _committed = '';
   String _partial = '';
-  String _base = ''; // notes text before the words being heard right now
-  DateTime _lastAt = DateTime.now(); // when the last words came in
+  String _lastCommitted = '';
+  DateTime _lastAt = DateTime.now();
+  int _session = 0; // results from an older listening session are ignored
+  bool _restarting = false;
+  final _notesScroll = ScrollController();
   double _level = 0;
   bool _aiBusy = false;
   bool _saving = false;
@@ -40,15 +45,18 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
   void dispose() {
     _wantListen = false;
     _speech.cancel();
+    _notesScroll.dispose();
     super.dispose();
   }
 
   Future<void> _toggleMic() async {
     if (_wantListen) {
+      _session++; // ignore anything the recogniser still sends for this session
       setState(() {
         _wantListen = false;
-        _base = _notes.text.trimRight();
+        _commit(_partial);
         _partial = '';
+        _show();
       });
       await _speech.stop();
       return;
@@ -60,16 +68,20 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
         return;
       }
     }
+    _committed = _notes.text.trim(); // keep anything typed by hand
+    _lastCommitted = '';
     setState(() => _wantListen = true);
     await _listen();
   }
 
   Future<void> _listen() async {
     if (!_wantListen || !mounted) return;
-    _base = _notes.text.trimRight();
+    final session = ++_session;
+    _commit(_partial);
     _partial = '';
+    _lastCommitted = '';
     await _speech.listen(
-      onResult: _onResult,
+      onResult: (r) => _onResult(r, session),
       onSoundLevelChange: (l) {
         if (mounted) setState(() => _level = l);
       },
@@ -85,30 +97,53 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
     );
   }
 
-  // Words appear in the notes as they are spoken. Android reports only the sentence being heard now, and after
-  // a pause it starts a new sentence from empty; when that happens the previous sentence is kept first.
-  void _onResult(SpeechRecognitionResult r) {
-    if (!mounted) return;
-    final t = r.recognizedWords.trim();
-    final now = DateTime.now();
-    final gap = now.difference(_lastAt);
-    _lastAt = now;
-    if (_partial.isNotEmpty && t.isNotEmpty && _isNewSentence(_partial, t, gap)) {
-      _base = _join(_base, _partial);
+  /// Adds a finished sentence to the notes (never twice in a row, never replacing what is there).
+  void _commit(String sentence) {
+    var t = sentence.trim();
+    if (t.isEmpty) return;
+    final last = _lastCommitted.toLowerCase();
+    if (last.isNotEmpty) {
+      if (t.toLowerCase() == last) return;
+      if (t.toLowerCase().startsWith(last)) t = t.substring(last.length).trim();
+      if (t.isEmpty) return;
     }
-    setState(() {
-      final text = _join(_base, t);
-      _notes.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
-      if (r.finalResult) {
-        _base = text;
-        _partial = '';
-      } else {
-        _partial = t;
-      }
+    _committed = _committed.isEmpty ? t : '$_committed $t';
+    _lastCommitted = sentence.trim();
+  }
+
+  /// Shows the notes plus the words being heard, and keeps the end in view.
+  void _show() {
+    final text = _partial.isEmpty ? _committed : (_committed.isEmpty ? _partial : '$_committed $_partial');
+    _notes.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_notesScroll.hasClients) _notesScroll.jumpTo(_notesScroll.position.maxScrollExtent);
     });
   }
 
-  static String _join(String a, String b) => a.isEmpty ? b : (b.isEmpty ? a : '$a $b');
+  void _onResult(SpeechRecognitionResult r, int session) {
+    if (!mounted || session != _session) return;
+    var t = r.recognizedWords.trim();
+    // some phones repeat the previous sentence at the start of the next one
+    final last = _lastCommitted.toLowerCase();
+    if (last.isNotEmpty && t.toLowerCase().startsWith(last) && t.length > last.length) {
+      t = t.substring(last.length).trim();
+    }
+    final now = DateTime.now();
+    final gap = now.difference(_lastAt);
+    _lastAt = now;
+    setState(() {
+      if (r.finalResult || r.resultTypeValue == ResultType.intermediate) {
+        // a finished sentence
+        _commit(t.isEmpty ? _partial : t);
+        _partial = '';
+      } else {
+        // Android starts each new sentence from empty: keep the previous one before showing the new one
+        if (_partial.isNotEmpty && t.isNotEmpty && _isNewSentence(_partial, t, gap)) _commit(_partial);
+        _partial = t;
+      }
+      _show();
+    });
+  }
 
   /// True when [now] is a fresh sentence rather than a longer or corrected version of [before].
   static bool _isNewSentence(String before, String now, Duration gap) {
@@ -126,8 +161,12 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
 
   // Android stops listening after a pause; keep going until the person taps stop.
   void _onStatus(String s) {
-    if ((s == 'done' || s == 'notListening') && _wantListen) {
-      Future.delayed(const Duration(milliseconds: 250), _listen);
+    if ((s == 'done' || s == 'notListening') && _wantListen && !_restarting) {
+      _restarting = true;
+      Future.delayed(const Duration(milliseconds: 300), () async {
+        _restarting = false;
+        if (_wantListen && !_speech.isListening) await _listen();
+      });
     }
   }
 
@@ -140,8 +179,12 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
     } else if (m.contains('language') || m.contains('not_supported')) {
       setState(() => _wantListen = false);
       toast(context, '$_lang voice typing is not available on this phone. Try the other language.');
-    } else if (_wantListen) {
-      Future.delayed(const Duration(milliseconds: 400), _listen);
+    } else if (_wantListen && !_restarting) {
+      _restarting = true;
+      Future.delayed(const Duration(milliseconds: 400), () async {
+        _restarting = false;
+        if (_wantListen && !_speech.isListening) await _listen();
+      });
     }
   }
 
@@ -199,9 +242,17 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
             selected: {_lang},
             onSelectionChanged: (v) async {
               final restart = _wantListen;
-              if (restart) await _speech.stop();
+              if (restart) {
+                _session++;
+                setState(() {
+                  _commit(_partial);
+                  _partial = '';
+                  _show();
+                });
+                await _speech.stop();
+              }
               setState(() => _lang = v.first);
-              if (restart) _listen();
+              if (restart && _wantListen) await _listen();
             },
           ),
         ]),
@@ -237,6 +288,8 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
         const SizedBox(height: 14),
         TextField(
           controller: _notes,
+          scrollController: _notesScroll,
+          readOnly: _wantListen,
           minLines: 4,
           maxLines: 10,
           textCapitalization: TextCapitalization.sentences,
@@ -246,7 +299,12 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
             alignLabelWithHint: true,
             suffixIcon: _notes.text.isEmpty
                 ? null
-                : IconButton(tooltip: 'Clear', icon: const Icon(Icons.close), onPressed: () => setState(() => _notes.clear())),
+                : IconButton(tooltip: 'Clear', icon: const Icon(Icons.close), onPressed: () => setState(() {
+                      _notes.clear();
+                      _committed = '';
+                      _partial = '';
+                      _lastCommitted = '';
+                    })),
           ),
           onChanged: (_) => setState(() {}),
         ),
