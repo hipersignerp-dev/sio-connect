@@ -42,6 +42,7 @@ caps = {
     "approve_members": is_unit_admin,
     "mark_attendance": is_unit_admin,
     "schedule_meeting": is_unit_admin,
+    "schedule_area_meeting": is_admin,
     "view_collection_totals": is_unit_admin or is_finance,
     "approve_expense": is_finance or len(approver_units) > 0,
     "send_notice": is_unit_admin,

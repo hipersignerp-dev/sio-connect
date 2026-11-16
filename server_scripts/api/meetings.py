@@ -1,3 +1,4 @@
+# @include meeting
 member = ctx["member"]
 days_back = frappe.utils.cint(args.get("days_back") or 30)
 filters = {"meeting_date": [">=", frappe.utils.add_days(frappe.utils.nowdate(), -days_back)],
@@ -8,11 +9,22 @@ else:
     scope = ctx["unit"] or "__none__"
 if scope:
     filters["unit"] = scope
-rows = frappe.get_all(
-    "SIO Meeting", filters=filters,
-    fields=["name", "unit", "topic", "meeting_type", "meeting_date", "meeting_time", "venue", "status",
-            "present_count", "total_count"],
-    order_by="meeting_date desc, meeting_time desc", limit=100)
+fields = ["name", "unit", "area", "invite", "topic", "meeting_type", "meeting_date", "meeting_time", "venue", "status",
+          "present_count", "total_count"]
+rows = frappe.get_all("SIO Meeting", filters=filters, fields=fields,
+                      order_by="meeting_date desc, meeting_time desc", limit=100)
+# area meetings: area admins and finance see all; others see the ones they are invited to
+afilters = {"meeting_date": filters["meeting_date"], "status": ["!=", "Cancelled"], "area": ["is", "set"],
+            "unit": ["is", "not set"]}
+for a in frappe.get_all("SIO Meeting", filters=afilters, fields=fields, limit=50):
+    if ctx["is_admin"] or ctx["is_finance"] or invited_to(a, member):
+        if a.name not in [r.name for r in rows]:
+            rows.append(a)
+rows = sorted(rows, key=lambda r: (str(r.meeting_date or ""), str(r.meeting_time or "")), reverse=True)
+for r in rows:
+    r["where"] = meeting_place(r)
+    r["level"] = "Area" if is_area_meeting(r) else "Unit"
+    r["can_mark"] = ctx["caps"]["schedule_area_meeting"] if is_area_meeting(r) else ctx["caps"]["mark_attendance"]
 mine = {}
 if member and rows:
     for a in frappe.get_all("SIO Meeting Attendance",
@@ -36,7 +48,7 @@ for r in rows:
     if r.status == "Completed" and r.total_count:
         present += frappe.utils.cint(r.present_count)
         total += frappe.utils.cint(r.total_count)
-    if r.status == "Scheduled" and d <= today:
+    if r.status == "Scheduled" and d <= today and r["can_mark"]:
         to_mark += 1
 frappe.response["message"] = {
     "meetings": rows,

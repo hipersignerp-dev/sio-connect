@@ -53,6 +53,17 @@ class MeetingsScreen extends StatelessWidget {
   }
 }
 
+class _AreaTag extends StatelessWidget {
+  const _AreaTag();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(color: SioColors.purple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+        child: const Text('AREA', style: TextStyle(color: SioColors.purple, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.6)),
+      );
+}
+
 class _MeetingRow extends StatelessWidget {
   const _MeetingRow({required this.m});
   final Map<String, dynamic> m;
@@ -65,7 +76,7 @@ class _MeetingRow extends StatelessWidget {
     String label;
     if (m['status'] == 'Completed') {
       label = m['my_status'] != null && !AppState.i.can('mark_attendance') ? m['my_status'] : '${m['present_count']}/${m['total_count']}';
-    } else if (due && AppState.i.can('mark_attendance')) {
+    } else if (due && (m['can_mark'] ?? AppState.i.can('mark_attendance')) == true) {
       label = 'Mark now';
     } else {
       label = m['my_rsvp']?.toString().isNotEmpty == true ? m['my_rsvp'] : 'Upcoming';
@@ -87,7 +98,13 @@ class _MeetingRow extends StatelessWidget {
           Text(fmtDate(m['meeting_date'], 'd'), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: SioColors.ink)),
         ]),
       ),
-      title: Text(m['unit'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Row(children: [
+        Flexible(child: Text('${m['where'] ?? m['unit'] ?? ''}', overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
+        if (m['level'] == 'Area') ...[
+          const SizedBox(width: 6),
+          const _AreaTag(),
+        ],
+      ]),
       subtitle: Text([m['topic'], fmtTime(m['meeting_time'])].where((e) => e != null && '$e'.isNotEmpty).join(' · ')),
       trailing: StatusChip(label, tone: tone),
     );
@@ -147,7 +164,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
   Widget build(BuildContext context) {
     final m = _m;
     final roster = (m?['roster'] as List?) ?? [];
-    final canMark = AppState.i.can('mark_attendance') && m != null && m.containsKey('roster');
+    final canMark = m != null && m.containsKey('roster');
     return Scaffold(
       appBar: AppBar(
         title: Text(canMark ? 'Meeting & attendance' : 'Meeting'),
@@ -170,10 +187,16 @@ class _MeetingScreenState extends State<MeetingScreen> {
                 child: Row(children: [
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      if (m['level'] == 'Area') ...[
+                        const _AreaTag(),
+                        const SizedBox(height: 4),
+                      ],
                       Text(m['topic'].toString(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink)),
                       const SizedBox(height: 2),
+                      if (m['level'] == 'Area')
+                        Text('Invited: ${m['invite'] ?? 'Unit leaders'}', style: const TextStyle(color: SioColors.purple, fontSize: 13)),
                       Text(
-                          [m['unit'], fmtDate(m['meeting_date'], 'EEE d MMM'), fmtTime(m['meeting_time']), m['venue']]
+                          [m['where'] ?? m['unit'], fmtDate(m['meeting_date'], 'EEE d MMM'), fmtTime(m['meeting_time']), m['venue']]
                               .where((e) => e != null && '$e'.isNotEmpty)
                               .join(' · '),
                           style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
@@ -215,7 +238,12 @@ class _MeetingScreenState extends State<MeetingScreen> {
                         return ListTile(
                           leading: Avatar(r['full_name'].toString(), radius: 18, light: true, photo: r['photo']),
                           title: Text(r['full_name'].toString()),
-                          subtitle: (r['rsvp'] ?? '').toString().isEmpty ? null : Text('RSVP: ${r['rsvp']}'),
+                          subtitle: () {
+                            final bits = [r['unit'], if ((r['rsvp'] ?? '').toString().isNotEmpty) 'RSVP: ${r['rsvp']}']
+                                .where((x) => x != null && '$x'.isNotEmpty)
+                                .join(' · ');
+                            return bits.isEmpty ? null : Text(bits);
+                          }(),
                           trailing: FilledButton(
                             style: FilledButton.styleFrom(
                               minimumSize: const Size(92, 38),
@@ -319,6 +347,15 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
   TimeOfDay _time = const TimeOfDay(hour: 19, minute: 30);
   bool _busy = false;
   String _status = 'Scheduled';
+  late String _level = '${widget.meeting?['level'] ?? 'Unit'}';
+  late String _invite = '${widget.meeting?['invite'] ?? 'Unit leaders'}';
+  static const invites = {
+    'Unit leaders': 'Unit presidents, secretaries & area team',
+    'All members': 'All members (and leaders)',
+    'Members & workers': 'Members and workers',
+    'Everyone': 'Everyone, including associates',
+  };
+  bool get _area => _level == 'Area';
   late String? _unit = widget.meeting?['unit']?.toString() ?? AppState.i.me['unit']?.toString();
   Map<String, dynamic>? get _m => widget.meeting;
   List<String> _units = [];
@@ -326,7 +363,7 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
   static const types = ['Weekly Meeting', 'Study Circle', 'Executive Meeting', 'Special Meeting'];
 
   /// Area admins and finance work across units (and may have no unit of their own), so they pick one.
-  bool get _pickUnit => AppState.i.can('all_units') || _unit == null;
+  bool get _pickUnit => !_area && (AppState.i.can('all_units') || _unit == null);
 
   @override
   void initState() {
@@ -354,7 +391,7 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
       toast(context, 'Enter the topic.');
       return;
     }
-    if (_unit == null || _unit!.isEmpty) {
+    if (!_area && (_unit == null || _unit!.isEmpty)) {
       toast(context, 'Pick the unit this meeting is for.');
       return;
     }
@@ -365,14 +402,18 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
         'name': _m?['name'],
         'status': _m == null ? null : _status,
         'topic': _topic.text.trim(),
-        'unit': _unit,
+        'level': _level,
+        'invite': _area ? _invite : null,
+        'unit': _area ? null : _unit,
         'meeting_type': _type,
         'meeting_date': apiDate(_date),
         'meeting_time': '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}:00',
         'venue': _venue.text.trim(),
         'agenda': _agenda.text.trim(),
       }),
-      done: _m == null ? 'Meeting scheduled. $_unit unit can see it now.' : 'Meeting updated.',
+      done: _m == null
+          ? (_area ? 'Area meeting scheduled. Invited people can see it now.' : 'Meeting scheduled. $_unit unit can see it now.')
+          : 'Meeting updated.',
     );
     if (mounted) {
       setState(() => _busy = false);
@@ -385,6 +426,34 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(_m == null ? 'Schedule meeting' : 'Edit meeting')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
+        if (AppState.i.can('schedule_area_meeting')) ...[
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'Unit', label: Text('Unit meeting'), icon: Icon(Icons.apartment_outlined)),
+              ButtonSegment(value: 'Area', label: Text('Area meeting'), icon: Icon(Icons.hub_outlined)),
+            ],
+            selected: {_level},
+            onSelectionChanged: (v) {
+              setState(() => _level = v.first);
+              if (!_area && _units.isEmpty) {
+                Api.units().then((u) {
+                  if (mounted) setState(() => _units = [for (final x in u) x['name'].toString()]);
+                }).catchError((_) {});
+              }
+            },
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (_area) ...[
+          DropdownButtonFormField<String>(
+            initialValue: invites.containsKey(_invite) ? _invite : 'Unit leaders',
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Who is invited', prefixIcon: Icon(Icons.groups_outlined)),
+            items: [for (final e in invites.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+            onChanged: (v) => setState(() => _invite = v ?? _invite),
+          ),
+          const SizedBox(height: 14),
+        ],
         if (_pickUnit) ...[
           DropdownButtonFormField<String>(
             initialValue: _units.contains(_unit) ? _unit : null,

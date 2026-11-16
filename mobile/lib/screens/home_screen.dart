@@ -196,7 +196,7 @@ class _MeetingCardState extends State<_MeetingCard> {
         Text(m['topic']?.toString() ?? 'Weekly meeting',
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.ink)),
         const SizedBox(height: 2),
-        Text([m['meeting_type'], m['unit'], m['venue']].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
+        Text([m['meeting_type'], m['where'] ?? m['unit'], m['venue']].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
             style: const TextStyle(color: SioColors.textSecondary)),
         if (canRsvp) ...[
           const SizedBox(height: 16),

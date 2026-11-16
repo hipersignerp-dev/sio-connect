@@ -2,15 +2,27 @@ caps = ctx["caps"]
 member = ctx["member"]
 notices = run_script("SIO lib notices", limit=3).sio_notices
 out = {"me": ctx["me"], "next_meeting": None, "next_event": None, "notices": notices}
+# @include meeting
 
+mfields = ["name", "topic", "meeting_type", "meeting_date", "meeting_time", "venue", "unit", "area", "invite"]
+upcoming = []
 if ctx["unit"]:
-    rows = frappe.get_all(
+    upcoming = frappe.get_all(
         "SIO Meeting",
         filters={"unit": ctx["unit"], "status": "Scheduled", "meeting_date": [">=", frappe.utils.nowdate()]},
-        fields=["name", "topic", "meeting_type", "meeting_date", "meeting_time", "venue", "unit"],
-        order_by="meeting_date asc, meeting_time asc", limit=1)
+        fields=mfields, order_by="meeting_date asc, meeting_time asc", limit=1)
+for a in frappe.get_all("SIO Meeting", filters={"area": ["is", "set"], "unit": ["is", "not set"], "status": "Scheduled",
+                                                "meeting_date": [">=", frappe.utils.nowdate()]},
+                        fields=mfields, order_by="meeting_date asc, meeting_time asc", limit=5):
+    if ctx["is_admin"] or invited_to(a, member):
+        upcoming.append(a)
+        break
+upcoming = sorted(upcoming, key=lambda r: (str(r.meeting_date or ""), str(r.meeting_time or "")))
+if True:
+    rows = upcoming
     if rows:
         mt = rows[0]
+        mt["where"] = meeting_place(mt)
         mt["my_rsvp"] = None
         if member:
             mt["my_rsvp"] = frappe.db.get_value(

@@ -226,7 +226,7 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
       appBar: AppBar(title: const Text('Meeting summary')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
         Text('${m['topic']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink)),
-        Text([m['unit'], fmtDate(m['meeting_date'], 'EEE d MMM')].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+        Text([m['where'] ?? m['unit'], fmtDate(m['meeting_date'], 'EEE d MMM')].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
             style: const TextStyle(color: SioColors.textSecondary)),
         const SizedBox(height: 18),
         // 1. speak

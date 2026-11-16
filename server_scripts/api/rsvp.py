@@ -1,8 +1,9 @@
 if not ctx["caps"]["rsvp"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
+# @include meeting
 doc = frappe.get_doc("SIO Meeting", args.get("name"))
-if doc.unit != ctx["unit"]:
-    frappe.throw(_("This meeting is for another unit."), frappe.PermissionError)
+if not invited_to(doc, ctx["member"]):
+    frappe.throw(_("This meeting is not for you."), frappe.PermissionError)
 value = "Attending" if frappe.utils.cint(args.get("attending")) else "Not Attending"
 found = False
 for r in doc.attendance:

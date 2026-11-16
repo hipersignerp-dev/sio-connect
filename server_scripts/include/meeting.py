@@ -1,0 +1,42 @@
+# --- meeting helpers (shared) ---
+# A meeting is for one unit (unit set) or for the whole area (area set, unit empty). For area meetings
+# "invite" says who is asked to come.
+INVITE_ROLES = {
+    "Unit leaders": ["Unit President", "Unit Secretary", "Finance", "Area Admin"],
+    "All members": ["Unit President", "Unit Secretary", "Finance", "Area Admin", "Member"],
+    "Members & workers": ["Unit President", "Unit Secretary", "Finance", "Area Admin", "Member", "Worker"],
+    "Everyone": ["Unit President", "Unit Secretary", "Finance", "Area Admin", "Member", "Worker", "Associate"],
+}
+
+
+def is_area_meeting(m):
+    return bool(m.get("area")) and not m.get("unit")
+
+
+def area_invitees(area, invite):
+    roles = INVITE_ROLES.get(invite or "Unit leaders") or INVITE_ROLES["Unit leaders"]
+    units = frappe.get_all("SIO Unit", filters={"district": area}, pluck="name")
+    rows = frappe.get_all("SIO Member", filters={"status": "Active", "member_role": ["in", roles]},
+                          fields=["name", "full_name", "unit", "member_role", "photo"], order_by="full_name asc")
+    return [r for r in rows if (not r.unit) or r.unit in units]
+
+
+def invited_to(m, member):
+    # can this member (a dict/doc with name, unit, member_role) see / reply to meeting m?
+    if not member:
+        return False
+    if not is_area_meeting(m):
+        return m.get("unit") == member.unit
+    roles = INVITE_ROLES.get(m.get("invite") or "Unit leaders") or INVITE_ROLES["Unit leaders"]
+    if member.member_role not in roles:
+        return False
+    if not member.unit:
+        return True
+    return frappe.db.get_value("SIO Unit", member.unit, "district") == m.get("area")
+
+
+def meeting_place(m):
+    if is_area_meeting(m):
+        return m.get("area") + " Area"
+    return m.get("unit")
+# --- end meeting helpers ---

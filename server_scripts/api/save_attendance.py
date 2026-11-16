@@ -1,8 +1,12 @@
 # present: JSON list of member IDs who came
+# @include meeting
 if not ctx["caps"]["mark_attendance"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 doc = frappe.get_doc("SIO Meeting", args.get("name"))
-if ctx["scope"] and doc.unit != ctx["scope"]:
+if is_area_meeting(doc):
+    if not ctx["caps"]["schedule_area_meeting"]:
+        frappe.throw(_("Only area admins mark area meeting attendance."), frappe.PermissionError)
+elif ctx["scope"] and doc.unit != ctx["scope"]:
     frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
 present = args.get("present") or "[]"
 if isinstance(present, str):
@@ -11,7 +15,10 @@ present = set(present)
 existing = {}
 for r in doc.attendance:
     existing[r.member] = {"status": r.status, "rsvp": r.rsvp}
-roster = frappe.get_all("SIO Member", filters={"unit": doc.unit, "status": "Active"}, pluck="name")
+if is_area_meeting(doc):
+    roster = [m.name for m in area_invitees(doc.area, doc.get("invite"))]
+else:
+    roster = frappe.get_all("SIO Member", filters={"unit": doc.unit, "status": "Active"}, pluck="name")
 members = list(roster) + [m for m in existing if m not in roster]
 doc.set("attendance", [])
 for m in members:

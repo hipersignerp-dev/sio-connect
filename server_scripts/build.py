@@ -92,7 +92,16 @@ def reports():
 
 def read(*parts):
     with open(os.path.join(HERE, *parts)) as fh:
-        return fh.read()
+        text = fh.read()
+    # "# @include name" pulls in include/name.py (shared helpers; Server Scripts cannot import)
+    out = []
+    for line in text.split("\n"):
+        if line.startswith("# @include "):
+            with open(os.path.join(HERE, "include", line.split()[-1] + ".py")) as inc:
+                out.append(inc.read().rstrip("\n"))
+        else:
+            out.append(line)
+    return "\n".join(out)
 
 
 def records():
