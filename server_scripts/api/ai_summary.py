@@ -8,6 +8,12 @@ if len(notes) < 10:
 if len(notes) > 20000:
     frappe.throw(_("The notes are too long. Keep them under 20,000 characters."))
 lang = "Malayalam" if args.get("language") == "Malayalam" else "English"
+if lang == "Malayalam":
+    heads = ("സംഗ്രഹം: രണ്ടോ മൂന്നോ വാക്യങ്ങൾ.\n\nചർച്ച ചെയ്തവ:\n- കാര്യം\n\nതീരുമാനങ്ങൾ:\n- തീരുമാനം\n\n"
+             "ചുമതലകൾ:\n- ആര്: എന്ത് (എപ്പോഴേക്ക്)")
+else:
+    heads = ("Summary: two or three sentences.\n\nDiscussed:\n- point\n\nDecisions:\n- decision\n\n"
+             "Action points:\n- who: what (by when)")
 meeting = ""
 if args.get("name"):
     m = frappe.get_doc("SIO Meeting", args.get("name"))
@@ -23,11 +29,10 @@ provider = settings.get("ai_provider") or "Anthropic Claude"
 system = ("You write meeting minutes for SIO (Students Islamic Organisation of India), a student organisation. "
           "The user dictated rough notes by voice, so they may contain speech-recognition mistakes, Manglish, "
           "repetition and broken sentences. Write clean, correct minutes in " + lang + ". "
-          "Fix obvious recognition errors from context, but never invent people, numbers, dates or decisions "
-          "that are not in the notes. Keep names as spoken. Use this plain-text layout, leaving out any section "
-          "with nothing in it:\n"
-          "Summary: two or three sentences.\n\nDiscussed:\n- point\n\nDecisions:\n- decision\n\n"
-          "Action points:\n- who: what (by when)\n\n"
+          "Fix obvious recognition errors from context, but never invent people, numbers, dates, topics or "
+          "decisions that are not in the notes. Keep names as spoken. Use this plain-text layout, leaving out any "
+          "section with nothing in it, and write the headings in " + lang + " too:\n"
+          + heads + "\n\n"
           "Reply with the minutes only, no preamble and no markdown symbols other than '- ' bullets.")
 user = meeting + "Rough notes:\n" + notes
 out = None
