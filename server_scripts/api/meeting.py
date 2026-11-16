@@ -4,7 +4,9 @@ if not (ctx["is_admin"] or ctx["is_finance"]) and doc.unit != ctx["unit"]:
 out = {
     "name": doc.name, "unit": doc.unit, "topic": doc.topic, "meeting_type": doc.meeting_type,
     "meeting_date": doc.meeting_date, "meeting_time": doc.meeting_time, "venue": doc.venue,
-    "status": doc.status, "agenda": doc.agenda, "minutes": doc.minutes,
+    "status": doc.status, "agenda": doc.agenda, "minutes": doc.minutes, "summary": doc.get("summary"),
+    "can_edit": ctx["caps"]["schedule_meeting"] and (not ctx["scope"] or doc.unit == ctx["scope"]),
+    "ai_ready": bool(frappe.db.get_single_value("SIO Settings", "ai_api_key")),
     "present_count": doc.present_count, "total_count": doc.total_count, "my_rsvp": None,
 }
 rows = {}

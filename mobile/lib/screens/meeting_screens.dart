@@ -4,6 +4,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'meeting_summary_screen.dart';
 
 class MeetingsScreen extends StatelessWidget {
   const MeetingsScreen({super.key, this.standalone = false});
@@ -121,7 +122,8 @@ class _MeetingScreenState extends State<MeetingScreen> {
       _present
         ..clear()
         ..addAll([for (final r in (m['roster'] as List? ?? [])) if (r['status'] == 'Present') r['member'].toString()]);
-      _minutes.text = (m['minutes'] ?? '').toString().replaceAll(RegExp(r'<[^>]*>'), '');
+      final sum = '${m['summary'] ?? ''}'.trim();
+      _minutes.text = sum.isNotEmpty ? sum : (m['minutes'] ?? '').toString().replaceAll(RegExp(r'<[^>]*>'), '').trim();
       if (mounted) setState(() => _m = m);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
@@ -132,7 +134,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
     setState(() => _busy = true);
     final ok = await run(
       context,
-      () => Api.call('${Api.m}save_attendance', {'name': widget.name, 'present': _present.toList(), 'minutes': _minutes.text}),
+      () => Api.call('${Api.m}save_attendance', {'name': widget.name, 'present': _present.toList()}),
       done: 'Attendance saved: ${_present.length} present.',
     );
     if (mounted) {
@@ -147,7 +149,20 @@ class _MeetingScreenState extends State<MeetingScreen> {
     final roster = (m?['roster'] as List?) ?? [];
     final canMark = AppState.i.can('mark_attendance') && m != null && m.containsKey('roster');
     return Scaffold(
-      appBar: AppBar(title: Text(canMark ? 'Mark attendance' : 'Meeting')),
+      appBar: AppBar(
+        title: Text(canMark ? 'Meeting & attendance' : 'Meeting'),
+        actions: [
+          if (m != null && m['can_edit'] == true)
+            IconButton(
+              tooltip: 'Edit meeting',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () async {
+                final changed = await push<bool>(context, ScheduleMeetingScreen(meeting: m));
+                if (changed == true) _load();
+              },
+            ),
+        ],
+      ),
       body: m == null
           ? Center(child: _error == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: SioBanner(text: _error!, error: true)))
           : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
@@ -216,19 +231,41 @@ class _MeetingScreenState extends State<MeetingScreen> {
                         );
                       }),
                   ]),
-                const SectionTitle('Minutes'),
-                TextField(
-                  controller: _minutes,
-                  maxLines: 4,
-                  decoration: const InputDecoration(hintText: 'What was discussed, action items'),
-                ),
                 const SizedBox(height: 16),
                 FilledButton(onPressed: _busy ? null : _save, child: const Text('Save attendance')),
+              const SectionTitle('Summary'),
+              if (_minutes.text.isNotEmpty)
+                SioPanel(child: SelectableText(_minutes.text, style: const TextStyle(height: 1.45)))
+              else if (m['can_edit'] != true)
+                const EmptyNote('No summary yet.'),
+              if (m['can_edit'] == true) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final saved = await push<bool>(context, MeetingSummaryScreen(meeting: m));
+                    if (saved == true) _load();
+                  },
+                  icon: const Icon(Icons.mic_none),
+                  label: Text(_minutes.text.isEmpty ? 'Add summary (speak or type)' : 'Edit summary'),
+                ),
+              ],
               ] else ...[
-                if ((m['minutes'] ?? '').toString().isNotEmpty) ...[
-                  const SectionTitle('Minutes'),
-                  SioPanel(child: Text(_minutes.text)),
-                ],
+              const SectionTitle('Summary'),
+              if (_minutes.text.isNotEmpty)
+                SioPanel(child: SelectableText(_minutes.text, style: const TextStyle(height: 1.45)))
+              else if (m['can_edit'] != true)
+                const EmptyNote('No summary yet.'),
+              if (m['can_edit'] == true) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final saved = await push<bool>(context, MeetingSummaryScreen(meeting: m));
+                    if (saved == true) _load();
+                  },
+                  icon: const Icon(Icons.mic_none),
+                  label: Text(_minutes.text.isEmpty ? 'Add summary (speak or type)' : 'Edit summary'),
+                ),
+              ],
                 if (m['status'] == 'Scheduled' && AppState.i.can('rsvp')) ...[
                   const SizedBox(height: 16),
                   Row(children: [
@@ -266,7 +303,8 @@ class _MeetingScreenState extends State<MeetingScreen> {
 }
 
 class ScheduleMeetingScreen extends StatefulWidget {
-  const ScheduleMeetingScreen({super.key});
+  const ScheduleMeetingScreen({super.key, this.meeting});
+  final Map<String, dynamic>? meeting; // set when editing
 
   @override
   State<ScheduleMeetingScreen> createState() => _ScheduleMeetingScreenState();
@@ -280,7 +318,9 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
   DateTime _date = DateTime.now();
   TimeOfDay _time = const TimeOfDay(hour: 19, minute: 30);
   bool _busy = false;
-  String? _unit = AppState.i.me['unit']?.toString();
+  String _status = 'Scheduled';
+  late String? _unit = widget.meeting?['unit']?.toString() ?? AppState.i.me['unit']?.toString();
+  Map<String, dynamic>? get _m => widget.meeting;
   List<String> _units = [];
 
   static const types = ['Weekly Meeting', 'Study Circle', 'Executive Meeting', 'Special Meeting'];
@@ -291,6 +331,17 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
   @override
   void initState() {
     super.initState();
+    final m = _m;
+    if (m != null) {
+      _topic.text = '${m['topic'] ?? ''}';
+      _venue.text = '${m['venue'] ?? ''}';
+      _agenda.text = '${m['agenda'] ?? ''}';
+      if (types.contains(m['meeting_type'])) _type = '${m['meeting_type']}';
+      _date = parseDate(m['meeting_date']) ?? _date;
+      final t = '${m['meeting_time'] ?? ''}'.split(':');
+      if (t.length >= 2) _time = TimeOfDay(hour: int.tryParse(t[0]) ?? 19, minute: int.tryParse(t[1]) ?? 30);
+      if (const ['Scheduled', 'Completed', 'Cancelled'].contains(m['status'])) _status = '${m['status']}';
+    }
     if (_pickUnit) {
       Api.units().then((v) {
         if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
@@ -311,6 +362,8 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
     final ok = await run(
       context,
       () => Api.call('${Api.m}schedule_meeting', {
+        'name': _m?['name'],
+        'status': _m == null ? null : _status,
         'topic': _topic.text.trim(),
         'unit': _unit,
         'meeting_type': _type,
@@ -319,18 +372,18 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
         'venue': _venue.text.trim(),
         'agenda': _agenda.text.trim(),
       }),
-      done: 'Meeting scheduled. $_unit unit can see it now.',
+      done: _m == null ? 'Meeting scheduled. $_unit unit can see it now.' : 'Meeting updated.',
     );
     if (mounted) {
       setState(() => _busy = false);
-      if (ok) Navigator.pop(context);
+      if (ok) Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Schedule meeting')),
+      appBar: AppBar(title: Text(_m == null ? 'Schedule meeting' : 'Edit meeting')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         if (_pickUnit) ...[
           DropdownButtonFormField<String>(
@@ -359,7 +412,7 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
               label: Text(fmtDate(_date.toIso8601String(), 'EEE d MMM')),
               onPressed: () async {
                 final d = await showDatePicker(
-                    context: context, initialDate: _date, firstDate: DateTime.now().subtract(const Duration(days: 30)), lastDate: DateTime.now().add(const Duration(days: 365)));
+                    context: context, initialDate: _date, firstDate: DateTime.now().subtract(const Duration(days: 400)), lastDate: DateTime.now().add(const Duration(days: 365)));
                 if (d != null) setState(() => _date = d);
               },
             ),
@@ -381,7 +434,16 @@ class _ScheduleMeetingScreenState extends State<ScheduleMeetingScreen> {
         const SizedBox(height: 14),
         TextField(controller: _agenda, maxLines: 4, decoration: const InputDecoration(labelText: 'Agenda')),
         const SizedBox(height: 20),
-        FilledButton(onPressed: _busy ? null : _save, child: const Text('Schedule')),
+        if (_m != null) ...[
+          DropdownButtonFormField<String>(
+            initialValue: _status,
+            decoration: const InputDecoration(labelText: 'Status'),
+            items: [for (final t in const ['Scheduled', 'Completed', 'Cancelled']) DropdownMenuItem(value: t, child: Text(t))],
+            onChanged: (v) => setState(() => _status = v ?? _status),
+          ),
+          const SizedBox(height: 16),
+        ],
+        FilledButton(onPressed: _busy ? null : _save, child: Text(_m == null ? 'Schedule' : 'Save changes')),
       ]),
     );
   }
