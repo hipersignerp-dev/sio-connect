@@ -57,35 +57,47 @@ class PublicScreen extends StatelessWidget {
             if (social['whatsapp_channel'] != null) (Icons.chat_outlined, 'WhatsApp', '${social['whatsapp_channel']}'),
             if (social['website'] != null) (Icons.language, 'Website', '${social['website']}'),
           ];
+          final vision = (d['vision'] as List?) ?? [];
+          final objectives = (d['objectives'] as List?) ?? [];
+          final hadith = d['hadith'] as Map?;
           return [
             if (landing && notice != null) ...[SioBanner(text: notice), const SizedBox(height: 12)],
-            SioPanel(
-              padding: const EdgeInsets.all(18),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                const Center(child: Image(image: AssetImage('assets/sio-logo.png'), width: 72, height: 72)),
-                const SizedBox(height: 10),
-                Text('${d['org_name'] ?? 'SIO'}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink)),
-                const SizedBox(height: 8),
-                Text('${d['intro'] ?? 'Students Islamic Organisation of India'}',
-                    textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.4)),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(backgroundColor: SioColors.red),
-                  onPressed: d['can_donate'] == true ? () => push(context, DonateScreen(minAmount: numOf(d['min_donation']))) : null,
-                  icon: const Icon(Icons.volunteer_activism),
-                  label: Text(d['can_donate'] == true ? 'Donate to SIO' : 'Online donation coming soon'),
-                ),
-                if (landing) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: () => push(context, const RegisterScreen()),
-                    child: const Text('Join SIO: register as an associate'),
-                  ),
-                ],
-              ]),
+            _Hero(
+              name: '${d['org_name'] ?? 'SIO'}',
+              intro: '${d['intro'] ?? 'Students Islamic Organisation of India'}',
+              canDonate: d['can_donate'] == true,
+              landing: landing,
+              donate: () => push(context, DonateScreen(minAmount: numOf(d['min_donation']), hadith: hadith)),
             ),
+            if (events.isNotEmpty) ...[
+              const SectionTitle('Upcoming programmes'),
+              for (final e in events) ...[
+                _PublicEvent(e: Map<String, dynamic>.from(e)),
+                const SizedBox(height: 10),
+              ],
+            ],
+            if ('${d['mission'] ?? ''}'.isNotEmpty) ...[
+              const SectionTitle('Our mission'),
+              _MissionCard(text: '${d['mission']}'),
+            ],
+            if (vision.isNotEmpty) ...[
+              const SectionTitle('Our vision'),
+              if ('${d['vision_intro'] ?? ''}'.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+                  child: Text('${d['vision_intro']}', style: const TextStyle(fontSize: 15, height: 1.4)),
+                ),
+              for (var i = 0; i < vision.length; i++) ...[
+                _Pillar(i: i, p: Map<String, dynamic>.from(vision[i])),
+                const SizedBox(height: 10),
+              ],
+            ],
+            if (objectives.isNotEmpty) ...[
+              const SectionTitle('Our objectives'),
+              PanelList(children: [
+                for (var i = 0; i < objectives.length; i++) _Objective(n: i + 1, o: Map<String, dynamic>.from(objectives[i])),
+              ]),
+            ],
             if (leaders.isNotEmpty) ...[
               const SectionTitle('Area leaders'),
               for (final l in leaders) ...[
@@ -93,17 +105,21 @@ class PublicScreen extends StatelessWidget {
                 const SizedBox(height: 10),
               ],
             ],
+            const SectionTitle('Support our work'),
+            _GiveCard(
+              hadith: hadith,
+              canDonate: d['can_donate'] == true,
+              donate: () => push(context, DonateScreen(minAmount: numOf(d['min_donation']), hadith: hadith)),
+            ),
             if (links.isNotEmpty) ...[
               const SectionTitle('Follow us'),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final x in links) ActionChip(avatar: Icon(x.$1, size: 18), label: Text(x.$2), onPressed: () => _open(context, x.$3)),
               ]),
             ],
-            const SectionTitle('Upcoming programmes'),
-            if (events.isEmpty) const EmptyNote('No public programmes announced right now. Check back soon.'),
-            for (final e in events) ...[
-              _PublicEvent(e: Map<String, dynamic>.from(e)),
-              const SizedBox(height: 10),
+            if (events.isEmpty) ...[
+              const SectionTitle('Upcoming programmes'),
+              const EmptyNote('No public programmes announced right now. Check back soon.'),
             ],
             if (units.isNotEmpty) ...[
               const SectionTitle('Our units'),
@@ -111,7 +127,7 @@ class PublicScreen extends StatelessWidget {
                 for (final u in units) Chip(avatar: const Icon(Icons.apartment_outlined, size: 18), label: Text('${u['name']}')),
               ]),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             const Text('Powered by Hipersign ERP',
                 textAlign: TextAlign.center, style: TextStyle(color: SioColors.textSecondary, fontSize: 12)),
           ];
@@ -119,6 +135,173 @@ class PublicScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+const _gradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [Color(0xFF1A62A8), Color(0xFF3B3FB6), Color(0xFF6A2FB0)],
+);
+
+class _Hero extends StatelessWidget {
+  const _Hero({required this.name, required this.intro, required this.canDonate, required this.landing, required this.donate});
+  final String name;
+  final String intro;
+  final bool canDonate;
+  final bool landing;
+  final VoidCallback donate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      decoration: BoxDecoration(gradient: _gradient, borderRadius: BorderRadius.circular(24)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            child: const Image(image: AssetImage('assets/sio-logo.png'), width: 72, height: 72),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(name, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Text(intro, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
+        const SizedBox(height: 14),
+        Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: [
+          for (final m in const ['Study', 'Struggle', 'Service'])
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
+              child: Text(m, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+        ]),
+        const SizedBox(height: 18),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(backgroundColor: SioColors.red, foregroundColor: Colors.white),
+          onPressed: canDonate ? donate : null,
+          icon: const Icon(Icons.volunteer_activism),
+          label: Text(canDonate ? 'Donate to SIO' : 'Online donation coming soon'),
+        ),
+        if (landing) ...[
+          const SizedBox(height: 8),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white70)),
+            onPressed: () => push(context, const RegisterScreen()),
+            child: const Text('Join SIO: register as an associate'),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+class _MissionCard extends StatelessWidget {
+  const _MissionCard({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+        decoration: BoxDecoration(
+          color: SioColors.card,
+          borderRadius: BorderRadius.circular(18),
+          border: const Border(left: BorderSide(color: SioColors.blue, width: 5)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.format_quote, color: SioColors.blue, size: 32),
+          Text(text, style: const TextStyle(fontSize: 17, height: 1.45, fontWeight: FontWeight.w600, color: SioColors.ink)),
+        ]),
+      );
+}
+
+class _Pillar extends StatelessWidget {
+  const _Pillar({required this.i, required this.p});
+  final int i;
+  final Map<String, dynamic> p;
+
+  static const _icons = [Icons.auto_stories, Icons.how_to_vote_outlined, Icons.lightbulb_outline, Icons.flag_outlined];
+  static const _colors = [SioColors.blue, SioColors.purple, SioColors.red, SioColors.green];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _colors[i % _colors.length];
+    return SioPanel(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+          child: Icon(_icons[i % _icons.length], color: c, size: 26),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${p['title']}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: c)),
+            if ('${p['text']}'.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('${p['text']}', style: const TextStyle(height: 1.4)),
+            ],
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _Objective extends StatelessWidget {
+  const _Objective({required this.n, required this.o});
+  final int n;
+  final Map<String, dynamic> o;
+
+  @override
+  Widget build(BuildContext context) => Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          leading: CircleAvatar(
+            radius: 16,
+            backgroundColor: SioColors.blue,
+            child: Text('$n', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+          ),
+          title: Text('${o['title']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          childrenPadding: const EdgeInsets.fromLTRB(64, 0, 16, 14),
+          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+          children: [Text('${o['text']}', style: const TextStyle(height: 1.4))],
+        ),
+      );
+}
+
+class _GiveCard extends StatelessWidget {
+  const _GiveCard({required this.hadith, required this.canDonate, required this.donate});
+  final Map? hadith;
+  final bool canDonate;
+  final VoidCallback donate;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: SioColors.warningBg, borderRadius: BorderRadius.circular(18)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (hadith != null) ...[
+            const Icon(Icons.format_quote, color: SioColors.warning, size: 30),
+            Text('"${hadith!['text']}"',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 19, height: 1.4, fontWeight: FontWeight.w700, color: SioColors.ink)),
+            const SizedBox(height: 6),
+            Text('${hadith!['source'] ?? ''}', textAlign: TextAlign.center, style: const TextStyle(color: SioColors.warning)),
+            const SizedBox(height: 14),
+          ],
+          const Text('Your support funds student programmes, camps, relief and community service.',
+              textAlign: TextAlign.center, style: TextStyle(height: 1.4)),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: SioColors.red),
+            onPressed: canDonate ? donate : null,
+            icon: const Icon(Icons.volunteer_activism),
+            label: Text(canDonate ? 'Donate with UPI' : 'Online donation coming soon'),
+          ),
+        ]),
+      );
 }
 
 class _LeaderCard extends StatelessWidget {
@@ -199,8 +382,9 @@ class _PublicEvent extends StatelessWidget {
 
 /// A visitor donates: details, then pay with any UPI app, then give the UPI reference so SIO can confirm it.
 class DonateScreen extends StatefulWidget {
-  const DonateScreen({super.key, this.minAmount = 10});
+  const DonateScreen({super.key, this.minAmount = 10, this.hadith});
   final num minAmount;
+  final Map? hadith;
 
   @override
   State<DonateScreen> createState() => _DonateScreenState();
@@ -281,6 +465,19 @@ class _DonateScreenState extends State<DonateScreen> {
           const SizedBox(height: 24),
           FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
         ] else if (d == null) ...[
+          if (widget.hadith != null) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(color: SioColors.warningBg, borderRadius: BorderRadius.circular(16)),
+              child: Column(children: [
+                Text('"${widget.hadith!['text']}"',
+                    textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink)),
+                const SizedBox(height: 4),
+                Text('${widget.hadith!['source'] ?? ''}', textAlign: TextAlign.center, style: const TextStyle(color: SioColors.warning, fontSize: 12.5)),
+              ]),
+            ),
+            const SizedBox(height: 16),
+          ],
           TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Your name')),
           const SizedBox(height: 14),
           TextField(controller: _mobile, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),

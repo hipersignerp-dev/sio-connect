@@ -1,7 +1,24 @@
 # For visitors (no login): about SIO, upcoming public programmes, and whether online donation is set up.
 st = frappe.db.get_value("SIO Settings", "SIO Settings",
                          ["org_name", "public_intro", "upi_id", "upi_payee_name", "min_donation", "public_collection",
-                          "instagram", "threads", "facebook", "youtube", "whatsapp_channel", "website"], as_dict=True) or {}
+                          "instagram", "threads", "facebook", "youtube", "whatsapp_channel", "website", "mission",
+                          "vision_intro", "vision_points", "objectives", "hadith_text", "hadith_source"], as_dict=True) or {}
+
+
+def points(text):
+    # "Title: description" per line
+    out = []
+    for line in (text or "").split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        i = line.find(":")
+        if i > 0:
+            out.append({"title": line[:i].strip(), "text": line[i + 1:].strip()})
+        else:
+            out.append({"title": line, "text": ""})
+    return out
+
 leaders = frappe.get_all("SIO Leader", filters={"parent": "SIO Settings", "parenttype": "SIO Settings"},
                          fields=["leader_name", "designation", "phone", "photo"], order_by="idx asc")
 for l in leaders:
@@ -32,6 +49,11 @@ for e in events:
 frappe.response["message"] = {
     "org_name": st.get("org_name") or "SIO",
     "intro": st.get("public_intro"),
+    "mission": st.get("mission"),
+    "vision_intro": st.get("vision_intro"),
+    "vision": points(st.get("vision_points")),
+    "objectives": points(st.get("objectives")),
+    "hadith": {"text": st.get("hadith_text"), "source": st.get("hadith_source")} if st.get("hadith_text") else None,
     "leaders": leaders,
     "units": units,
     "social": {k: st.get(k) for k in ("instagram", "threads", "facebook", "youtube", "whatsapp_channel", "website")
