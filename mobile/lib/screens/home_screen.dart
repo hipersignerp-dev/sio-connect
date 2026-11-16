@@ -27,12 +27,16 @@ class HomeScreen extends StatelessWidget {
         title: Row(children: [
           const Image(image: AssetImage('assets/sio-logo.png'), width: 40, height: 40),
           const SizedBox(width: 12),
-          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(s.firstName.isEmpty ? 'SIO Connect' : 'Hi ${s.firstName}',
-                style: const TextStyle(fontWeight: FontWeight.w800)),
-            Text(DateFormat('EEEE, d MMMM').format(DateTime.now()),
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: SioColors.textSecondary)),
-          ]),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.firstName.isEmpty ? 'Assalamu Alaikum' : 'Assalamu Alaikum ${s.firstName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19)),
+              Text(DateFormat('EEEE, d MMMM').format(DateTime.now()),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: SioColors.textSecondary)),
+            ]),
+          ),
         ]),
         actions: [
           IconButton(
