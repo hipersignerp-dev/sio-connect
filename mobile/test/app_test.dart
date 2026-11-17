@@ -41,7 +41,7 @@ void main() {
     expect(find.text('Meetings'), findsNothing);
   });
 
-  testWidgets('unit admin gets Meetings and Collection tabs and admin actions on +', (tester) async {
+  testWidgets('unit admin gets Meetings and Expenses tabs and admin actions on +', (tester) async {
     AppState.i.me = {
       'full_name': 'Shibili K',
       'status': 'Active',
@@ -53,7 +53,7 @@ void main() {
     };
     await tester.pumpWidget(wrap(const HomeShell()));
     expect(find.text('Meetings'), findsWidgets);
-    expect(find.text('Collection'), findsWidgets);
+    expect(find.text('Expenses'), findsWidgets);
     await tester.tap(find.byTooltip('Add new'));
     await tester.pumpAndSettle();
     // a unit president's four most-used actions are up front...

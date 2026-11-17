@@ -67,16 +67,24 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final s = AppState.i;
     final meetingsTab = s.can('rsvp') || s.can('mark_attendance');
     final collectLabel = s.can('collect') || s.can('view_collection_totals') ? 'Collection' : 'Give';
+    // leaders: Expenses sits on the bar, Collections moves to the Admin list
+    final expensesTab = s.can('claim_expense') || s.can('approve_expense');
     final pages = <Widget>[
-      HomeScreen(openTab: (i) => setState(() => _tab = i)),
+      HomeScreen(
+        openTab: (i) => i == 2 && expensesTab
+            ? push(context, CollectionScreen(title: collectLabel == 'Give' ? 'Give' : 'Collection'))
+            : setState(() => _tab = i),
+      ),
       meetingsTab ? const MeetingsScreen() : const EventsScreen(),
-      CollectionScreen(title: collectLabel == 'Give' ? 'Give' : 'Collection'),
+      expensesTab ? const ExpensesScreen() : CollectionScreen(title: collectLabel == 'Give' ? 'Give' : 'Collection'),
       const MoreScreen(),
     ];
     final tabs = <(IconData, IconData, String)>[
       (Icons.home_outlined, Icons.home, 'Home'),
       meetingsTab ? (Icons.event_note_outlined, Icons.event_note, 'Meetings') : (Icons.event_outlined, Icons.event, 'Events'),
-      (Icons.volunteer_activism_outlined, Icons.volunteer_activism, collectLabel),
+      expensesTab
+          ? (Icons.receipt_long_outlined, Icons.receipt_long, 'Expenses')
+          : (Icons.volunteer_activism_outlined, Icons.volunteer_activism, collectLabel),
       widget.dashboard
           ? (Icons.admin_panel_settings_outlined, Icons.admin_panel_settings, 'Admin')
           : (Icons.more_horiz, Icons.more_horiz, 'More'),

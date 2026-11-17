@@ -19,6 +19,7 @@ import 'units_screen.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
 import 'social_screens.dart';
+import 'collection_screens.dart';
 import 'home_shell.dart';
 import 'meeting_screens.dart';
 import 'member_screens.dart';
@@ -129,7 +130,17 @@ class MoreScreen extends StatelessWidget {
                   subtitle: 'Weekly meetings',
                   onTap: () => push(context, const MeetingsScreen(standalone: true)),
                 ),
-              if (s.can('claim_expense') || s.can('approve_expense'))
+              if (s.can('collect') || s.can('view_collection_totals') || s.can('offer'))
+                SioTile(
+                  icon: Icons.volunteer_activism_outlined,
+                  title: s.can('collect') || s.can('view_collection_totals') ? 'Collections' : 'Give',
+                  subtitle: 'Collected so far, entries and offers',
+                  onTap: () => push(
+                    context,
+                    CollectionScreen(title: s.can('collect') || s.can('view_collection_totals') ? 'Collection' : 'Give'),
+                  ),
+                ),
+              if ((s.can('claim_expense') || s.can('approve_expense')) && !dashboardOpen)
                 SioTile(
                   icon: Icons.receipt_long_outlined,
                   title: 'Expense claims',
