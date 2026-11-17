@@ -41,28 +41,33 @@ class ManageCollectionsScreen extends StatelessWidget {
         builder: (context, list) => [
           if (list.isEmpty) const EmptyNote('No collections yet. Tap New collection.'),
           if (list.isNotEmpty)
-            PanelList(children: [
-              for (final c in list)
-                ListTile(
-                  onTap: () => push(context, CollectionFormScreen(name: c['name'].toString())),
-                  leading: CircleAvatar(
-                    backgroundColor: SioColors.cardHigh,
-                    foregroundColor: SioColors.blue,
-                    child: Icon(collectionIcon(c['collection_type']?.toString())),
+            PanelList(
+              children: [
+                for (final c in list)
+                  ListTile(
+                    onTap: () => push(context, CollectionFormScreen(name: c['name'].toString())),
+                    leading: CircleAvatar(
+                      backgroundColor: SioColors.cardHigh,
+                      foregroundColor: SioColors.blue,
+                      child: Icon(collectionIcon(c['collection_type']?.toString())),
+                    ),
+                    title: Text(c['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(
+                      [
+                        c['collection_type'],
+                        if (numOf(c['target_amount']) > 0) 'target ${inr(c['target_amount'])}',
+                        '${inr(c['collected'])} received',
+                      ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: StatusChip(
+                      c['is_active'] == 1 ? 'Open' : 'Closed',
+                      tone: c['is_active'] == 1 ? Tone.green : Tone.grey,
+                    ),
                   ),
-                  title: Text(c['name'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(
-                    [
-                      c['collection_type'],
-                      if (numOf(c['target_amount']) > 0) 'target ${inr(c['target_amount'])}',
-                      '${inr(c['collected'])} received',
-                    ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: StatusChip(c['is_active'] == 1 ? 'Open' : 'Closed', tone: c['is_active'] == 1 ? Tone.green : Tone.grey),
-                ),
-            ]),
+              ],
+            ),
         ],
       ),
     );
@@ -119,8 +124,8 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
         _from = parseDate(c['starts_on']);
         _to = parseDate(c['ends_on']);
         for (final t in (c['unit_targets'] as List? ?? [])) {
-          _unitTargets.putIfAbsent(t['unit'].toString(), () => TextEditingController()).text =
-              numOf(t['target']).toStringAsFixed(0);
+          _unitTargets.putIfAbsent(t['unit'].toString(), () => TextEditingController()).text = numOf(t['target'])
+              .toStringAsFixed(0);
         }
       }
       _entries = (d['entries'] as num?)?.toInt() ?? 0;
@@ -169,9 +174,12 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
       return;
     }
     if (_target$ > 0 && _split > 0 && _split != _target$) {
-      final go = await confirm(context, 'Unit targets don\'t add up',
-          'Units add up to ${inr(_split)} but the total target is ${inr(_target$)}. Save anyway?',
-          yes: 'Save');
+      final go = await confirm(
+        context,
+        'Unit targets don\'t add up',
+        'Units add up to ${inr(_split)} but the total target is ${inr(_target$)}. Save anyway?',
+        yes: 'Save',
+      );
       if (!go || !mounted) return;
     }
     setState(() => _busy = true);
@@ -198,9 +206,12 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
 
   Future<void> _delete() async {
     if (_entries > 0) {
-      final close = await confirm(context, 'Close instead?',
-          'This collection has $_entries entries, so it can\'t be deleted. Close it? It will stop showing in the app, and its records stay in the accounts.',
-          yes: 'Close it');
+      final close = await confirm(
+        context,
+        'Close instead?',
+        'This collection has $_entries entries, so it can\'t be deleted. Close it? It will stop showing in the app, and its records stay in the accounts.',
+        yes: 'Close it',
+      );
       if (!close || !mounted) return;
       setState(() => _open = false);
       await _save();
@@ -208,7 +219,11 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
     }
     if (!await confirm(context, 'Delete ${widget.name}?', 'This removes the collection and its unit targets.')) return;
     if (!mounted) return;
-    final ok = await run(context, () => Api.call('${Api.m}delete_collection', {'name': widget.name}), done: 'Collection deleted.');
+    final ok = await run(
+      context,
+      () => Api.call('${Api.m}delete_collection', {'name': widget.name}),
+      done: 'Collection deleted.',
+    );
     if (ok && mounted) Navigator.pop(context);
   }
 
@@ -234,120 +249,144 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-              if (_error != null) SioBanner(text: _error!, error: true),
-              TextField(
-                controller: _name,
-                enabled: !_editing,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Name', hintText: 'Ramadan Collection 1448'),
-              ),
-              const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _type,
-                decoration: const InputDecoration(labelText: 'Type'),
-                items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t))],
-                onChanged: (v) => setState(() => _type = v ?? _type),
-              ),
-              const SizedBox(height: 14),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text(_from == null ? 'Starts' : fmtDate(apiDate(_from!), 'd MMM yy')),
-                    onPressed: () => _pickDate(true),
-                  ),
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              children: [
+                if (_error != null) SioBanner(text: _error!, error: true),
+                TextField(
+                  controller: _name,
+                  enabled: !_editing,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'Name', hintText: 'Ramadan Collection 1448'),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.event, size: 18),
-                    label: Text(_to == null ? 'Ends' : fmtDate(apiDate(_to!), 'd MMM yy')),
-                    onPressed: () => _pickDate(false),
-                  ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  initialValue: _type,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t))],
+                  onChanged: (v) => setState(() => _type = v ?? _type),
                 ),
-              ]),
-              const SizedBox(height: 14),
-              TextField(
-                controller: _desc,
-                maxLines: 2,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Note for members (optional)'),
-              ),
-              const SizedBox(height: 6),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Open'),
-                subtitle: const Text('Open collections show in the app'),
-                value: _open,
-                onChanged: (v) => setState(() => _open = v),
-              ),
-              const SectionTitle('Target'),
-              TextField(
-                controller: _target,
-                keyboardType: TextInputType.number,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(labelText: 'Total target for the area', prefixText: '₹ '),
-              ),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton(onPressed: () => _distribute(byMembers: false), child: const Text('Split equally')),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(onPressed: () => _distribute(byMembers: true), child: const Text('Split by members')),
-                ),
-              ]),
-              const SectionTitle('Each unit\'s target'),
-              SioPanel(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Column(children: [
-                  for (final u in _units)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(children: [
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(u['unit'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
-                            Text('${numOf(u['members']).toInt()} active members',
-                                style: const TextStyle(color: SioColors.textSecondary, fontSize: 12)),
-                          ]),
-                        ),
-                        SizedBox(
-                          width: 140,
-                          child: TextField(
-                            controller: _unitTargets[u['unit'].toString()],
-                            keyboardType: TextInputType.number,
-                            textAlign: TextAlign.end,
-                            onChanged: (_) => setState(() {}),
-                            decoration: const InputDecoration(prefixText: '₹ ', isDense: true, hintText: '0'),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  const Divider(),
-                  Row(children: [
-                    const Expanded(child: Text('Units add up to', style: TextStyle(fontWeight: FontWeight.w700))),
-                    Text(inr(_split),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: _target$ > 0 && _split != _target$ ? SioColors.danger : SioColors.green,
-                        )),
-                  ]),
-                  if (_target$ > 0 && _split != _target$)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        _split < _target$ ? '${inr(_target$ - _split)} not given to any unit yet' : '${inr(_split - _target$)} more than the total',
-                        style: const TextStyle(color: SioColors.danger, fontSize: 12.5),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.calendar_today, size: 18),
+                        label: Text(_from == null ? 'Starts' : fmtDate(apiDate(_from!), 'd MMM yy')),
+                        onPressed: () => _pickDate(true),
                       ),
                     ),
-                ]),
-              ),
-              const SizedBox(height: 20),
-              FilledButton(onPressed: _busy ? null : _save, child: Text(_editing ? 'Save' : 'Add collection')),
-            ]),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.event, size: 18),
+                        label: Text(_to == null ? 'Ends' : fmtDate(apiDate(_to!), 'd MMM yy')),
+                        onPressed: () => _pickDate(false),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _desc,
+                  maxLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(labelText: 'Note for members (optional)'),
+                ),
+                const SizedBox(height: 6),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Open'),
+                  subtitle: const Text('Open collections show in the app'),
+                  value: _open,
+                  onChanged: (v) => setState(() => _open = v),
+                ),
+                const SectionTitle('Target'),
+                TextField(
+                  controller: _target,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(labelText: 'Total target for the area', prefixText: '₹ '),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(onPressed: () => _distribute(byMembers: false), child: const Text('Split equally')),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(onPressed: () => _distribute(byMembers: true), child: const Text('Split by members')),
+                    ),
+                  ],
+                ),
+                const SectionTitle('Each unit\'s target'),
+                SioPanel(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Column(
+                    children: [
+                      for (final u in _units)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(u['unit'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    Text(
+                                      '${numOf(u['members']).toInt()} active members',
+                                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(
+                                width: 140,
+                                child: TextField(
+                                  controller: _unitTargets[u['unit'].toString()],
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.end,
+                                  onChanged: (_) => setState(() {}),
+                                  decoration: const InputDecoration(prefixText: '₹ ', isDense: true, hintText: '0'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const Divider(),
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text('Units add up to', style: TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                          Text(
+                            inr(_split),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: _target$ > 0 && _split != _target$ ? SioColors.danger : SioColors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_target$ > 0 && _split != _target$)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            _split < _target$
+                                ? '${inr(_target$ - _split)} not given to any unit yet'
+                                : '${inr(_split - _target$)} more than the total',
+                            style: const TextStyle(color: SioColors.danger, fontSize: 12.5),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                FilledButton(onPressed: _busy ? null : _save, child: Text(_editing ? 'Save' : 'Add collection')),
+              ],
+            ),
     );
   }
 }
@@ -399,14 +438,21 @@ class _EventFormScreenState extends State<EventFormScreen> {
       if (!AppState.i.can('all_units')) _unit = AppState.i.me['unit']?.toString();
     }
     if (AppState.i.can('all_units')) {
-      Api.units().then((v) {
-        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
-      }).catchError((_) {});
+      Api.myUnits()
+          .then((v) {
+            if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
+          })
+          .catchError((_) {});
     }
   }
 
   Future<void> _pickStart() async {
-    final d = await showDatePicker(context: context, initialDate: _start, firstDate: DateTime(2020), lastDate: DateTime(DateTime.now().year + 3));
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _start,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(DateTime.now().year + 3),
+    );
     if (d == null || !mounted) return;
     final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_start));
     setState(() => _start = DateTime(d.year, d.month, d.day, t?.hour ?? _start.hour, t?.minute ?? _start.minute));
@@ -423,7 +469,8 @@ class _EventFormScreenState extends State<EventFormScreen> {
         'name': _e?['name'],
         'title': _title.text.trim(),
         'event_type': _type,
-        'starts_on': '${apiDate(_start)} ${_start.hour.toString().padLeft(2, '0')}:${_start.minute.toString().padLeft(2, '0')}:00',
+        'starts_on':
+            '${apiDate(_start)} ${_start.hour.toString().padLeft(2, '0')}:${_start.minute.toString().padLeft(2, '0')}:00',
         'venue': _venue.text.trim(),
         'status': _status,
         'open_to': _openTo,
@@ -439,8 +486,11 @@ class _EventFormScreenState extends State<EventFormScreen> {
   }
 
   Future<void> _delete() async {
-    if (!await confirm(context, 'Delete this event?',
-        'Events with registrations or expenses can\'t be deleted: set the status to Cancelled instead.')) {
+    if (!await confirm(
+      context,
+      'Delete this event?',
+      'Events with registrations or expenses can\'t be deleted: set the status to Cancelled instead.',
+    )) {
       return;
     }
     if (!mounted) return;
@@ -455,76 +505,101 @@ class _EventFormScreenState extends State<EventFormScreen> {
       appBar: AppBar(
         title: Text(_e == null ? 'New event' : 'Edit event'),
         actions: [
-          if (_e != null) IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline), onPressed: _busy ? null : _delete),
+          if (_e != null)
+            IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline), onPressed: _busy ? null : _delete),
         ],
       ),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-        TextField(controller: _title, textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(labelText: 'Title')),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
-          initialValue: _type,
-          decoration: const InputDecoration(labelText: 'Type'),
-          items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t))],
-          onChanged: (v) => setState(() => _type = v ?? _type),
-        ),
-        const SizedBox(height: 14),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.schedule),
-          label: Text('Starts ${fmtDate(_start.toIso8601String(), 'EEE d MMM yyyy, h:mm a')}'),
-          onPressed: _pickStart,
-        ),
-        const SizedBox(height: 14),
-        TextField(controller: _venue, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Venue')),
-        const SizedBox(height: 14),
-        if (all)
-          DropdownButtonFormField<String?>(
-            initialValue: _units.contains(_unit) ? _unit : null,
-            decoration: const InputDecoration(labelText: 'Unit'),
-            items: [
-              const DropdownMenuItem<String?>(value: null, child: Text('All units')),
-              for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          TextField(
+            controller: _title,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Title'),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: _type,
+            decoration: const InputDecoration(labelText: 'Type'),
+            items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t))],
+            onChanged: (v) => setState(() => _type = v ?? _type),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.schedule),
+            label: Text('Starts ${fmtDate(_start.toIso8601String(), 'EEE d MMM yyyy, h:mm a')}'),
+            onPressed: _pickStart,
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _venue,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Venue'),
+          ),
+          const SizedBox(height: 14),
+          if (all)
+            DropdownButtonFormField<String?>(
+              initialValue: _units.contains(_unit) ? _unit : null,
+              decoration: const InputDecoration(labelText: 'Unit'),
+              items: [
+                const DropdownMenuItem<String?>(value: null, child: Text('All units')),
+                for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u)),
+              ],
+              onChanged: (v) => setState(() => _unit = v),
+            )
+          else
+            InputDecorator(
+              decoration: const InputDecoration(labelText: 'Unit'),
+              child: Text(_unit ?? 'My unit'),
+            ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: _status,
+            decoration: const InputDecoration(labelText: 'Status'),
+            items: [for (final t in statuses) DropdownMenuItem(value: t, child: Text(t))],
+            onChanged: (v) => setState(() => _status = v ?? _status),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: _openTo,
+            decoration: const InputDecoration(labelText: 'Who can register'),
+            items: const [
+              DropdownMenuItem(value: 'Everyone', child: Text('Everyone (students and members)')),
+              DropdownMenuItem(value: 'Members Only', child: Text('Members only')),
             ],
-            onChanged: (v) => setState(() => _unit = v),
-          )
-        else
-          InputDecorator(decoration: const InputDecoration(labelText: 'Unit'), child: Text(_unit ?? 'My unit')),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
-          initialValue: _status,
-          decoration: const InputDecoration(labelText: 'Status'),
-          items: [for (final t in statuses) DropdownMenuItem(value: t, child: Text(t))],
-          onChanged: (v) => setState(() => _status = v ?? _status),
-        ),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
-          initialValue: _openTo,
-          decoration: const InputDecoration(labelText: 'Who can register'),
-          items: const [
-            DropdownMenuItem(value: 'Everyone', child: Text('Everyone (students and members)')),
-            DropdownMenuItem(value: 'Members Only', child: Text('Members only')),
-          ],
-          onChanged: (v) => setState(() => _openTo = v ?? _openTo),
-        ),
-        const SizedBox(height: 14),
-        Row(children: [
-          Expanded(
-            child: TextField(controller: _capacity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Seats (optional)')),
+            onChanged: (v) => setState(() => _openTo = v ?? _openTo),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(controller: _budget, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Budget', prefixText: '₹ ')),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _capacity,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Seats (optional)'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _budget,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Budget', prefixText: '₹ '),
+                ),
+              ),
+            ],
           ),
-        ]),
-        const SizedBox(height: 14),
-        TextField(
-          controller: _desc,
-          maxLines: 3,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Details (optional)'),
-        ),
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _busy ? null : _save, child: Text(_e == null ? 'Add event' : 'Save')),
-      ]),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _desc,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Details (optional)'),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _busy ? null : _save, child: Text(_e == null ? 'Add event' : 'Save')),
+        ],
+      ),
     );
   }
 }
@@ -539,7 +614,18 @@ class MemberFormScreen extends StatefulWidget {
 }
 
 class _MemberFormScreenState extends State<MemberFormScreen> {
-  static const years = ['', '1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', 'PG 1st Year', 'PG 2nd Year', 'Research', 'Other'];
+  static const years = [
+    '',
+    '1st Year',
+    '2nd Year',
+    '3rd Year',
+    '4th Year',
+    '5th Year',
+    'PG 1st Year',
+    'PG 2nd Year',
+    'Research',
+    'Other',
+  ];
   final _name = TextEditingController();
   final _mobile = TextEditingController();
   final _email = TextEditingController();
@@ -554,7 +640,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   String _role = 'Associate';
   String _status = 'Active';
   String? _unit;
-  List<String> _units = [];
+  String? _area;
+  List<dynamic> _unitRows = []; // units with their area (district) this person may pick
   bool _busy = false;
 
   Map<String, dynamic>? get _m => widget.member;
@@ -577,17 +664,39 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       _books.text = '${m['books_read'] ?? ''}';
       _note.text = '${m['membership_note'] ?? ''}';
       _unit = m['unit']?.toString();
+      _area = m['area']?.toString();
     } else {
-      _unit = AppState.i.me['unit']?.toString();
+      _unit = AppState.i.level == 'unit' ? AppState.i.me['unit']?.toString() : null;
     }
+    _area ??= AppState.i.area;
     if (AppState.i.can('all_units')) {
-      Api.units().then((v) {
-        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
-      }).catchError((_) {});
+      Api.myUnits()
+          .then((v) {
+            if (mounted) setState(() => _unitRows = v);
+          })
+          .catchError((_) {});
     }
   }
 
+  bool get _areaRole => AppState.areaRoles.contains(_role) || _role == 'Area Admin';
+  List<String> get _areas => {
+    for (final u in _unitRows)
+      if ('${u['district'] ?? ''}'.isNotEmpty) '${u['district']}',
+  }.toList()..sort();
+  List<String> get _unitsInArea => [
+    for (final u in _unitRows)
+      if (_area == null || u['district'] == _area) u['name'].toString(),
+  ];
+
   Future<void> _save() async {
+    if (!_areaRole && (_unit == null || _unit!.isEmpty)) {
+      toast(context, 'Pick the unit.');
+      return;
+    }
+    if (AppState.areaRoles.contains(_role) && (_area == null || _area!.isEmpty)) {
+      toast(context, 'Pick the area.');
+      return;
+    }
     setState(() => _busy = true);
     final ok = await run(context, () async {
       final r = await Api.call('${Api.m}save_member', {
@@ -595,7 +704,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         'full_name': _name.text.trim(),
         'mobile': _mobile.text.trim(),
         'email': _email.text.trim(),
-        'unit': _unit,
+        'unit': _areaRole ? null : _unit,
+        'area': _area,
         'member_role': _role,
         'status': _m == null ? null : _status,
         'campus': _campus.text.trim(),
@@ -619,100 +729,152 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final admin = AppState.i.role == 'Area Admin';
-    final roles = admin
-        ? const ['Associate', 'Worker', 'Member', 'Unit Secretary', 'Unit President', 'Finance', 'Area Admin']
-        : <String>{'Associate', 'Worker', _role}.toList();
+    final roles = <String>{...AppState.i.givableRoles, _role}.toList();
+    final areas = <String>{..._areas, ?_area}.toList();
+    final unitsHere = _unitsInArea;
     return Scaffold(
       appBar: AppBar(title: Text(_m == null ? 'Add student' : 'Edit details')),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-        if (_m == null)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: SioBanner(text: 'They can sign up in the app later with this mobile number to get their own login.'),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          if (_m == null)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: SioBanner(text: 'They can sign up in the app later with this mobile number to get their own login.'),
+            ),
+          PhotoPicker(
+            name: _name.text.isEmpty ? '?' : _name.text,
+            photo: _m?['photo']?.toString(),
+            memberId: _m?['name']?.toString(),
+            onChanged: (u) => _m?['photo'] = u,
+            onPicked: (b) => _newPhoto = b,
           ),
-        PhotoPicker(
-          name: _name.text.isEmpty ? '?' : _name.text,
-          photo: _m?['photo']?.toString(),
-          memberId: _m?['name']?.toString(),
-          onChanged: (u) => _m?['photo'] = u,
-          onPicked: (b) => _newPhoto = b,
-        ),
-        const SizedBox(height: 6),
-        Text(_m == null ? 'Add a photo (optional)' : 'Tap to change the photo',
-            textAlign: TextAlign.center, style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
-        const SizedBox(height: 14),
-        TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Full name')),
-        const SizedBox(height: 14),
-        TextField(controller: _mobile, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),
-        const SizedBox(height: 14),
-        TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email (optional)')),
-        const SizedBox(height: 14),
-        if (AppState.i.can('all_units'))
-          DropdownButtonFormField<String?>(
-            initialValue: _units.contains(_unit) ? _unit : null,
-            decoration: const InputDecoration(labelText: 'Unit'),
-            items: [for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u))],
-            onChanged: (v) => setState(() => _unit = v),
-          )
-        else
-          InputDecorator(decoration: const InputDecoration(labelText: 'Unit'), child: Text(_unit ?? 'My unit')),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
-          initialValue: roles.contains(_role) ? _role : roles.first,
-          decoration: const InputDecoration(labelText: 'Role'),
-          items: [for (final r in roles) DropdownMenuItem(value: r, child: Text(r))],
-          onChanged: (v) => setState(() => _role = v ?? _role),
-        ),
-        if (_m != null) ...[
           const SizedBox(height: 6),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Active'),
-            subtitle: const Text('Inactive members drop off rosters and lists'),
-            value: _status == 'Active',
-            onChanged: (v) => setState(() => _status = v ? 'Active' : 'Inactive'),
-          ),
-        ],
-        const SectionTitle('Study'),
-        TextField(controller: _campus, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Campus / college')),
-        const SizedBox(height: 14),
-        TextField(controller: _course, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Course')),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
-          initialValue: _year,
-          decoration: const InputDecoration(labelText: 'Year'),
-          items: [for (final y in years) DropdownMenuItem(value: y, child: Text(y.isEmpty ? '—' : y))],
-          onChanged: (v) => setState(() => _year = v ?? ''),
-        ),
-        const SizedBox(height: 14),
-        TextField(controller: _town, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Home town')),
-        if (_m != null && (_role == 'Associate' || _role == 'Worker' || _mulakath || _books.text.isNotEmpty)) ...[
-          const SectionTitle('Path to membership'),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Mulakath done'),
-            value: _mulakath,
-            onChanged: (v) => setState(() => _mulakath = v),
-          ),
-          TextField(
-            controller: _books,
-            maxLines: 4,
-            minLines: 2,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'Books read', helperText: 'One book per line'),
+          Text(
+            _m == null ? 'Add a photo (optional)' : 'Tap to change the photo',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 14),
           TextField(
-            controller: _note,
-            maxLines: 2,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'Note (optional)'),
+            controller: _name,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Full name'),
           ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _mobile,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'Mobile'),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(labelText: 'Email (optional)'),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: roles.contains(_role) ? _role : roles.first,
+            decoration: const InputDecoration(labelText: 'Role'),
+            items: [for (final r in roles) DropdownMenuItem(value: r, child: Text(r))],
+            onChanged: (v) => setState(() => _role = v ?? _role),
+          ),
+          const SizedBox(height: 14),
+          // area first, then a unit of that area (area roles have no unit)
+          if (AppState.i.level == 'all' && areas.isNotEmpty)
+            DropdownButtonFormField<String>(
+              initialValue: areas.contains(_area) ? _area : null,
+              decoration: const InputDecoration(labelText: 'Area', prefixIcon: Icon(Icons.hub_outlined)),
+              items: [for (final a in areas) DropdownMenuItem(value: a, child: Text(a))],
+              onChanged: (v) => setState(() {
+                _area = v;
+                if (_unit != null && !_unitsInArea.contains(_unit)) _unit = null;
+              }),
+            )
+          else if (_area != null)
+            InputDecorator(
+              decoration: const InputDecoration(labelText: 'Area', prefixIcon: Icon(Icons.hub_outlined)),
+              child: Text(_area!),
+            ),
+          if (!_areaRole) ...[
+            const SizedBox(height: 14),
+            if (AppState.i.can('all_units'))
+              DropdownButtonFormField<String?>(
+                initialValue: unitsHere.contains(_unit) ? _unit : null,
+                decoration: const InputDecoration(labelText: 'Unit', prefixIcon: Icon(Icons.apartment_outlined)),
+                hint: Text(unitsHere.isEmpty ? 'No units in this area' : 'Pick the unit'),
+                items: [for (final u in unitsHere) DropdownMenuItem<String?>(value: u, child: Text(u))],
+                onChanged: (v) => setState(() => _unit = v),
+              )
+            else
+              InputDecorator(
+                decoration: const InputDecoration(labelText: 'Unit', prefixIcon: Icon(Icons.apartment_outlined)),
+                child: Text(_unit ?? 'My unit'),
+              ),
+          ],
+          if (_m != null) ...[
+            const SizedBox(height: 6),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Active'),
+              subtitle: const Text('Inactive members drop off rosters and lists'),
+              value: _status == 'Active',
+              onChanged: (v) => setState(() => _status = v ? 'Active' : 'Inactive'),
+            ),
+          ],
+          const SectionTitle('Study'),
+          TextField(
+            controller: _campus,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Campus / college'),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _course,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Course'),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: _year,
+            decoration: const InputDecoration(labelText: 'Year'),
+            items: [for (final y in years) DropdownMenuItem(value: y, child: Text(y.isEmpty ? '—' : y))],
+            onChanged: (v) => setState(() => _year = v ?? ''),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _town,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Home town'),
+          ),
+          if (_m != null && (_role == 'Associate' || _role == 'Worker' || _mulakath || _books.text.isNotEmpty)) ...[
+            const SectionTitle('Path to membership'),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Mulakath done'),
+              value: _mulakath,
+              onChanged: (v) => setState(() => _mulakath = v),
+            ),
+            TextField(
+              controller: _books,
+              maxLines: 4,
+              minLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(labelText: 'Books read', helperText: 'One book per line'),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _note,
+              maxLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(labelText: 'Note (optional)'),
+            ),
+          ],
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _busy ? null : _save, child: Text(_m == null ? 'Add student' : 'Save')),
         ],
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _busy ? null : _save, child: Text(_m == null ? 'Add student' : 'Save')),
-      ]),
+      ),
     );
   }
 }

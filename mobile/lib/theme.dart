@@ -60,9 +60,13 @@ ThemeData buildTheme() {
       fillColor: SioColors.card,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: SioColors.border)),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: SioColors.border),
+      ),
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: SioColors.blue, width: 1.6)),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: SioColors.blue, width: 1.6),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -83,17 +87,19 @@ ThemeData buildTheme() {
       ),
     ),
     textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: SioColors.blue)),
-    progressIndicatorTheme:
-        const ProgressIndicatorThemeData(color: SioColors.blue, linearTrackColor: SioColors.cardHigh),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: SioColors.blue, linearTrackColor: SioColors.cardHigh),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Colors.white : null),
       trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? SioColors.blue : null),
     ),
     dialogTheme: const DialogThemeData(backgroundColor: SioColors.background, surfaceTintColor: Colors.transparent),
-    bottomSheetTheme:
-        const BottomSheetThemeData(backgroundColor: SioColors.background, surfaceTintColor: Colors.transparent),
+    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: SioColors.background, surfaceTintColor: Colors.transparent),
     bottomAppBarTheme: const BottomAppBarThemeData(
-        color: SioColors.background, surfaceTintColor: Colors.transparent, elevation: 8, shadowColor: Color(0x331A62A8)),
+      color: SioColors.background,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      shadowColor: Color(0x331A62A8),
+    ),
     snackBarTheme: const SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: SioColors.text,
@@ -138,24 +144,24 @@ class SioBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-            color: error ? SioColors.dangerBg : SioColors.warningBg, borderRadius: BorderRadius.circular(12)),
-        child: Text(text, style: TextStyle(color: error ? SioColors.danger : SioColors.text)),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: error ? SioColors.dangerBg : SioColors.warningBg, borderRadius: BorderRadius.circular(12)),
+    child: Text(text, style: TextStyle(color: error ? SioColors.danger : SioColors.text)),
+  );
 }
 
 /// Settings-style row (More screen).
 class SioTile extends StatelessWidget {
-  const SioTile(
-      {super.key,
-      required this.icon,
-      required this.title,
-      required this.onTap,
-      this.subtitle,
-      this.danger = false,
-      this.trailing});
+  const SioTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.danger = false,
+    this.trailing,
+  });
   final IconData icon;
   final String title;
   final String? subtitle;
@@ -165,17 +171,17 @@ class SioTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          tileColor: SioColors.card,
-          leading: Icon(icon, color: danger ? SioColors.danger : SioColors.blue),
-          title: Text(title, style: TextStyle(color: danger ? SioColors.danger : null)),
-          subtitle: subtitle == null ? null : Text(subtitle!, style: const TextStyle(color: SioColors.textSecondary)),
-          trailing: trailing ?? (danger ? null : const Icon(Icons.chevron_right)),
-          onTap: onTap,
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: ListTile(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      tileColor: SioColors.card,
+      leading: Icon(icon, color: danger ? SioColors.danger : SioColors.blue),
+      title: Text(title, style: TextStyle(color: danger ? SioColors.danger : null)),
+      subtitle: subtitle == null ? null : Text(subtitle!, style: const TextStyle(color: SioColors.textSecondary)),
+      trailing: trailing ?? (danger ? null : const Icon(Icons.chevron_right)),
+      onTap: onTap,
+    ),
+  );
 }
 
 enum Tone { green, blue, red, amber, grey }
@@ -226,7 +232,10 @@ class StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(text, style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w700)),
+      child: Text(
+        text,
+        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w700),
+      ),
     );
   }
 }

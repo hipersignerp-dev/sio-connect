@@ -62,7 +62,9 @@ if caps["approve_expense"]:
     else:
         pend = frappe.db.sql(
             """select count(*), coalesce(sum(amount), 0) from `tabSIO Expense Claim`
-            where status = 'Pending' and unit in %(u)s""", {"u": ctx["approver_units"]})[0]
+            where status = 'Pending' and unit in %(u)s""",
+            {"u": tuple(list(ctx["approver_units"]) + ((SCOPE_UNITS or []) if ctx["is_area_lead"] else [])
+                        or ["__none__"])})[0]
     out["pending_expenses"] = {"count": frappe.utils.cint(pend[0]), "amount": frappe.utils.flt(pend[1])}
 if SCOPE_UNITS is None:
     pub = frappe.db.get_value("SIO Settings", "SIO Settings", "public_collection")

@@ -32,107 +32,153 @@ class MoreScreen extends StatelessWidget {
         final meetingsTab = s.can('rsvp') || s.can('mark_attendance');
         return Scaffold(
           appBar: AppBar(title: const Text('More')),
-          body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 96), children: [
-            SioPanel(
-              child: Row(children: [
-                Avatar((me['full_name'] ?? '').toString(), radius: 26, photo: me['photo']),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text((me['full_name'] ?? '').toString(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                    Text([s.pending ? 'Associate · waiting approval' : me['member_role'], me['unit']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                        style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-                    if (me['member'] != null)
-                      Text('Member ID ${me['member']}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-                  ]),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+            children: [
+              SioPanel(
+                child: Row(
+                  children: [
+                    Avatar((me['full_name'] ?? '').toString(), radius: 26, photo: me['photo']),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            (me['full_name'] ?? '').toString(),
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            [
+                              s.pending ? 'Associate · waiting approval' : me['member_role'],
+                              me['unit'],
+                            ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+                            style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                          ),
+                          if (me['member'] != null)
+                            Text(
+                              'Member ID ${me['member']}',
+                              style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ]),
-            ),
-            const SizedBox(height: 16),
-            SioTile(icon: Icons.person_outline, title: 'My profile', subtitle: 'College, course, unit', onTap: () => push(context, const ProfileScreen())),
-            if (s.can('view_members'))
-              SioTile(icon: Icons.groups_outlined, title: 'Students & members', subtitle: 'Approve new associates, roles', onTap: () => push(context, const MembersScreen())),
-            if (meetingsTab)
-              SioTile(icon: Icons.event_outlined, title: 'Events', subtitle: 'Programmes and registrations', onTap: () => push(context, const EventsScreen(standalone: true)))
-            else if (s.can('mark_attendance'))
-              SioTile(icon: Icons.event_note_outlined, title: 'Meetings', subtitle: 'Weekly meetings', onTap: () => push(context, const MeetingsScreen(standalone: true))),
-            if (s.can('claim_expense') || s.can('approve_expense'))
-              SioTile(
-                icon: Icons.receipt_long_outlined,
-                title: 'Expense claims',
-                subtitle: s.can('approve_expense') ? 'Approve and pay claims' : 'Claim bills for events and meetings',
-                onTap: () => push(context, const ExpensesScreen()),
               ),
-            if (s.can('view_donors'))
+              const SizedBox(height: 16),
               SioTile(
-                icon: Icons.contacts_outlined,
-                title: 'Donors',
-                subtitle: 'Everyone who gave, with phone, to ask again',
-                onTap: () => push(context, const DonorsScreen()),
+                icon: Icons.person_outline,
+                title: 'My profile',
+                subtitle: 'College, course, unit',
+                onTap: () => push(context, const ProfileScreen()),
               ),
-            if (s.can('view_members') || s.can('all_units'))
+              if (s.can('view_members'))
+                SioTile(
+                  icon: Icons.groups_outlined,
+                  title: 'Students & members',
+                  subtitle: 'Approve new associates, roles',
+                  onTap: () => push(context, const MembersScreen()),
+                ),
+              if (meetingsTab)
+                SioTile(
+                  icon: Icons.event_outlined,
+                  title: 'Events',
+                  subtitle: 'Programmes and registrations',
+                  onTap: () => push(context, const EventsScreen(standalone: true)),
+                )
+              else if (s.can('mark_attendance'))
+                SioTile(
+                  icon: Icons.event_note_outlined,
+                  title: 'Meetings',
+                  subtitle: 'Weekly meetings',
+                  onTap: () => push(context, const MeetingsScreen(standalone: true)),
+                ),
+              if (s.can('claim_expense') || s.can('approve_expense'))
+                SioTile(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'Expense claims',
+                  subtitle: s.can('approve_expense') ? 'Approve and pay claims' : 'Claim bills for events and meetings',
+                  onTap: () => push(context, const ExpensesScreen()),
+                ),
+              if (s.can('view_donors'))
+                SioTile(
+                  icon: Icons.contacts_outlined,
+                  title: 'Donors',
+                  subtitle: 'Everyone who gave, with phone, to ask again',
+                  onTap: () => push(context, const DonorsScreen()),
+                ),
+              if (s.can('view_members') || s.can('all_units'))
+                SioTile(
+                  icon: Icons.apartment_outlined,
+                  title: 'Areas & units',
+                  subtitle: s.can('manage_units') ? 'Add areas and units, office bearers' : 'Areas, units and their members',
+                  onTap: () => push(context, const UnitsScreen()),
+                ),
+              if (s.can('manage_collections'))
+                SioTile(
+                  icon: Icons.savings_outlined,
+                  title: 'Collections & targets',
+                  subtitle: 'Add, close or delete collections; split targets to units',
+                  onTap: () => push(context, const ManageCollectionsScreen()),
+                ),
+              if (s.can('request_funds') || s.can('approve_funds'))
+                SioTile(
+                  icon: Icons.request_quote_outlined,
+                  title: 'Programme funds',
+                  subtitle: s.can('approve_funds')
+                      ? 'Approve and release money units ask for'
+                      : 'Ask the area for programme money',
+                  onTap: () => push(context, const FundRequestsScreen()),
+                ),
+              if (s.can('view_accounts'))
+                SioTile(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Accounts',
+                  subtitle: 'Money in, money out and balance',
+                  onTap: () => push(context, const AccountsScreen()),
+                ),
               SioTile(
-                icon: Icons.apartment_outlined,
-                title: 'Areas & units',
-                subtitle: s.can('manage_units') ? 'Add areas and units, office bearers' : 'Areas, units and their members',
-                onTap: () => push(context, const UnitsScreen()),
+                icon: Icons.campaign_outlined,
+                title: 'Updates & notices',
+                subtitle: s.can('send_notice') ? 'Read and send updates' : 'News from your unit and area',
+                onTap: () => push(context, const NoticesScreen()),
               ),
-            if (s.can('manage_collections'))
+              const _BiometricTile(),
               SioTile(
-                icon: Icons.savings_outlined,
-                title: 'Collections & targets',
-                subtitle: 'Add, close or delete collections; split targets to units',
-                onTap: () => push(context, const ManageCollectionsScreen()),
+                icon: Icons.system_update_outlined,
+                title: 'Check for updates',
+                subtitle: UpdateService.versionLabel,
+                onTap: () => UpdateService.check(context, force: true),
               ),
-            if (s.can('request_funds') || s.can('approve_funds'))
               SioTile(
-                icon: Icons.request_quote_outlined,
-                title: 'Programme funds',
-                subtitle: s.can('approve_funds') ? 'Approve and release money units ask for' : 'Ask the area for programme money',
-                onTap: () => push(context, const FundRequestsScreen()),
+                icon: Icons.dns_outlined,
+                title: 'Server',
+                subtitle: Api.baseUrl.replaceFirst('https://', ''),
+                onTap: () {},
               ),
-            if (s.can('view_accounts'))
+              const SizedBox(height: 8),
               SioTile(
-                icon: Icons.account_balance_wallet_outlined,
-                title: 'Accounts',
-                subtitle: 'Money in, money out and balance',
-                onTap: () => push(context, const AccountsScreen()),
+                icon: Icons.logout,
+                title: 'Sign out',
+                danger: true,
+                onTap: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Sign out?'),
+                      content: const Text('Fingerprint sign-in will be turned off on this phone.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign out')),
+                      ],
+                    ),
+                  );
+                  if (ok == true) await AppState.i.signOut();
+                },
               ),
-            SioTile(
-              icon: Icons.campaign_outlined,
-              title: 'Updates & notices',
-              subtitle: s.can('send_notice') ? 'Read and send updates' : 'News from your unit and area',
-              onTap: () => push(context, const NoticesScreen()),
-            ),
-            const _BiometricTile(),
-            SioTile(
-              icon: Icons.system_update_outlined,
-              title: 'Check for updates',
-              subtitle: UpdateService.versionLabel,
-              onTap: () => UpdateService.check(context, force: true),
-            ),
-            SioTile(icon: Icons.dns_outlined, title: 'Server', subtitle: Api.baseUrl.replaceFirst('https://', ''), onTap: () {}),
-            const SizedBox(height: 8),
-            SioTile(
-              icon: Icons.logout,
-              title: 'Sign out',
-              danger: true,
-              onTap: () async {
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Sign out?'),
-                    content: const Text('Fingerprint sign-in will be turned off on this phone.'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                      FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign out')),
-                    ],
-                  ),
-                );
-                if (ok == true) await AppState.i.signOut();
-              },
-            ),
-          ]),
+            ],
+          ),
         );
       },
     );
@@ -200,15 +246,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<dynamic> _units = [];
   bool _busy = false;
 
-  static const years = ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', 'PG 1st Year', 'PG 2nd Year', 'Research', 'Other'];
+  static const years = [
+    '1st Year',
+    '2nd Year',
+    '3rd Year',
+    '4th Year',
+    '5th Year',
+    'PG 1st Year',
+    'PG 2nd Year',
+    'Research',
+    'Other',
+  ];
 
   @override
   void initState() {
     super.initState();
     if (AppState.i.pending) {
-      Api.units().then((u) {
-        if (mounted) setState(() => _units = u);
-      }).catchError((_) {});
+      Api.units()
+          .then((u) {
+            if (mounted) setState(() => _units = u);
+          })
+          .catchError((_) {});
     }
   }
 
@@ -235,56 +293,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final pending = AppState.i.pending;
     return Scaffold(
       appBar: AppBar(title: const Text('My profile')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        if (me['member'] != null) ...[
-          PhotoPicker(
-            name: (me['full_name'] ?? '').toString(),
-            photo: me['photo']?.toString(),
-            self: true,
-            onChanged: (u) {
-              AppState.i.me['photo'] = u;
-              AppState.i.refreshAll();
-              AppState.i.touch();
-            },
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (me['member'] != null) ...[
+            PhotoPicker(
+              name: (me['full_name'] ?? '').toString(),
+              photo: me['photo']?.toString(),
+              self: true,
+              onChanged: (u) {
+                AppState.i.me['photo'] = u;
+                AppState.i.refreshAll();
+                AppState.i.touch();
+              },
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tap to add or change your photo',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+            ),
+            const SizedBox(height: 14),
+          ],
+          SioPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text((me['full_name'] ?? '').toString(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(
+                  [me['mobile'], me['email']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+                  style: const TextStyle(color: SioColors.textSecondary),
+                ),
+                if (me['joined_on'] != null)
+                  Text('Member since ${fmtDate(me['joined_on'])}', style: const TextStyle(color: SioColors.textSecondary)),
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
-          const Text('Tap to add or change your photo', textAlign: TextAlign.center, style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+          const SizedBox(height: 16),
+          if (pending && _units.isNotEmpty) ...[
+            DropdownButtonFormField<String>(
+              initialValue: _units.any((u) => u['name'] == _unit) ? _unit : null,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Unit'),
+              items: [for (final u in _units) DropdownMenuItem(value: u['name'].toString(), child: Text(u['name'].toString()))],
+              onChanged: (v) => setState(() => _unit = v),
+            ),
+            const SizedBox(height: 14),
+          ],
+          TextField(
+            controller: _campus,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'College / campus'),
+          ),
           const SizedBox(height: 14),
-        ],
-        SioPanel(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text((me['full_name'] ?? '').toString(), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text([me['mobile'], me['email']].where((x) => x != null && '$x'.isNotEmpty).join(' · '), style: const TextStyle(color: SioColors.textSecondary)),
-            if (me['joined_on'] != null) Text('Member since ${fmtDate(me['joined_on'])}', style: const TextStyle(color: SioColors.textSecondary)),
-          ]),
-        ),
-        const SizedBox(height: 16),
-        if (pending && _units.isNotEmpty) ...[
+          TextField(
+            controller: _course,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Course'),
+          ),
+          const SizedBox(height: 14),
           DropdownButtonFormField<String>(
-            initialValue: _units.any((u) => u['name'] == _unit) ? _unit : null,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Unit'),
-            items: [for (final u in _units) DropdownMenuItem(value: u['name'].toString(), child: Text(u['name'].toString()))],
-            onChanged: (v) => setState(() => _unit = v),
+            initialValue: years.contains(_year) ? _year : null,
+            decoration: const InputDecoration(labelText: 'Year'),
+            items: [for (final y in years) DropdownMenuItem(value: y, child: Text(y))],
+            onChanged: (v) => setState(() => _year = v),
           ),
           const SizedBox(height: 14),
+          TextField(
+            controller: _town,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Home town'),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
         ],
-        TextField(controller: _campus, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'College / campus')),
-        const SizedBox(height: 14),
-        TextField(controller: _course, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Course')),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
-          initialValue: years.contains(_year) ? _year : null,
-          decoration: const InputDecoration(labelText: 'Year'),
-          items: [for (final y in years) DropdownMenuItem(value: y, child: Text(y))],
-          onChanged: (v) => setState(() => _year = v),
-        ),
-        const SizedBox(height: 14),
-        TextField(controller: _town, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Home town')),
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
-      ]),
+      ),
     );
   }
 }

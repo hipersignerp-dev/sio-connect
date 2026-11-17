@@ -21,7 +21,10 @@ class EventDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       floatingActionButton: s.can('claim_expense')
-          ? AddFab(tooltip: 'Add expense', onPressed: () => push(context, NewClaimScreen(event: name)))
+          ? AddFab(
+              tooltip: 'Add expense',
+              onPressed: () => push(context, NewClaimScreen(event: name)),
+            )
           : null,
       body: Loader<Map<String, dynamic>>(
         load: () async => Map<String, dynamic>.from(await Api.call('${Api.m}event', {'name': name}) as Map),
@@ -34,75 +37,96 @@ class EventDetailScreen extends StatelessWidget {
           final spent = numOf(sum?['spent']);
           return [
             SioPanel(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(e['title'].toString(),
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          e['title'].toString(),
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
+                        ),
+                      ),
+                      StatusChip(e['status'].toString(), tone: StatusChip.toneFor(e['status'].toString())),
+                    ],
                   ),
-                  StatusChip(e['status'].toString(), tone: StatusChip.toneFor(e['status'].toString())),
-                ]),
-                const SizedBox(height: 6),
-                Text(
-                    [if (d != null) DateFormat('EEE d MMM yyyy, h:mm a').format(d), e['venue'], e['unit']]
-                        .where((x) => x != null && '$x'.isNotEmpty)
-                        .join(' · '),
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-                if (s.can('manage_events') && (s.can('all_units') || (e['unit'] != null && e['unit'] == s.me['unit'])))
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                      onPressed: () async {
-                        final r = await push(context, EventFormScreen(event: e));
-                        if (r == 'deleted' && context.mounted) Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit event'),
+                  const SizedBox(height: 6),
+                  Text(
+                    [
+                      if (d != null) DateFormat('EEE d MMM yyyy, h:mm a').format(d),
+                      e['venue'],
+                      e['unit'],
+                    ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                  ),
+                  if (s.can('manage_events') && (s.can('all_units') || (e['unit'] != null && e['unit'] == s.me['unit'])))
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        onPressed: () async {
+                          final r = await push(context, EventFormScreen(event: e));
+                          if (r == 'deleted' && context.mounted) Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Edit event'),
+                      ),
                     ),
-                  ),
-                if ((e['description'] ?? '').toString().isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text(e['description'].toString()),
+                  if ((e['description'] ?? '').toString().isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(e['description'].toString()),
+                  ],
                 ],
-              ]),
+              ),
             ),
+            if (s.can('register_events') && !const ['Completed', 'Cancelled'].contains(e['status'])) ...[
+              const SizedBox(height: 12),
+              _RegisterButton(event: e),
+            ],
             if (sum != null) ...[
               const SectionTitle('Spending'),
               SioPanel(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Row(children: [
-                    Stat(budget > 0 ? inr(budget) : '–', 'Budget', color: SioColors.ink),
-                    Stat(inr(spent), 'Spent', color: SioColors.danger),
-                    Stat(sum['remaining'] == null ? '–' : inr(sum['remaining']), 'Left',
-                        color: numOf(sum['remaining']) < 0 ? SioColors.danger : SioColors.green),
-                  ]),
-                  if (budget > 0) ...[
-                    const SizedBox(height: 12),
-                    ProgressBar(spent / budget),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Stat(budget > 0 ? inr(budget) : '–', 'Budget', color: SioColors.ink),
+                        Stat(inr(spent), 'Spent', color: SioColors.danger),
+                        Stat(
+                          sum['remaining'] == null ? '–' : inr(sum['remaining']),
+                          'Left',
+                          color: numOf(sum['remaining']) < 0 ? SioColors.danger : SioColors.green,
+                        ),
+                      ],
+                    ),
+                    if (budget > 0) ...[const SizedBox(height: 12), ProgressBar(spent / budget)],
+                    const SizedBox(height: 10),
+                    Text(
+                      [
+                        '${inr(sum['paid'])} paid',
+                        if (numOf(sum['approved']) > 0) '${inr(sum['approved'])} approved, to pay',
+                        if (numOf(sum['pending']) > 0) '${inr(sum['pending'])} waiting approval',
+                        if (sum['scope'] == 'my unit') 'your unit only',
+                      ].join(' · '),
+                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+                    ),
                   ],
-                  const SizedBox(height: 10),
-                  Text(
-                    [
-                      '${inr(sum['paid'])} paid',
-                      if (numOf(sum['approved']) > 0) '${inr(sum['approved'])} approved, to pay',
-                      if (numOf(sum['pending']) > 0) '${inr(sum['pending'])} waiting approval',
-                      if (sum['scope'] == 'my unit') 'your unit only',
-                    ].join(' · '),
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
-                  ),
-                ]),
+                ),
               ),
               if (cats.isNotEmpty) ...[
                 const SectionTitle('By category'),
-                PanelList(children: [
-                  for (final c in cats)
-                    ListTile(
-                      dense: true,
-                      title: Text(c['category'].toString()),
-                      trailing: Text(inr(c['amount']), style: const TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                ]),
+                PanelList(
+                  children: [
+                    for (final c in cats)
+                      ListTile(
+                        dense: true,
+                        title: Text(c['category'].toString()),
+                        trailing: Text(inr(c['amount']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                  ],
+                ),
               ],
             ],
             SectionTitle(sum != null ? 'Expenses' : 'My expenses for this event'),
@@ -116,4 +140,49 @@ class EventDetailScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Register for the event (or cancel the registration) from its page.
+class _RegisterButton extends StatefulWidget {
+  const _RegisterButton({required this.event});
+  final Map<String, dynamic> event;
+
+  @override
+  State<_RegisterButton> createState() => _RegisterButtonState();
+}
+
+class _RegisterButtonState extends State<_RegisterButton> {
+  late bool _registered = widget.event['my_registration'] != null;
+  bool _busy = false;
+
+  Future<void> _go() async {
+    final cancel = _registered;
+    setState(() => _busy = true);
+    final ok = await run(
+      context,
+      () => Api.call('${Api.m}register_event', {'event': widget.event['name'], 'cancel': cancel}),
+      done: cancel ? 'Registration cancelled.' : 'You are registered. See you there!',
+    );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (ok) _registered = !cancel;
+    });
+    if (ok) AppState.i.refreshAll();
+  }
+
+  @override
+  Widget build(BuildContext context) => _registered
+      ? OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+          onPressed: _busy ? null : _go,
+          icon: const Icon(Icons.check_circle, color: SioColors.green),
+          label: const Text('Registered · tap to cancel'),
+        )
+      : FilledButton.icon(
+          style: FilledButton.styleFrom(backgroundColor: SioColors.red, minimumSize: const Size.fromHeight(50)),
+          onPressed: _busy ? null : _go,
+          icon: const Icon(Icons.how_to_reg),
+          label: const Text('Register for this programme'),
+        );
 }

@@ -20,9 +20,11 @@ class MeetingSummaryScreen extends StatefulWidget {
 class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
   final _speech = SpeechToText();
   final _notes = TextEditingController();
-  late final _summary = TextEditingController(text: '${widget.meeting['summary'] ?? ''}'.trim().isNotEmpty
-      ? '${widget.meeting['summary']}'
-      : '${widget.meeting['minutes'] ?? ''}'.replaceAll(RegExp(r'<[^>]*>'), '').trim());
+  late final _summary = TextEditingController(
+    text: '${widget.meeting['summary'] ?? ''}'.trim().isNotEmpty
+        ? '${widget.meeting['summary']}'
+        : '${widget.meeting['minutes'] ?? ''}'.replaceAll(RegExp(r'<[^>]*>'), '').trim(),
+  );
   String _lang = 'English';
   bool _wantListen = false; // the person pressed the mic and has not stopped it
   bool _ready = false;
@@ -114,7 +116,10 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
   /// Shows the notes plus the words being heard, and keeps the end in view.
   void _show() {
     final text = _partial.isEmpty ? _committed : (_committed.isEmpty ? _partial : '$_committed $_partial');
-    _notes.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+    _notes.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_notesScroll.hasClients) _notesScroll.jumpTo(_notesScroll.position.maxScrollExtent);
     });
@@ -224,130 +229,148 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
     final m = widget.meeting;
     return Scaffold(
       appBar: AppBar(title: const Text('Meeting summary')),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-        Text('${m['topic']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink)),
-        Text([m['where'] ?? m['unit'], fmtDate(m['meeting_date'], 'EEE d MMM')].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary)),
-        const SizedBox(height: 18),
-        // 1. speak
-        Row(children: [
-          const Expanded(child: Text('1. Speak your rough notes', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-          SegmentedButton<String>(
-            showSelectedIcon: false,
-            style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            segments: const [
-              ButtonSegment(value: 'English', label: Text('English')),
-              ButtonSegment(value: 'Malayalam', label: Text('മലയാളം')),
-            ],
-            selected: {_lang},
-            onSelectionChanged: (v) async {
-              final restart = _wantListen;
-              if (restart) {
-                _session++;
-                setState(() {
-                  _commit(_partial);
-                  _partial = '';
-                  _show();
-                });
-                await _speech.stop();
-              }
-              setState(() => _lang = v.first);
-              if (restart && _wantListen) await _listen();
-            },
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          Text(
+            '${m['topic']}',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
           ),
-        ]),
-        const SizedBox(height: 14),
-        Center(
-          child: GestureDetector(
-            onTap: _toggleMic,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              width: 92 + (_wantListen ? (_level.clamp(0, 10) * 2.4) : 0),
-              height: 92 + (_wantListen ? (_level.clamp(0, 10) * 2.4) : 0),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _wantListen ? SioColors.red : SioColors.blue,
-                boxShadow: [
-                  BoxShadow(
-                    color: (_wantListen ? SioColors.red : SioColors.blue).withValues(alpha: 0.35),
-                    blurRadius: _wantListen ? 26 : 14,
-                    spreadRadius: _wantListen ? 4 : 0,
-                  ),
-                ],
+          Text(
+            [
+              m['where'] ?? m['unit'],
+              fmtDate(m['meeting_date'], 'EEE d MMM'),
+            ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+            style: const TextStyle(color: SioColors.textSecondary),
+          ),
+          const SizedBox(height: 18),
+          // 1. speak
+          Row(
+            children: [
+              const Expanded(
+                child: Text('1. Speak your rough notes', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
               ),
-              child: Icon(_wantListen ? Icons.stop_rounded : Icons.mic, color: Colors.white, size: 42),
+              SegmentedButton<String>(
+                showSelectedIcon: false,
+                style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                segments: const [
+                  ButtonSegment(value: 'English', label: Text('English')),
+                  ButtonSegment(value: 'Malayalam', label: Text('മലയാളം')),
+                ],
+                selected: {_lang},
+                onSelectionChanged: (v) async {
+                  final restart = _wantListen;
+                  if (restart) {
+                    _session++;
+                    setState(() {
+                      _commit(_partial);
+                      _partial = '';
+                      _show();
+                    });
+                    await _speech.stop();
+                  }
+                  setState(() => _lang = v.first);
+                  if (restart && _wantListen) await _listen();
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Center(
+            child: GestureDetector(
+              onTap: _toggleMic,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                width: 92 + (_wantListen ? (_level.clamp(0, 10) * 2.4) : 0),
+                height: 92 + (_wantListen ? (_level.clamp(0, 10) * 2.4) : 0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _wantListen ? SioColors.red : SioColors.blue,
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_wantListen ? SioColors.red : SioColors.blue).withValues(alpha: 0.35),
+                      blurRadius: _wantListen ? 26 : 14,
+                      spreadRadius: _wantListen ? 4 : 0,
+                    ),
+                  ],
+                ),
+                child: Icon(_wantListen ? Icons.stop_rounded : Icons.mic, color: Colors.white, size: 42),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          _wantListen ? 'Listening… tap to stop' : 'Tap the mic and talk about the meeting',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: _wantListen ? SioColors.red : SioColors.textSecondary, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 14),
-        TextField(
-          controller: _notes,
-          scrollController: _notesScroll,
-          readOnly: _wantListen,
-          minLines: 4,
-          maxLines: 10,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            labelText: _wantListen ? (_partial.isEmpty ? 'Rough notes · listening…' : 'Rough notes · writing…') : 'Rough notes',
-            hintText: 'Who came, what was discussed, what was decided, who will do what…',
-            alignLabelWithHint: true,
-            suffixIcon: _notes.text.isEmpty
-                ? null
-                : IconButton(tooltip: 'Clear', icon: const Icon(Icons.close), onPressed: () => setState(() {
-                      _notes.clear();
-                      _committed = '';
-                      _partial = '';
-                      _lastCommitted = '';
-                    })),
+          const SizedBox(height: 10),
+          Text(
+            _wantListen ? 'Listening… tap to stop' : 'Tap the mic and talk about the meeting',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _wantListen ? SioColors.red : SioColors.textSecondary, fontWeight: FontWeight.w600),
           ),
-          onChanged: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 22),
-        // 2. clean up
-        const Text('2. Make it a proper summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-        const SizedBox(height: 10),
-        if (_aiReady)
-          FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: SioColors.purple, minimumSize: const Size.fromHeight(50)),
-            onPressed: _aiBusy ? null : _makeSummary,
-            icon: _aiBusy
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Icon(Icons.auto_awesome),
-            label: Text(_aiBusy ? 'Writing the summary…' : 'Write the summary with AI'),
-          )
-        else ...[
-          const SioBanner(text: 'AI clean-up is not switched on yet (an AI key is needed in SIO Settings). You can copy your notes below and correct them yourself.'),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _notes.text.trim().isEmpty ? null : () => setState(() => _summary.text = _notes.text.trim()),
-            icon: const Icon(Icons.arrow_downward),
-            label: const Text('Use my notes as the summary'),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _notes,
+            scrollController: _notesScroll,
+            readOnly: _wantListen,
+            minLines: 4,
+            maxLines: 10,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: _wantListen ? (_partial.isEmpty ? 'Rough notes · listening…' : 'Rough notes · writing…') : 'Rough notes',
+              hintText: 'Who came, what was discussed, what was decided, who will do what…',
+              alignLabelWithHint: true,
+              suffixIcon: _notes.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(() {
+                        _notes.clear();
+                        _committed = '';
+                        _partial = '';
+                        _lastCommitted = '';
+                      }),
+                    ),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 22),
+          // 2. clean up
+          const Text('2. Make it a proper summary', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 10),
+          if (_aiReady)
+            FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: SioColors.purple, minimumSize: const Size.fromHeight(50)),
+              onPressed: _aiBusy ? null : _makeSummary,
+              icon: _aiBusy
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.auto_awesome),
+              label: Text(_aiBusy ? 'Writing the summary…' : 'Write the summary with AI'),
+            )
+          else ...[
+            const SioBanner(
+              text: 'AI clean-up is not switched on yet (an AI key is needed in SIO Settings). You can copy your notes below and correct them yourself.',
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _notes.text.trim().isEmpty ? null : () => setState(() => _summary.text = _notes.text.trim()),
+              icon: const Icon(Icons.arrow_downward),
+              label: const Text('Use my notes as the summary'),
+            ),
+          ],
+          const SizedBox(height: 14),
+          TextField(
+            controller: _summary,
+            minLines: 8,
+            maxLines: 30,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Summary (you can correct it)', alignLabelWithHint: true),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            child: const Text('Save summary'),
           ),
         ],
-        const SizedBox(height: 14),
-        TextField(
-          controller: _summary,
-          minLines: 8,
-          maxLines: 30,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            labelText: 'Summary (you can correct it)',
-            alignLabelWithHint: true,
-          ),
-        ),
-        const SizedBox(height: 18),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-          child: const Text('Save summary'),
-        ),
-      ]),
+      ),
     );
   }
 }

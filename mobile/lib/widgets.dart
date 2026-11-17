@@ -25,8 +25,7 @@ String fmtTime(dynamic v) {
 
 String apiDate(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
-void toast(BuildContext context, String msg) =>
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+void toast(BuildContext context, String msg) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
 /// Runs an action with a toast for errors; returns true on success.
 Future<bool> run(BuildContext context, Future<void> Function() action, {String? done}) async {
@@ -100,7 +99,10 @@ class _LoaderState<T> extends State<Loader<T>> {
         const SizedBox(height: 12),
       ],
       if (_data == null && _error == null)
-        const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator())),
+        const Padding(
+          padding: EdgeInsets.all(48),
+          child: Center(child: CircularProgressIndicator()),
+        ),
       if (_data != null) ...widget.builder(context, _data as T),
     ];
     return RefreshIndicator(
@@ -121,13 +123,19 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
-        child: Row(children: [
-          Expanded(
-              child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: SioColors.ink))),
-          ?action,
-        ]),
-      );
+    padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: SioColors.ink),
+          ),
+        ),
+        ?action,
+      ],
+    ),
+  );
 }
 
 class Stat extends StatelessWidget {
@@ -138,16 +146,22 @@ class Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color),
           ),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: SioColors.textSecondary, fontSize: 12)),
-        ]),
-      );
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: SioColors.textSecondary, fontSize: 12)),
+      ],
+    ),
+  );
 }
 
 class Avatar extends StatelessWidget {
@@ -161,12 +175,14 @@ class Avatar extends StatelessWidget {
   Widget build(BuildContext context) => '${photo ?? ''}'.isNotEmpty
       ? CircleAvatar(radius: radius, backgroundColor: SioColors.cardHigh, backgroundImage: NetworkImage('${Api.baseUrl}$photo'))
       : CircleAvatar(
-        radius: radius,
-        backgroundColor: light ? SioColors.cardHigh : SioColors.blue,
-        foregroundColor: light ? SioColors.blue : Colors.white,
-        child: Text(name.isEmpty ? '?' : name.trim()[0].toUpperCase(),
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: radius * 0.8)),
-      );
+          radius: radius,
+          backgroundColor: light ? SioColors.cardHigh : SioColors.blue,
+          foregroundColor: light ? SioColors.blue : Colors.white,
+          child: Text(
+            name.isEmpty ? '?' : name.trim()[0].toUpperCase(),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: radius * 0.8),
+          ),
+        );
 }
 
 class EmptyNote extends StatelessWidget {
@@ -175,8 +191,12 @@ class EmptyNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SioPanel(
-        child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: SioColors.textSecondary)),
-      );
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: SioColors.textSecondary),
+    ),
+  );
 }
 
 /// Grouped list inside one panel with dividers.
@@ -186,14 +206,13 @@ class PanelList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SioPanel(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Column(children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const Divider(indent: 16, endIndent: 16),
-            children[i],
-          ],
-        ]),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Column(
+      children: [
+        for (var i = 0; i < children.length; i++) ...[if (i > 0) const Divider(indent: 16, endIndent: 16), children[i]],
+      ],
+    ),
+  );
 }
 
 class ProgressBar extends StatelessWidget {
@@ -202,9 +221,9 @@ class ProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(99),
-        child: LinearProgressIndicator(value: value.clamp(0, 1), minHeight: 8),
-      );
+    borderRadius: BorderRadius.circular(99),
+    child: LinearProgressIndicator(value: value.clamp(0, 1), minHeight: 8),
+  );
 }
 
 Future<T?> push<T>(BuildContext context, Widget screen) =>
@@ -218,12 +237,12 @@ class AddFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FloatingActionButton(
-        heroTag: null,
-        tooltip: tooltip,
-        backgroundColor: SioColors.cardHigh,
-        foregroundColor: SioColors.blue,
-        shape: const CircleBorder(),
-        onPressed: onPressed,
-        child: const Icon(Icons.add, size: 28),
-      );
+    heroTag: null,
+    tooltip: tooltip,
+    backgroundColor: SioColors.cardHigh,
+    foregroundColor: SioColors.blue,
+    shape: const CircleBorder(),
+    onPressed: onPressed,
+    child: const Icon(Icons.add, size: 28),
+  );
 }

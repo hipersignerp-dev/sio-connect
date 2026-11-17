@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_state.dart';
+
 class ApiException implements Exception {
   const ApiException(this.message, {this.status});
   final String message;
@@ -67,8 +69,10 @@ class Api {
             Uri.parse('$baseUrl$path'),
             headers: {
               'Accept': 'application/json',
-              if (withSession && (token ?? '').isNotEmpty) 'Authorization': 'token $token'
-              else if (withSession && (sid ?? '').isNotEmpty) 'Cookie': 'sid=$sid',
+              if (withSession && (token ?? '').isNotEmpty)
+                'Authorization': 'token $token'
+              else if (withSession && (sid ?? '').isNotEmpty)
+                'Cookie': 'sid=$sid',
             },
             body: _fields(args),
           )
@@ -149,8 +153,7 @@ class Api {
 
   /// Password sign-in (email, or mobile if the site allows it).
   static Future<void> login(String user, String password) async {
-    final res = await _post('/api/method/login', {'usr': user.trim(), 'pwd': password, 'device': 'mobile'},
-        withSession: false);
+    final res = await _post('/api/method/login', {'usr': user.trim(), 'pwd': password, 'device': 'mobile'}, withSession: false);
     if (res.statusCode != 200) {
       Map<String, dynamic>? body;
       try {
@@ -170,8 +173,9 @@ class Api {
   }
 
   static Future<void> forgotPassword(String email) async {
-    final res = await _post('/api/method/frappe.core.doctype.user.user.reset_password', {'user': email.trim()},
-        withSession: false);
+    final res = await _post('/api/method/frappe.core.doctype.user.user.reset_password', {
+      'user': email.trim(),
+    }, withSession: false);
     _parse(res);
   }
 
@@ -180,6 +184,9 @@ class Api {
     final res = await _post('/api/method/sio_connect.api.public.$method', args, withSession: false);
     return _parse(res);
   }
+
+  /// Units this person may pick (their area's or their own), from [units].
+  static Future<List<dynamic>> myUnits() async => AppState.i.myUnits(await units());
 
   static Future<List<dynamic>> units() async {
     final res = await _post('/api/method/${a}units', {}, withSession: false);

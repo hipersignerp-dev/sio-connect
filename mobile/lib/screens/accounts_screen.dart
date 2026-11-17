@@ -29,18 +29,24 @@ class _AccountsScreenState extends State<AccountsScreen> {
   void initState() {
     super.initState();
     if (AppState.i.can('all_units')) {
-      Api.units().then((v) {
-        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
-      }).catchError((_) {});
+      Api.myUnits()
+          .then((v) {
+            if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
+          })
+          .catchError((_) {});
     }
-    Api.call('${Api.m}collection').then((v) {
-      final list = ((v as Map?)?['collections'] as List?) ?? [];
-      if (mounted) setState(() => _collections = [for (final c in list) c['name'].toString()]);
-    }).catchError((_) {});
-    Api.call('${Api.m}events').then((v) {
-      final list = (v as List?) ?? [];
-      if (mounted) setState(() => _events = [for (final e in list) (e['name'].toString(), e['title'].toString())]);
-    }).catchError((_) {});
+    Api.call('${Api.m}collection')
+        .then((v) {
+          final list = ((v as Map?)?['collections'] as List?) ?? [];
+          if (mounted) setState(() => _collections = [for (final c in list) c['name'].toString()]);
+        })
+        .catchError((_) {});
+    Api.call('${Api.m}events')
+        .then((v) {
+          final list = (v as List?) ?? [];
+          if (mounted) setState(() => _events = [for (final e in list) (e['name'].toString(), e['title'].toString())]);
+        })
+        .catchError((_) {});
   }
 
   DateTimeRange get _range {
@@ -73,19 +79,26 @@ class _AccountsScreenState extends State<AccountsScreen> {
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(
-        child: ListView(shrinkWrap: true, children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          ),
-          ListTile(title: const Text('All'), trailing: current == null ? const Icon(Icons.check) : null, onTap: () => Navigator.pop(sheet, '')),
-          for (final o in options)
-            ListTile(
-              title: Text(o.$2),
-              trailing: current == o.$1 ? const Icon(Icons.check) : null,
-              onTap: () => Navigator.pop(sheet, o.$1),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             ),
-        ]),
+            ListTile(
+              title: const Text('All'),
+              trailing: current == null ? const Icon(Icons.check) : null,
+              onTap: () => Navigator.pop(sheet, ''),
+            ),
+            for (final o in options)
+              ListTile(
+                title: Text(o.$2),
+                trailing: current == o.$1 ? const Icon(Icons.check) : null,
+                onTap: () => Navigator.pop(sheet, o.$1),
+              ),
+          ],
+        ),
       ),
     );
     if (v == null) return;
@@ -101,13 +114,15 @@ class _AccountsScreenState extends State<AccountsScreen> {
       appBar: AppBar(title: const Text('Accounts')),
       body: Loader<Map<String, dynamic>>(
         key: ValueKey(key),
-        load: () async => Map<String, dynamic>.from(await Api.call('${Api.m}accounts', {
-          'from_date': apiDate(r.start),
-          'to_date': apiDate(r.end),
-          'unit': _unit,
-          'collection': _collection,
-          'event': _event,
-        }) as Map),
+        load: () async => Map<String, dynamic>.from(
+          await Api.call('${Api.m}accounts', {
+            'from_date': apiDate(r.start),
+            'to_date': apiDate(r.end),
+            'unit': _unit,
+            'collection': _collection,
+            'event': _event,
+          }) as Map,
+        ),
         builder: (context, a) {
           final rows = ((a['rows'] as List?) ?? []).reversed.toList();
           final ins = (a['in_by_collection'] as List?) ?? [];
@@ -116,68 +131,84 @@ class _AccountsScreenState extends State<AccountsScreen> {
           return [
             SizedBox(
               height: 44,
-              child: ListView(scrollDirection: Axis.horizontal, children: [
-                for (final p in presets)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(label: Text(p), selected: _preset == p, onSelected: (_) => _pickPreset(p)),
-                  ),
-              ]),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final p in presets)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(label: Text(p), selected: _preset == p, onSelected: (_) => _pickPreset(p)),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 4),
-            Wrap(spacing: 8, runSpacing: 4, children: [
-              if (s.can('all_units'))
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                if (s.can('all_units'))
+                  _FilterChip(
+                    label: _unit ?? 'All units',
+                    on: _unit != null,
+                    onTap: () => _pickFilter('Unit', [for (final u in _units) (u, u)], _unit, (v) => _unit = v),
+                  ),
                 _FilterChip(
-                  label: _unit ?? 'All units',
-                  on: _unit != null,
-                  onTap: () => _pickFilter('Unit', [for (final u in _units) (u, u)], _unit, (v) => _unit = v),
+                  label: _collection ?? 'All funds',
+                  on: _collection != null,
+                  onTap: () => _pickFilter('Collection / fund', [for (final c in _collections) (c, c)], _collection, (v) {
+                    _collection = v;
+                    if (v != null) _event = null;
+                  }),
                 ),
-              _FilterChip(
-                label: _collection ?? 'All funds',
-                on: _collection != null,
-                onTap: () => _pickFilter('Collection / fund', [for (final c in _collections) (c, c)], _collection, (v) {
-                  _collection = v;
-                  if (v != null) _event = null;
-                }),
-              ),
-              _FilterChip(
-                label: _event == null ? 'All events' : _events.firstWhere((e) => e.$1 == _event, orElse: () => (_event!, _event!)).$2,
-                on: _event != null,
-                onTap: () => _pickFilter('Event', _events, _event, (v) {
-                  _event = v;
-                  if (v != null) _collection = null;
-                }),
-              ),
-            ]),
+                _FilterChip(
+                  label: _event == null
+                      ? 'All events'
+                      : _events.firstWhere((e) => e.$1 == _event, orElse: () => (_event!, _event!)).$2,
+                  on: _event != null,
+                  onTap: () => _pickFilter('Event', _events, _event, (v) {
+                    _event = v;
+                    if (v != null) _collection = null;
+                  }),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
             SioPanel(
               padding: const EdgeInsets.all(18),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text(
-                  [
-                    _preset == 'All time' ? 'All time' : '${fmtDate(apiDate(r.start), 'd MMM')} – ${fmtDate(apiDate(r.end), 'd MMM yyyy')}',
-                    a['unit'] ?? 'All units',
-                  ].join(' · '),
-                  style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
-                ),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Stat(inr(a['in']), 'Money in', color: SioColors.green),
-                  Stat(inr(a['out']), 'Money out', color: SioColors.danger),
-                  Stat(inr(a['closing']), 'Balance'),
-                ]),
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 6),
-                _Line('Opening balance', inr(a['opening'])),
-                _Line('+ Money in', inr(a['in'])),
-                _Line('− Money out', inr(a['out'])),
-                _Line('Closing balance', inr(a['closing']), bold: true),
-                if (numOf(a['to_pay']) > 0) ...[
-                  const SizedBox(height: 8),
-                  SioBanner(text: '${inr(a['to_pay'])} of approved expenses still to pay.'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    [
+                      _preset == 'All time'
+                          ? 'All time'
+                          : '${fmtDate(apiDate(r.start), 'd MMM')} – ${fmtDate(apiDate(r.end), 'd MMM yyyy')}',
+                      a['unit'] ?? 'All units',
+                    ].join(' · '),
+                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Stat(inr(a['in']), 'Money in', color: SioColors.green),
+                      Stat(inr(a['out']), 'Money out', color: SioColors.danger),
+                      Stat(inr(a['closing']), 'Balance'),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 6),
+                  _Line('Opening balance', inr(a['opening'])),
+                  _Line('+ Money in', inr(a['in'])),
+                  _Line('− Money out', inr(a['out'])),
+                  _Line('Closing balance', inr(a['closing']), bold: true),
+                  if (numOf(a['to_pay']) > 0) ...[
+                    const SizedBox(height: 8),
+                    SioBanner(text: '${inr(a['to_pay'])} of approved expenses still to pay.'),
+                  ],
                 ],
-              ]),
+              ),
             ),
             if (ins.isNotEmpty) ...[
               const SectionTitle('Money in, by collection'),
@@ -193,8 +224,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
             ],
             const SectionTitle('Transactions'),
             if (rows.isEmpty) const EmptyNote('Nothing in this period.'),
-            if (rows.isNotEmpty)
-              PanelList(children: [for (final t in rows) _TxRow(t: Map<String, dynamic>.from(t))]),
+            if (rows.isNotEmpty) PanelList(children: [for (final t in rows) _TxRow(t: Map<String, dynamic>.from(t))]),
           ];
         },
       ),
@@ -210,12 +240,12 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FilterChip(
-        label: Text(label, overflow: TextOverflow.ellipsis),
-        selected: on,
-        showCheckmark: false,
-        avatar: const Icon(Icons.filter_list, size: 18),
-        onSelected: (_) => onTap(),
-      );
+    label: Text(label, overflow: TextOverflow.ellipsis),
+    selected: on,
+    showCheckmark: false,
+    avatar: const Icon(Icons.filter_list, size: 18),
+    onSelected: (_) => onTap(),
+  );
 }
 
 class _Line extends StatelessWidget {
@@ -229,7 +259,12 @@ class _Line extends StatelessWidget {
     final style = TextStyle(fontWeight: bold ? FontWeight.w800 : FontWeight.w500, color: SioColors.ink);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(children: [Expanded(child: Text(label, style: style)), Text(value, style: style)]),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(value, style: style),
+        ],
+      ),
     );
   }
 }
@@ -242,10 +277,13 @@ class _Sum extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        dense: true,
-        title: Text('${name ?? 'Other'}', overflow: TextOverflow.ellipsis),
-        trailing: Text(inr(amount), style: TextStyle(fontWeight: FontWeight.w700, color: color)),
-      );
+    dense: true,
+    title: Text('${name ?? 'Other'}', overflow: TextOverflow.ellipsis),
+    trailing: Text(
+      inr(amount),
+      style: TextStyle(fontWeight: FontWeight.w700, color: color),
+    ),
+  );
 }
 
 class _TxRow extends StatelessWidget {
@@ -255,23 +293,39 @@ class _TxRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIn = t['type'] == 'In';
-    final sub = [fmtDate(t['date'], 'd MMM'), t['party'], t['unit'], if (!isIn) t['category'], t['collection'], t['mode']]
-        .where((x) => x != null && '$x'.isNotEmpty)
-        .join(' · ');
+    final sub = [
+      fmtDate(t['date'], 'd MMM'),
+      t['party'],
+      t['unit'],
+      if (!isIn) t['category'],
+      t['collection'],
+      t['mode'],
+    ].where((x) => x != null && '$x'.isNotEmpty).join(' · ');
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: isIn ? SioColors.greenBg : SioColors.dangerBg,
         foregroundColor: isIn ? SioColors.green : SioColors.danger,
         child: Icon(isIn ? Icons.south_west : Icons.north_east, size: 20),
       ),
-      title: Text('${t['title'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        '${t['title'] ?? ''}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text('${isIn ? '+' : '−'}${inr(t['amount'])}',
-            style: TextStyle(fontWeight: FontWeight.w700, color: isIn ? SioColors.green : SioColors.danger)),
-        const SizedBox(height: 2),
-        Text('bal ${inr(t['balance'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5)),
-      ]),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '${isIn ? '+' : '−'}${inr(t['amount'])}',
+            style: TextStyle(fontWeight: FontWeight.w700, color: isIn ? SioColors.green : SioColors.danger),
+          ),
+          const SizedBox(height: 2),
+          Text('bal ${inr(t['balance'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5)),
+        ],
+      ),
     );
   }
 }

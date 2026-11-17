@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'api.dart';
 import 'biometric.dart';
+import 'notify.dart';
 
 enum Stage { loading, signedOut, locked, signedIn }
 
@@ -26,6 +27,45 @@ class AppState extends ChangeNotifier {
   bool get pending => status == 'Pending Approval';
   String get firstName => (me['full_name'] ?? '').toString().trim().split(' ').first;
   String get role => (me['member_role'] ?? '').toString();
+
+  /// What this person sees: 'all' units, their 'area', or their 'unit'.
+  String get level => (me['level'] ?? 'unit').toString();
+  String? get area => me['area']?.toString();
+  static const areaRoles = ['Area President', 'Area Secretary'];
+  static const allRoles = [
+    'Associate',
+    'Worker',
+    'Member',
+    'Unit Secretary',
+    'Unit President',
+    'Area Secretary',
+    'Area President',
+    'Finance',
+    'Area Admin',
+  ];
+
+  /// Roles this person may give: area admins any; area presidents / secretaries up to unit office bearers;
+  /// unit presidents / secretaries Associate and Worker.
+  List<String> get givableRoles {
+    if (role == 'Area Admin' || (me['member'] == null && level == 'all')) return allRoles;
+    if (level == 'area') return const ['Associate', 'Worker', 'Member', 'Unit Secretary', 'Unit President'];
+    return const ['Associate', 'Worker'];
+  }
+
+  /// Keeps only the units this person may work with (area leaders: their area; unit leaders: their unit).
+  List<dynamic> myUnits(List<dynamic> all) {
+    if (level == 'all') return all;
+    if (level == 'area') {
+      return [
+        for (final u in all)
+          if (u['district'] == area) u,
+      ];
+    }
+    return [
+      for (final u in all)
+        if (u['name'] == me['unit']) u,
+    ];
+  }
 
   bool get biometricOn => Api.prefs.getBool('biometric_on') ?? false;
   String? get savedLogin => Api.prefs.getString('last_login');
@@ -129,6 +169,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    await Notify.stop();
     await disableBiometric();
     await Api.logout();
     me = {};

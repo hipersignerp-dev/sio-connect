@@ -47,6 +47,6 @@ class _Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Scaffold(
-        body: Center(child: Image(image: AssetImage('assets/sio-logo.png'), width: 120)),
-      );
+    body: Center(child: Image(image: AssetImage('assets/sio-logo.png'), width: 120)),
+  );
 }

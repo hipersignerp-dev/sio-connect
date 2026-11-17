@@ -5,6 +5,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'event_detail_screen.dart';
 import 'more_screen.dart';
 import 'collection_screens.dart';
 import 'events_screen.dart';
@@ -25,20 +26,29 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 68,
-        title: Row(children: [
-          const Image(image: AssetImage('assets/sio-logo.png'), width: 40, height: 40),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(s.firstName.isEmpty ? 'Assalamu Alaikum' : 'Assalamu Alaikum ${s.firstName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19)),
-              Text(DateFormat('EEEE, d MMMM').format(DateTime.now()),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: SioColors.textSecondary)),
-            ]),
-          ),
-        ]),
+        title: Row(
+          children: [
+            const Image(image: AssetImage('assets/sio-logo.png'), width: 40, height: 40),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.firstName.isEmpty ? 'Assalamu Alaikum' : 'Assalamu Alaikum ${s.firstName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19),
+                  ),
+                  Text(
+                    DateFormat('EEEE, d MMMM').format(DateTime.now()),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: SioColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Updates',
@@ -68,12 +78,19 @@ class HomeScreen extends StatelessWidget {
         builder: (context, h) => [
           if (s.pending) ...[
             const SioBanner(
-                text: 'Your registration is waiting for your unit’s approval. Meanwhile you can see events and updates, and give an offer.'),
+              text: 'Your registration is waiting for your unit’s approval. Meanwhile you can see events and updates, and give an offer.',
+            ),
             const SizedBox(height: 12),
           ],
-          if (h['next_meeting'] != null) ...[_MeetingCard(meeting: Map<String, dynamic>.from(h['next_meeting'])), const SizedBox(height: 12)],
+          if (h['next_meeting'] != null) ...[
+            _MeetingCard(meeting: Map<String, dynamic>.from(h['next_meeting'])),
+            const SizedBox(height: 12),
+          ],
           ..._tiles(context, h),
-          if (h['next_event'] != null) ...[const SizedBox(height: 12), _EventPanel(event: Map<String, dynamic>.from(h['next_event']))],
+          if (h['next_event'] != null) ...[
+            const SizedBox(height: 12),
+            _EventPanel(event: Map<String, dynamic>.from(h['next_event'])),
+          ],
           const SizedBox(height: 12),
           _NoticesPanel(notices: (h['notices'] as List?) ?? []),
         ],
@@ -87,26 +104,45 @@ class HomeScreen extends StatelessWidget {
     for (final c in collections) {
       final t = c['totals'] as Map?;
       if (t != null) {
-        tiles.add(_Tile(collectionIcon(c['collection_type']?.toString()), c['name'].toString(), inr(t['collected']),
-            () => openTab(2)));
+        tiles.add(
+          _Tile(collectionIcon(c['collection_type']?.toString()), c['name'].toString(), inr(t['collected']), () => openTab(2)),
+        );
       }
     }
     final mine = h['my_offers'] as Map?;
     if (mine != null && numOf(mine['offered']) > 0) {
       tiles.add(_Tile(Icons.favorite_outline, 'My offers', inr(mine['offered']), () => openTab(2)));
     } else if (collections.isNotEmpty && AppState.i.can('offer') && !AppState.i.can('view_collection_totals')) {
-      tiles.add(_Tile(collectionIcon(collections.first['collection_type']?.toString()), collections.first['name'].toString(),
-          'Give an offer', () => openTab(2)));
+      tiles.add(
+        _Tile(
+          collectionIcon(collections.first['collection_type']?.toString()),
+          collections.first['name'].toString(),
+          'Give an offer',
+          () => openTab(2),
+        ),
+      );
     }
     final members = h['members'] as Map?;
     if (members != null) {
-      tiles.add(_Tile(Icons.groups, numOf(members['pending']) > 0 ? '${members['pending']} waiting approval' : 'Active members',
-          '${members['active']}', () => push(context, const MembersScreen())));
+      tiles.add(
+        _Tile(
+          Icons.groups,
+          numOf(members['pending']) > 0 ? '${members['pending']} waiting approval' : 'Active members',
+          '${members['active']}',
+          () => push(context, const MembersScreen()),
+        ),
+      );
     }
     final exp = h['pending_expenses'] as Map?;
     if (exp != null) {
-      tiles.add(_Tile(Icons.receipt_long, '${exp['count']} claims pending', inr(exp['amount']),
-          () => push(context, const ExpensesScreen())));
+      tiles.add(
+        _Tile(
+          Icons.receipt_long,
+          '${exp['count']} claims pending',
+          inr(exp['amount']),
+          () => push(context, const ExpensesScreen()),
+        ),
+      );
     }
     final att = h['my_attendance'] as Map?;
     if (att != null && numOf(att['total']) > 0) {
@@ -115,14 +151,18 @@ class HomeScreen extends StatelessWidget {
     if (tiles.isEmpty) return [];
     final rows = <Widget>[];
     for (var i = 0; i < tiles.length; i += 2) {
-      rows.add(Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(children: [
-          Expanded(child: tiles[i]),
-          const SizedBox(width: 12),
-          Expanded(child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox()),
-        ]),
-      ));
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Expanded(child: tiles[i]),
+              const SizedBox(width: 12),
+              Expanded(child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox()),
+            ],
+          ),
+        ),
+      );
     }
     return rows;
   }
@@ -137,26 +177,37 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: SioColors.card,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(icon, color: SioColors.blue),
-              const SizedBox(height: 8),
-              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: SioColors.ink)),
+    color: SioColors.card,
+    borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: SioColors.blue),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+            ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: SioColors.ink),
               ),
-            ]),
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Next weekly meeting with the big RSVP button (the Hipersign Check In card).
@@ -180,53 +231,72 @@ class _MeetingCardState extends State<_MeetingCard> {
     return SioPanel(
       color: attending ? SioColors.greenBg : SioColors.card,
       padding: const EdgeInsets.all(18),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-                color: attending ? SioColors.green : SioColors.textSecondary, borderRadius: BorderRadius.circular(20)),
-            child: Text(attending ? 'ATTENDING' : 'NEXT MEETING',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: .5)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: attending ? SioColors.green : SioColors.textSecondary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  attending ? 'ATTENDING' : 'NEXT MEETING',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: .5),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                when,
+                style: const TextStyle(color: SioColors.textSecondary, fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
-          const Spacer(),
-          Text(when, style: const TextStyle(color: SioColors.textSecondary, fontWeight: FontWeight.w600)),
-        ]),
-        const SizedBox(height: 12),
-        Text(m['topic']?.toString() ?? 'Weekly meeting',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.ink)),
-        const SizedBox(height: 2),
-        Text([m['meeting_type'], m['where'] ?? m['unit'], m['venue']].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary)),
-        if (canRsvp) ...[
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: attending ? SioColors.danger : SioColors.green,
-              minimumSize: const Size.fromHeight(58),
-              textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          const SizedBox(height: 12),
+          Text(
+            m['topic']?.toString() ?? 'Weekly meeting',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.ink),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            [m['meeting_type'], m['where'] ?? m['unit'], m['venue']].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
+            style: const TextStyle(color: SioColors.textSecondary),
+          ),
+          if (canRsvp) ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: attending ? SioColors.danger : SioColors.green,
+                minimumSize: const Size.fromHeight(58),
+                textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      setState(() => _busy = true);
+                      await run(
+                        context,
+                        () => Api.call('${Api.m}rsvp', {'name': m['name'], 'attending': !attending}),
+                        done: attending ? 'Marked as not attending.' : 'Your unit knows you’ll attend.',
+                      );
+                      if (mounted) setState(() => _busy = false);
+                    },
+              icon: Icon(attending ? Icons.close : Icons.how_to_reg),
+              label: Text(attending ? 'Can’t make it' : 'I’ll attend'),
             ),
-            onPressed: _busy
-                ? null
-                : () async {
-                    setState(() => _busy = true);
-                    await run(context, () => Api.call('${Api.m}rsvp', {'name': m['name'], 'attending': !attending}),
-                        done: attending ? 'Marked as not attending.' : 'Your unit knows you’ll attend.');
-                    if (mounted) setState(() => _busy = false);
-                  },
-            icon: Icon(attending ? Icons.close : Icons.how_to_reg),
-            label: Text(attending ? 'Can’t make it' : 'I’ll attend'),
-          ),
+          ],
+          if (AppState.i.can('mark_attendance')) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => push(context, MeetingScreen(name: m['name'].toString())),
+              icon: const Icon(Icons.checklist),
+              label: const Text('Open meeting'),
+            ),
+          ],
         ],
-        if (AppState.i.can('mark_attendance')) ...[
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => push(context, MeetingScreen(name: m['name'].toString())),
-            icon: const Icon(Icons.checklist),
-            label: const Text('Open meeting'),
-          ),
-        ],
-      ]),
+      ),
     );
   }
 }
@@ -239,33 +309,59 @@ class _EventPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final d = parseDate(event['starts_on']);
     return SioPanel(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          const Expanded(child: Text('Next event', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink))),
-          TextButton(onPressed: () => push(context, const EventsScreen(standalone: true)), child: const Text('All events')),
-        ]),
-        Row(children: [
-          Container(
-            width: 52,
-            height: 56,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(d == null ? '' : DateFormat('MMM').format(d).toUpperCase(),
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SioColors.red)),
-              Text(d == null ? '' : '${d.day}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
-            ]),
+      onTap: () => push(context, EventDetailScreen(name: event['name'].toString(), title: event['title'].toString())),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Next event',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
+                ),
+              ),
+              TextButton(onPressed: () => push(context, const EventsScreen(standalone: true)), child: const Text('All events')),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(event['title'].toString(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-              Text([event['venue'], if (d != null) DateFormat.jm().format(d)].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
-                  style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-            ]),
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 56,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      d == null ? '' : DateFormat('MMM').format(d).toUpperCase(),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SioColors.red),
+                    ),
+                    Text(d == null ? '' : '${d.day}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(event['title'].toString(), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    Text(
+                      [
+                        event['venue'],
+                        if (d != null) DateFormat.jm().format(d),
+                      ].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
+                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              if (event['my_registration'] != null) const StatusChip('Registered', tone: Tone.green),
+            ],
           ),
-          if (event['my_registration'] != null) const StatusChip('Registered', tone: Tone.green),
-        ]),
-      ]),
+        ],
+      ),
     );
   }
 }
@@ -276,21 +372,41 @@ class _NoticesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SioPanel(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            const Expanded(child: Text('Latest updates', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink))),
-            TextButton(onPressed: () => push(context, const NoticesScreen()), child: const Text('See all')),
-          ]),
-          if (notices.isEmpty) const Text('No updates yet.', style: TextStyle(color: SioColors.textSecondary)),
-          for (final n in notices)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(n['title'].toString(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                Text('${n['audience'] == 'Unit' ? n['unit'] : n['audience']} · ${fmtDate(n['sent_on'], 'd MMM, h:mm a')}',
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-              ]),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Latest updates',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
+              ),
             ),
-        ]),
-      );
+            TextButton(onPressed: () => push(context, const NoticesScreen()), child: const Text('See all')),
+          ],
+        ),
+        if (notices.isEmpty) const Text('No updates yet.', style: TextStyle(color: SioColors.textSecondary)),
+        for (final n in notices)
+          InkWell(
+            onTap: (n['event'] ?? '').toString().isEmpty
+                ? () => push(context, const NoticesScreen())
+                : () => push(context, EventDetailScreen(name: n['event'].toString(), title: n['title'].toString())),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(n['title'].toString(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                  Text(
+                    '${n['audience'] == 'Unit' ? n['unit'] : n['audience']} · ${fmtDate(n['sent_on'], 'd MMM, h:mm a')}',
+                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
 }

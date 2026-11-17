@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../app_state.dart';
+import '../notify.dart';
 import '../theme.dart';
 import '../update_service.dart';
 import '../widgets.dart';
@@ -36,6 +37,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) UpdateService.check(context);
     });
+    // phone notifications for new updates and programmes
+    Notify.start('${AppState.i.me['user'] ?? ''}');
   }
 
   @override
@@ -46,7 +49,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && mounted) UpdateService.check(context);
+    if (state == AppLifecycleState.resumed && mounted) {
+      UpdateService.check(context);
+      Notify.check().catchError((_) {});
+    }
   }
 
   @override
@@ -67,11 +73,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       (Icons.more_horiz, Icons.more_horiz, 'More'),
     ];
     Widget nav(int i) => _NavItem(
-          icon: _tab == i ? tabs[i].$2 : tabs[i].$1,
-          label: tabs[i].$3,
-          selected: _tab == i,
-          onTap: () => setState(() => _tab = i),
-        );
+      icon: _tab == i ? tabs[i].$2 : tabs[i].$1,
+      label: tabs[i].$3,
+      selected: _tab == i,
+      onTap: () => setState(() => _tab = i),
+    );
     return Scaffold(
       body: IndexedStack(index: _tab, children: pages),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -91,7 +97,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         notchMargin: 8,
         padding: EdgeInsets.zero,
         height: 68,
-        child: Row(children: [nav(0), nav(1), const Expanded(child: SizedBox()), nav(2), nav(3)]),
+        child: Row(
+          children: [
+            nav(0),
+            nav(1),
+            const Expanded(child: SizedBox()),
+            nav(2),
+            nav(3),
+          ],
+        ),
       ),
     );
   }
@@ -114,11 +128,17 @@ class _NavItem extends StatelessWidget {
         label: label,
         child: InkWell(
           onTap: onTap,
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: color),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: selected ? FontWeight.w700 : null)),
-          ]),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(fontSize: 11, color: color, fontWeight: selected ? FontWeight.w700 : null),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -130,6 +150,8 @@ typedef _QuickAction = (IconData, Color, String, Widget Function());
 /// Each role's most-used actions, in order. The first four show as big buttons; the rest sit under "More".
 const _priorities = <String, List<String>>{
   'Area Admin': ['funds', 'collect', 'expense', 'update', 'event', 'collection', 'student', 'donor', 'attendance', 'meeting'],
+  'Area President': ['funds', 'collect', 'expense', 'update', 'event', 'collection', 'student', 'donor', 'attendance', 'meeting'],
+  'Area Secretary': ['funds', 'collect', 'expense', 'update', 'event', 'collection', 'student', 'donor', 'attendance', 'meeting'],
   'Finance': ['collect', 'funds', 'expense', 'collection', 'donor', 'offer'],
   'Unit President': ['attendance', 'collect', 'expense', 'student', 'meeting', 'ask_funds', 'event', 'update', 'donor', 'offer'],
   'Unit Secretary': ['attendance', 'meeting', 'collect', 'student', 'expense', 'update', 'ask_funds', 'event', 'donor', 'offer'],
@@ -141,24 +163,30 @@ const _priorities = <String, List<String>>{
 Future<void> showQuickAdd(BuildContext context) async {
   final s = AppState.i;
   final all = <String, _QuickAction>{
-    if (s.can('offer')) 'offer': (Icons.favorite_outline, SioColors.green, 'Give an offer', () => const NewEntryScreen(forSelf: true)),
+    if (s.can('offer'))
+      'offer': (Icons.favorite_outline, SioColors.green, 'Give an offer', () => const NewEntryScreen(forSelf: true)),
     if (s.can('collect')) 'collect': (Icons.volunteer_activism, SioColors.red, 'Collection entry', () => const NewEntryScreen()),
     if (s.can('mark_attendance'))
       'attendance': (Icons.how_to_reg, SioColors.blue, 'Attendance', () => const MeetingsScreen(standalone: true)),
-    if (s.can('schedule_meeting')) 'meeting': (Icons.edit_calendar, SioColors.ink, 'New meeting', () => const ScheduleMeetingScreen()),
+    if (s.can('schedule_meeting'))
+      'meeting': (Icons.edit_calendar, SioColors.ink, 'New meeting', () => const ScheduleMeetingScreen()),
     if (s.can('claim_expense')) 'expense': (Icons.receipt_long, SioColors.warning, 'Expense claim', () => const NewClaimScreen()),
     if (s.can('send_notice')) 'update': (Icons.campaign, SioColors.purple, 'Send update', () => const SendNoticeScreen()),
     if (s.can('manage_events')) 'event': (Icons.event_available, SioColors.green, 'New event', () => const EventFormScreen()),
     if (s.can('add_members')) 'student': (Icons.person_add_alt_1, SioColors.blue, 'Add student', () => const MemberFormScreen()),
     if (s.can('request_funds') && !s.can('approve_funds'))
       'ask_funds': (Icons.request_quote_outlined, SioColors.blue, 'Ask for funds', () => const FundRequestFormScreen()),
-    if (s.can('approve_funds')) 'funds': (Icons.request_quote_outlined, SioColors.blue, 'Fund requests', () => const FundRequestsScreen()),
+    if (s.can('approve_funds'))
+      'funds': (Icons.request_quote_outlined, SioColors.blue, 'Fund requests', () => const FundRequestsScreen()),
     if (s.can('view_donors')) 'donor': (Icons.contacts_outlined, SioColors.green, 'New donor', () => const DonorFormScreen()),
-    if (s.can('manage_collections')) 'collection': (Icons.savings_outlined, SioColors.red, 'New collection', () => const CollectionFormScreen()),
+    if (s.can('manage_collections'))
+      'collection': (Icons.savings_outlined, SioColors.red, 'New collection', () => const CollectionFormScreen()),
   };
   final order = <String>[
-    for (final k in _priorities[s.role] ?? const <String>[]) if (all.containsKey(k)) k,
-    for (final k in all.keys) if (!(_priorities[s.role] ?? const <String>[]).contains(k)) k,
+    for (final k in _priorities[s.role] ?? const <String>[])
+      if (all.containsKey(k)) k,
+    for (final k in all.keys)
+      if (!(_priorities[s.role] ?? const <String>[]).contains(k)) k,
   ];
   final top = order.take(4).toList();
   final rest = order.skip(4).toList();
@@ -194,44 +222,67 @@ class _QuickAddSheetState extends State<_QuickAddSheet> {
   bool _more = false;
 
   Widget _big((_QuickAction, VoidCallback) it) => InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: it.$2,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            CircleAvatar(radius: 28, backgroundColor: it.$1.$2, child: Icon(it.$1.$1, color: Colors.white, size: 28)),
-            const SizedBox(height: 8),
-            Text(it.$1.$3, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          ]),
-        ),
-      );
+    borderRadius: BorderRadius.circular(18),
+    onTap: it.$2,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: it.$1.$2,
+            child: Icon(it.$1.$1, color: Colors.white, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            it.$1.$3,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          ),
+        ],
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          for (final it in widget.top) Expanded(child: _big(it)),
-          for (var i = widget.top.length; i < 4; i++) const Expanded(child: SizedBox()),
-        ]),
-        if (widget.rest.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          TextButton.icon(
-            onPressed: () => setState(() => _more = !_more),
-            icon: Icon(_more ? Icons.expand_less : Icons.expand_more),
-            label: Text(_more ? 'Less' : 'More'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final it in widget.top) Expanded(child: _big(it)),
+              for (var i = widget.top.length; i < 4; i++) const Expanded(child: SizedBox()),
+            ],
           ),
-          if (_more)
-            for (final it in widget.rest)
-              ListTile(
-                dense: true,
-                leading: CircleAvatar(radius: 18, backgroundColor: it.$1.$2, child: Icon(it.$1.$1, color: Colors.white, size: 20)),
-                title: Text(it.$1.$3, style: const TextStyle(fontWeight: FontWeight.w600)),
-                onTap: it.$2,
-              ),
+          if (widget.rest.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            TextButton.icon(
+              onPressed: () => setState(() => _more = !_more),
+              icon: Icon(_more ? Icons.expand_less : Icons.expand_more),
+              label: Text(_more ? 'Less' : 'More'),
+            ),
+            if (_more)
+              for (final it in widget.rest)
+                ListTile(
+                  dense: true,
+                  leading: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: it.$1.$2,
+                    child: Icon(it.$1.$1, color: Colors.white, size: 20),
+                  ),
+                  title: Text(it.$1.$3, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: it.$2,
+                ),
+          ],
         ],
-      ]),
+      ),
     );
   }
 }

@@ -15,7 +15,7 @@ if frappe.utils.cint(args.get("cancel")):
 elif existing:
     frappe.response["message"] = {"registered": True}
 else:
-    if ev.status != "Registrations Open":
+    if ev.status in ("Completed", "Cancelled"):
         frappe.throw(_("Registrations are not open for this event."))
     if ev.capacity and frappe.utils.cint(ev.registered_count) >= ev.capacity:
         frappe.throw(_("Sorry, this event is full."))

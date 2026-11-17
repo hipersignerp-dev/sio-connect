@@ -43,19 +43,23 @@ class _DonorsScreenState extends State<DonorsScreen> {
   void initState() {
     super.initState();
     _collection = widget.collection;
-    Api.call('${Api.m}collection').then((v) {
-      final list = ((v as Map?)?['collections'] as List?) ?? [];
-      if (mounted) {
-        setState(() {
-          _collections = [for (final c in list) c['name'].toString()];
-          _collection ??= _collections.isNotEmpty ? _collections.first : null;
-        });
-      }
-    }).catchError((_) {});
+    Api.call('${Api.m}collection')
+        .then((v) {
+          final list = ((v as Map?)?['collections'] as List?) ?? [];
+          if (mounted) {
+            setState(() {
+              _collections = [for (final c in list) c['name'].toString()];
+              _collection ??= _collections.isNotEmpty ? _collections.first : null;
+            });
+          }
+        })
+        .catchError((_) {});
     if (AppState.i.can('all_units')) {
-      Api.units().then((v) {
-        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
-      }).catchError((_) {});
+      Api.myUnits()
+          .then((v) {
+            if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
+          })
+          .catchError((_) {});
     }
   }
 
@@ -71,104 +75,127 @@ class _DonorsScreenState extends State<DonorsScreen> {
           if (ok == true) setState(() => _version++);
         },
       ),
-      body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: TextField(
-            controller: _q,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => setState(() => _version++),
-            decoration: InputDecoration(
-              hintText: 'Search name, mobile or place',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: IconButton(tooltip: 'Search', icon: const Icon(Icons.arrow_forward), onPressed: () => setState(() => _version++)),
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 44,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), children: [
-            for (final f in const [('all', 'Everyone'), ('not_yet', 'Not given yet'), ('to_pay', 'Still to pay')])
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ChoiceChip(
-                  label: Text(f.$2),
-                  selected: _show == f.$1,
-                  onSelected: (_) => setState(() {
-                    _show = f.$1;
-                    _version++;
-                  }),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: TextField(
+              controller: _q,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => setState(() => _version++),
+              decoration: InputDecoration(
+                hintText: 'Search name, mobile or place',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: IconButton(
+                  tooltip: 'Search',
+                  icon: const Icon(Icons.arrow_forward),
+                  onPressed: () => setState(() => _version++),
                 ),
               ),
-          ]),
-        ),
-        if (_show == 'not_yet' || _units.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Row(children: [
-              if (_show == 'not_yet')
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _collections.contains(_collection) ? _collection : null,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Not given in', isDense: true),
-                    items: [for (final c in _collections) DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))],
-                    onChanged: (v) => setState(() {
-                      _collection = v;
-                      _version++;
-                    }),
-                  ),
-                ),
-              if (_show == 'not_yet' && _units.isNotEmpty) const SizedBox(width: 10),
-              if (_units.isNotEmpty)
-                Expanded(
-                  child: DropdownButtonFormField<String?>(
-                    initialValue: _unit,
-                    isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Unit', isDense: true),
-                    items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('All units')),
-                      for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u)),
-                    ],
-                    onChanged: (v) => setState(() {
-                      _unit = v;
-                      _version++;
-                    }),
-                  ),
-                ),
-            ]),
+            ),
           ),
-        Expanded(
-          child: Loader<Map<String, dynamic>>(
-            key: ValueKey('$_version|$_collection'),
-            load: () async => Map<String, dynamic>.from(await Api.call('${Api.m}donors', {
-              'q': _q.text.trim(),
-              'show': _show,
-              'collection': _collection,
-              'unit': _unit,
-            }) as Map),
-            builder: (context, d) {
-              final list = (d['donors'] as List?) ?? [];
-              return [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                  child: Text(
-                    '${d['count']} people · ${d['with_mobile']} with mobile'
-                    '${s.can('view_collection_totals') ? '' : ' · people you collected from'}',
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                for (final f in const [('all', 'Everyone'), ('not_yet', 'Not given yet'), ('to_pay', 'Still to pay')])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(f.$2),
+                      selected: _show == f.$1,
+                      onSelected: (_) => setState(() {
+                        _show = f.$1;
+                        _version++;
+                      }),
+                    ),
                   ),
-                ),
-                if (list.isEmpty) EmptyNote(_show == 'not_yet' ? 'Everyone has given this time. Alhamdulillah!' : 'No one yet.'),
-                if (list.isNotEmpty)
-                  PanelList(children: [
-                    for (final x in list)
-                      _DonorRow(d: Map<String, dynamic>.from(x), collection: _collection, changed: () => setState(() => _version++)),
-                  ]),
-              ];
-            },
+              ],
+            ),
           ),
-        ),
-      ]),
+          if (_show == 'not_yet' || _units.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: Row(
+                children: [
+                  if (_show == 'not_yet')
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _collections.contains(_collection) ? _collection : null,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Not given in', isDense: true),
+                        items: [
+                          for (final c in _collections)
+                            DropdownMenuItem(
+                              value: c,
+                              child: Text(c, overflow: TextOverflow.ellipsis),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() {
+                          _collection = v;
+                          _version++;
+                        }),
+                      ),
+                    ),
+                  if (_show == 'not_yet' && _units.isNotEmpty) const SizedBox(width: 10),
+                  if (_units.isNotEmpty)
+                    Expanded(
+                      child: DropdownButtonFormField<String?>(
+                        initialValue: _unit,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Unit', isDense: true),
+                        items: [
+                          const DropdownMenuItem<String?>(value: null, child: Text('All units')),
+                          for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u)),
+                        ],
+                        onChanged: (v) => setState(() {
+                          _unit = v;
+                          _version++;
+                        }),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: Loader<Map<String, dynamic>>(
+              key: ValueKey('$_version|$_collection'),
+              load: () async => Map<String, dynamic>.from(
+                await Api.call('${Api.m}donors', {'q': _q.text.trim(), 'show': _show, 'collection': _collection, 'unit': _unit})
+                    as Map,
+              ),
+              builder: (context, d) {
+                final list = (d['donors'] as List?) ?? [];
+                return [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                    child: Text(
+                      '${d['count']} people · ${d['with_mobile']} with mobile'
+                      '${s.can('view_collection_totals') ? '' : ' · people you collected from'}',
+                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                    ),
+                  ),
+                  if (list.isEmpty)
+                    EmptyNote(_show == 'not_yet' ? 'Everyone has given this time. Alhamdulillah!' : 'No one yet.'),
+                  if (list.isNotEmpty)
+                    PanelList(
+                      children: [
+                        for (final x in list)
+                          _DonorRow(
+                            d: Map<String, dynamic>.from(x),
+                            collection: _collection,
+                            changed: () => setState(() => _version++),
+                          ),
+                      ],
+                    ),
+                ];
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -185,16 +212,27 @@ class _DonorRow extends StatelessWidget {
     return ListTile(
       onTap: () => _sheet(context),
       leading: Avatar('${d['name']}'),
-      title: Text('${d['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        '${d['name']}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Text(sub.isEmpty ? 'No mobile saved' : sub, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text(inr(d['given']), style: const TextStyle(fontWeight: FontWeight.w700)),
-        if (numOf(d['balance']) > 0)
-          Text('${inr(d['balance'])} to pay', style: const TextStyle(color: SioColors.danger, fontSize: 11.5))
-        else
-          Text(numOf(d['times']) > 0 ? '${d['times']}× given' : 'Not given yet',
-              style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5)),
-      ]),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(inr(d['given']), style: const TextStyle(fontWeight: FontWeight.w700)),
+          if (numOf(d['balance']) > 0)
+            Text('${inr(d['balance'])} to pay', style: const TextStyle(color: SioColors.danger, fontSize: 11.5))
+          else
+            Text(
+              numOf(d['times']) > 0 ? '${d['times']}× given' : 'Not given yet',
+              style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5),
+            ),
+        ],
+      ),
     );
   }
 
@@ -211,80 +249,98 @@ class _DonorRow extends StatelessWidget {
       builder: (sheet) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('${d['name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            Text([d['type'], d['mobile'], d['place'], d['unit']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                style: const TextStyle(color: SioColors.textSecondary)),
-            const SizedBox(height: 14),
-            Row(children: [
-              Stat(inr(d['given']), 'Given in all'),
-              Stat(inr(d['balance']), 'Still to pay', color: SioColors.danger),
-              Stat('${d['times']}', 'Times', color: SioColors.ink),
-            ]),
-            const SizedBox(height: 12),
-            for (final c in (d['collections'] as List? ?? []))
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(children: [
-                  Expanded(child: Text('${c['collection']}')),
-                  Text(inr(c['amount']), style: const TextStyle(fontWeight: FontWeight.w600)),
-                ]),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('${d['name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(
+                [d['type'], d['mobile'], d['place'], d['unit']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+                style: const TextStyle(color: SioColors.textSecondary),
               ),
-            if (d['last_date'] != null)
-              Text('Last: ${fmtDate(d['last_date'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
-            if ((d['notes'] ?? '').toString().isNotEmpty) ...[
-              const SizedBox(height: 8),
-              SioBanner(text: '${d['notes']}'),
-            ],
-            const SizedBox(height: 16),
-            if (hasMobile)
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(onPressed: () => callNumber(context, '${d['mobile']}'), icon: const Icon(Icons.call), label: const Text('Call')),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => whatsApp(context, '${d['mobile']}', ask),
-                    icon: const Icon(Icons.chat_outlined),
-                    label: const Text('WhatsApp'),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Stat(inr(d['given']), 'Given in all'),
+                  Stat(inr(d['balance']), 'Still to pay', color: SioColors.danger),
+                  Stat('${d['times']}', 'Times', color: SioColors.ink),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (final c in (d['collections'] as List? ?? []))
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text('${c['collection']}')),
+                      Text(inr(c['amount']), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
                   ),
                 ),
-              ]),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () async {
-                Navigator.pop(sheet);
-                final ok = await push(context, DonorFormScreen(donor: d));
-                if (ok == true) changed();
-              },
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Edit details'),
-            ),
-            if (AppState.i.can('collect')) ...[
-              const SizedBox(height: 10),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.pop(sheet);
-                  push(
-                    context,
-                    NewEntryScreen(
-                      collection: collection,
-                      contributor: {'name': d['name'], 'mobile': d['mobile'], 'place': d['place'], 'type': d['type'], 'unit': d['unit']},
+              if (d['last_date'] != null)
+                Text('Last: ${fmtDate(d['last_date'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+              if ((d['notes'] ?? '').toString().isNotEmpty) ...[const SizedBox(height: 8), SioBanner(text: '${d['notes']}')],
+              const SizedBox(height: 16),
+              if (hasMobile)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => callNumber(context, '${d['mobile']}'),
+                        icon: const Icon(Icons.call),
+                        label: const Text('Call'),
+                      ),
                     ),
-                  );
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => whatsApp(context, '${d['mobile']}', ask),
+                        icon: const Icon(Icons.chat_outlined),
+                        label: const Text('WhatsApp'),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(sheet);
+                  final ok = await push(context, DonorFormScreen(donor: d));
+                  if (ok == true) changed();
                 },
-                icon: const Icon(Icons.add),
-                label: const Text('Record what they give now'),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Edit details'),
               ),
+              if (AppState.i.can('collect')) ...[
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheet);
+                    push(
+                      context,
+                      NewEntryScreen(
+                        collection: collection,
+                        contributor: {
+                          'name': d['name'],
+                          'mobile': d['mobile'],
+                          'place': d['place'],
+                          'type': d['type'],
+                          'unit': d['unit'],
+                        },
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Record what they give now'),
+                ),
+              ],
             ],
-          ]),
+          ),
         ),
       ),
     );
   }
 }
-
 
 /// Add someone to the donor list (before they give), or change their details.
 class DonorFormScreen extends StatefulWidget {
@@ -323,9 +379,11 @@ class _DonorFormScreenState extends State<DonorFormScreen> {
     final s = AppState.i;
     _unit ??= s.me['unit']?.toString();
     if (s.can('all_units')) {
-      Api.units().then((v) {
-        if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
-      }).catchError((_) {});
+      Api.myUnits()
+          .then((v) {
+            if (mounted) setState(() => _units = [for (final u in v) u['name'].toString()]);
+          })
+          .catchError((_) {});
     }
   }
 
@@ -351,40 +409,61 @@ class _DonorFormScreenState extends State<DonorFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_d == null ? 'New donor' : 'Edit donor')),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-        TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name')),
-        const SizedBox(height: 14),
-        TextField(controller: _mobile, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),
-        const SizedBox(height: 14),
-        TextField(controller: _place, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Place / address')),
-        const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
-          initialValue: _type,
-          decoration: const InputDecoration(labelText: 'Type'),
-          items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t))],
-          onChanged: (v) => setState(() => _type = v ?? _type),
-        ),
-        const SizedBox(height: 14),
-        if (AppState.i.can('all_units'))
-          DropdownButtonFormField<String?>(
-            initialValue: _units.contains(_unit) ? _unit : null,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Unit'),
-            items: [for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u))],
-            onChanged: (v) => setState(() => _unit = v),
-          )
-        else
-          InputDecorator(decoration: const InputDecoration(labelText: 'Unit'), child: Text(_unit ?? 'My unit')),
-        const SizedBox(height: 14),
-        TextField(
-          controller: _notes,
-          maxLines: 2,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Notes (optional)', hintText: 'e.g. gives every Ramadan, call after Asr'),
-        ),
-        const SizedBox(height: 20),
-        FilledButton(onPressed: _busy ? null : _save, child: Text(_d == null ? 'Add donor' : 'Save')),
-      ]),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          TextField(
+            controller: _name,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _mobile,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(labelText: 'Mobile'),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _place,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Place / address'),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            initialValue: _type,
+            decoration: const InputDecoration(labelText: 'Type'),
+            items: [for (final t in types) DropdownMenuItem(value: t, child: Text(t))],
+            onChanged: (v) => setState(() => _type = v ?? _type),
+          ),
+          const SizedBox(height: 14),
+          if (AppState.i.can('all_units'))
+            DropdownButtonFormField<String?>(
+              initialValue: _units.contains(_unit) ? _unit : null,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Unit'),
+              items: [for (final u in _units) DropdownMenuItem<String?>(value: u, child: Text(u))],
+              onChanged: (v) => setState(() => _unit = v),
+            )
+          else
+            InputDecorator(
+              decoration: const InputDecoration(labelText: 'Unit'),
+              child: Text(_unit ?? 'My unit'),
+            ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _notes,
+            maxLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Notes (optional)',
+              hintText: 'e.g. gives every Ramadan, call after Asr',
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: _busy ? null : _save, child: Text(_d == null ? 'Add donor' : 'Save')),
+        ],
+      ),
     );
   }
 }

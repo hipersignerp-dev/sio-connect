@@ -48,54 +48,79 @@ class _EventCardState extends State<_EventCard> {
     final cap = numOf(e['capacity']);
     final reg = numOf(e['registered_count']);
     final registered = e['my_registration'] != null;
-    final open = e['status'] == 'Registrations Open';
+    final open = !const ['Completed', 'Cancelled'].contains(e['status']);
     final canRegister = AppState.i.can('register_events');
     return SioPanel(
       onTap: () => push(context, EventDetailScreen(name: e['name'].toString(), title: e['title'].toString())),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Text(e['title'].toString(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink))),
-          const SizedBox(width: 8),
-          StatusChip(registered ? 'Registered' : e['status'].toString(),
-              tone: registered ? Tone.green : StatusChip.toneFor(e['status'].toString())),
-        ]),
-        const SizedBox(height: 6),
-        Text([if (d != null) DateFormat('EEE d MMM, h:mm a').format(d), e['venue']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-        if (cap > 0) ...[
-          const SizedBox(height: 10),
-          Row(children: [
-            const Expanded(child: Text('Registered', style: TextStyle(color: SioColors.textSecondary, fontSize: 13))),
-            Text('${reg.toInt()} / ${cap.toInt()}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-          ]),
-          const SizedBox(height: 6),
-          ProgressBar(reg / cap),
-        ],
-        if (e['budget'] != null) ...[
-          const SizedBox(height: 8),
-          Text('Budget ${inr(e['budget'])} · spent ${inr(e['spent'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
-        ],
-        if (canRegister && (open || registered)) ...[
-          const SizedBox(height: 12),
-          registered
-              ? OutlinedButton(
-                  onPressed: _busy ? null : () => _go(cancel: true),
-                  child: const Text('Cancel my registration'),
-                )
-              : FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: SioColors.red),
-                  onPressed: _busy ? null : () => _go(cancel: false),
-                  child: const Text('Register'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  e['title'].toString(),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
                 ),
+              ),
+              const SizedBox(width: 8),
+              StatusChip(
+                registered ? 'Registered' : e['status'].toString(),
+                tone: registered ? Tone.green : StatusChip.toneFor(e['status'].toString()),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            [
+              if (d != null) DateFormat('EEE d MMM, h:mm a').format(d),
+              e['venue'],
+            ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+            style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+          ),
+          if (cap > 0) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Registered', style: TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+                ),
+                Text('${reg.toInt()} / ${cap.toInt()}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ProgressBar(reg / cap),
+          ],
+          if (e['budget'] != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Budget ${inr(e['budget'])} · spent ${inr(e['spent'])}',
+              style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+            ),
+          ],
+          if (canRegister && (open || registered)) ...[
+            const SizedBox(height: 12),
+            registered
+                ? OutlinedButton(onPressed: _busy ? null : () => _go(cancel: true), child: const Text('Cancel my registration'))
+                : FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: SioColors.red),
+                    onPressed: _busy ? null : () => _go(cancel: false),
+                    child: const Text('Register'),
+                  ),
+          ],
         ],
-      ]),
+      ),
     );
   }
 
   Future<void> _go({required bool cancel}) async {
     setState(() => _busy = true);
-    await run(context, () => Api.call('${Api.m}register_event', {'event': widget.e['name'], 'cancel': cancel}),
-        done: cancel ? 'Registration cancelled.' : 'You are registered. See you there!');
+    await run(
+      context,
+      () => Api.call('${Api.m}register_event', {'event': widget.e['name'], 'cancel': cancel}),
+      done: cancel ? 'Registration cancelled.' : 'You are registered. See you there!',
+    );
     if (mounted) setState(() => _busy = false);
   }
 }

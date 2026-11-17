@@ -76,12 +76,17 @@ class UpdateService {
       if (build == null) return null;
       final assets = (json['assets'] as List?) ?? const [];
       final apk = assets.cast<Map<String, dynamic>>().firstWhere(
-            (a) => (a['name'] ?? '').toString().toLowerCase().endsWith('.apk'),
-            orElse: () => const {},
-          );
+        (a) => (a['name'] ?? '').toString().toLowerCase().endsWith('.apk'),
+        orElse: () => const {},
+      );
       final url = apk['browser_download_url']?.toString();
       if (url == null || url.isEmpty) return null;
-      return _Release(build: build, name: (json['name'] ?? tag).toString(), notes: (json['body'] ?? '').toString().trim(), url: url);
+      return _Release(
+        build: build,
+        name: (json['name'] ?? tag).toString(),
+        notes: (json['body'] ?? '').toString().trim(),
+        url: url,
+      );
     } catch (error) {
       developer.log('Update check failed', error: error);
       return null;
@@ -98,15 +103,19 @@ class UpdateService {
         icon: const Icon(Icons.system_update, size: 36),
         title: const Text('New version available'),
         content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('You have build $buildNumber. The new build is ${release.build}.'),
-            if (release.notes.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const Text("What's new", style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
-              Text(release.notes.split('\n').first, style: Theme.of(context).textTheme.bodySmall),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('You have build $buildNumber. The new build is ${release.build}.'),
+              if (release.notes.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text("What's new", style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(release.notes.split('\n').first, style: Theme.of(context).textTheme.bodySmall),
+              ],
             ],
-          ]),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Later')),
@@ -124,17 +133,21 @@ class UpdateService {
   static Future<void> _install(BuildContext context, _Release release) async {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.maybeOf(context);
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const AlertDialog(
-        content: Row(children: [
-          SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
-          SizedBox(width: 16),
-          Expanded(child: Text('Downloading update…')),
-        ]),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Row(
+            children: [
+              SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
+              SizedBox(width: 16),
+              Expanded(child: Text('Downloading update…')),
+            ],
+          ),
+        ),
       ),
-    ));
+    );
     String result;
     try {
       result = await _channel.invokeMethod<String>('install', {'url': release.url, 'name': apkName}) ?? 'error';
@@ -149,17 +162,21 @@ class UpdateService {
       case 'installing':
         break; // Android's installer is open
       case 'permission':
-        messenger?.showSnackBar(const SnackBar(
-          duration: Duration(seconds: 8),
-          content: Text('Allow SIO Connect to install apps, then come back and tap Check for updates again.'),
-        ));
+        messenger?.showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 8),
+            content: Text('Allow SIO Connect to install apps, then come back and tap Check for updates again.'),
+          ),
+        );
         _skippedBuild = null;
         _lastCheck = null;
       default:
-        messenger?.showSnackBar(const SnackBar(
-          duration: Duration(seconds: 8),
-          content: Text('Could not download the update. Check the internet connection and try again.'),
-        ));
+        messenger?.showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 8),
+            content: Text('Could not download the update. Check the internet connection and try again.'),
+          ),
+        );
         _skippedBuild = null;
         _lastCheck = null;
     }

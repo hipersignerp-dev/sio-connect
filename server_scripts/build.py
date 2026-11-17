@@ -70,6 +70,7 @@ EVENTS = [
     ("SIO Device revoke", "SIO Device Token", "After Save", "device_after_save"),
     ("SIO Collection targets", "SIO Collection", "Before Save", "collection_targets"),
     ("SIO Unit area leads", "SIO Unit", "After Save", "unit_after_save"),
+    ("SIO Event announce", "SIO Event", "After Insert", "event_after_insert"),
 ]
 
 
