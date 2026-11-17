@@ -44,8 +44,9 @@ Future<bool> run(BuildContext context, Future<void> Function() action, {String? 
 
 /// Loads data, shows a spinner / error with retry, pull to refresh, and reloads after app-wide changes.
 class Loader<T> extends StatefulWidget {
-  const Loader({super.key, required this.load, required this.builder, this.padding});
+  const Loader({super.key, required this.load, required this.builder, this.padding, this.skeleton});
   final Future<T> Function() load;
+  final Widget? skeleton; // shown (shimmering) instead of the spinner on first load
   final List<Widget> Function(BuildContext context, T data) builder;
   final EdgeInsets? padding;
 
@@ -98,7 +99,9 @@ class _LoaderState<T> extends State<Loader<T>> {
         OutlinedButton(onPressed: _reload, child: const Text('Try again')),
         const SizedBox(height: 12),
       ],
-      if (_data == null && _error == null)
+      if (_data == null && _error == null && widget.skeleton != null)
+        widget.skeleton!
+      else if (_data == null && _error == null)
         const Padding(
           padding: EdgeInsets.all(48),
           child: Center(child: CircularProgressIndicator()),

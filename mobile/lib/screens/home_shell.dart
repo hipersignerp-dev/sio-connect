@@ -19,8 +19,12 @@ import 'notice_screens.dart';
 /// Bottom-bar shell, the same pattern as the Hipersign mobile app: Home, (2nd tab), [+], Collection, More.
 /// Members see Meetings as the 2nd tab; associates see Events. Every tab and + item depends on the
 /// person's capabilities from ERP, so each person gets their own app.
+/// True while the admin dashboard is open on top of the app.
+bool dashboardOpen = false;
+
 class HomeShell extends StatefulWidget {
-  const HomeShell({super.key});
+  const HomeShell({super.key, this.dashboard = false});
+  final bool dashboard; // opened from the app's "Admin dashboard" button
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -32,6 +36,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    dashboardOpen = widget.dashboard;
+    if (widget.dashboard) return;
     WidgetsBinding.instance.addObserver(this);
     // like the HiperTracker app: look for a new version when the app opens (at most every few hours)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -43,6 +49,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    if (widget.dashboard) dashboardOpen = false;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

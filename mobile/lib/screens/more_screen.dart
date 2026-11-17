@@ -18,6 +18,8 @@ import 'manage_screens.dart';
 import 'units_screen.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
+import 'social_screens.dart';
+import 'home_shell.dart';
 import 'meeting_screens.dart';
 import 'member_screens.dart';
 import 'notice_screens.dart';
@@ -177,15 +179,19 @@ class MoreScreen extends StatelessWidget {
                 onTap: () => push(context, const NoticesScreen()),
               ),
               const _BiometricTile(),
-              if (s.role != 'Associate' && !s.pending)
+              if (!dashboardOpen && s.isLeader)
                 SioTile(
-                  icon: s.socialView ? Icons.dashboard_outlined : Icons.auto_awesome,
-                  title: s.socialView ? 'Switch to leader view' : 'Switch to associate view',
-                  subtitle: s.socialView ? 'Meetings, collections and management tools' : 'The social app associates see',
-                  onTap: () {
-                    Navigator.of(context).popUntil((r) => r.isFirst);
-                    s.setSocialView(!s.socialView);
-                  },
+                  icon: Icons.space_dashboard_outlined,
+                  title: 'Open admin dashboard',
+                  subtitle: 'Meetings, collections, members and more',
+                  onTap: () => openAdminDashboard(context),
+                ),
+              if (dashboardOpen)
+                SioTile(
+                  icon: Icons.auto_awesome,
+                  title: 'Back to the app',
+                  subtitle: 'Feed, friends and my journey',
+                  onTap: () => Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst),
                 ),
               SioTile(
                 icon: Icons.system_update_outlined,

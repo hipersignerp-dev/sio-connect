@@ -28,13 +28,20 @@ class AppState extends ChangeNotifier {
   String get firstName => (me['full_name'] ?? '').toString().trim().split(' ').first;
   String get role => (me['member_role'] ?? '').toString();
 
-  /// Associates (and people waiting for approval) get the friendly social app; leaders get the management app.
-  /// Anyone can switch in More; the choice is kept on this phone.
-  bool get socialView => Api.prefs.getBool('social_view') ?? (role == 'Associate' || role.isEmpty || pending);
-  Future<void> setSocialView(bool v) async {
-    await Api.prefs.setBool('social_view', v);
-    notifyListeners();
-  }
+  /// Leaders (anyone with management tools) get an "Admin dashboard" button in the app.
+  bool get isLeader =>
+      !pending &&
+      (const [
+        'mark_attendance',
+        'collect',
+        'manage_events',
+        'approve_members',
+        'view_members',
+        'approve_funds',
+        'view_collection_totals',
+        'schedule_meeting',
+        'send_notice',
+      ].any(can));
 
   /// What this person sees: 'all' units, their 'area', or their 'unit'.
   String get level => (me['level'] ?? 'unit').toString();

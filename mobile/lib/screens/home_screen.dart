@@ -1,3 +1,4 @@
+import 'home_shell.dart';
 import 'journey_screens.dart';
 
 import 'package:intl/intl.dart';
@@ -30,6 +31,14 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 68,
+        leading: dashboardOpen
+            ? IconButton(
+                tooltip: 'Back to the app',
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst),
+              )
+            : null,
+        automaticallyImplyLeading: false,
         title: Row(
           children: [
             const Image(image: AssetImage('assets/sio-logo.png'), width: 40, height: 40),

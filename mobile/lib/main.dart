@@ -4,7 +4,6 @@ import 'api.dart';
 import 'app_state.dart';
 import 'screens/auth_screens.dart';
 import 'screens/public_screens.dart';
-import 'screens/home_shell.dart';
 import 'screens/social_screens.dart';
 import 'theme.dart';
 
@@ -35,9 +34,7 @@ class SioApp extends StatelessWidget {
             case Stage.signedOut:
               return const PublicScreen(landing: true);
             case Stage.signedIn:
-              return AppState.i.socialView
-                  ? AssociateShell(key: ValueKey('s${AppState.i.me['user']}'))
-                  : HomeShell(key: ValueKey(AppState.i.me['user']));
+              return AssociateShell(key: ValueKey(AppState.i.me['user']));
           }
         },
       ),

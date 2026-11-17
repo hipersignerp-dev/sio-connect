@@ -1,12 +1,13 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
+import '../fx.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -60,21 +61,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
       final r = _map(await Api.call('${Api.m}read_today'));
       AppState.i.refreshAll();
       if (!mounted) return;
-      final n = _int(r['current']);
-      if (r['milestone'] == true || n == 1) {
-        showShareCard(
-          context,
-          kind: 'Streak',
-          icon: Icons.local_fire_department,
-          color: _flame,
-          big: '$n',
-          title: n == 1 ? 'Day 1 of my reading streak' : '$n-day reading streak',
-          line: 'Reading a daily ayah / hadith with SIO Connect',
-          person: j['me'],
-        );
-      } else {
-        toast(context, '🔥 $n days in a row. See you tomorrow!');
-      }
+      await celebrateRead(context, r);
     } on ApiException catch (e) {
       if (mounted) toast(context, e.message);
     } finally {
@@ -751,16 +738,24 @@ class _QuizScreenState extends State<QuizScreen> {
       await _load();
       if (!mounted) return;
       final full = r['score'] == r['total'];
-      showShareCard(
+      await celebrate(
         context,
-        kind: 'Quiz',
-        badge: full ? 'quiz_full' : null,
-        icon: full ? Icons.emoji_events : Icons.quiz,
-        color: full ? _gold : SioColors.purple,
-        big: '${r['score']}/${r['total']}',
-        title: full ? 'Full marks in the weekly quiz!' : 'I scored ${r['score']}/${r['total']} in the weekly quiz',
-        line: '${_q!['title']}',
-        person: AppState.i.me,
+        number: _int(r['score']),
+        emoji: full ? '🏆' : (_int(r['score']) * 2 >= _int(r['total']) ? '⭐' : '📚'),
+        colors: full ? const [Color(0xFFE0A100), Color(0xFFF26B1D)] : const [Color(0xFF7C3AED), Color(0xFF1A62A8)],
+        title: full ? 'Full marks!' : 'You scored ${r['score']} of ${r['total']}',
+        subtitle: full ? 'Every answer right. Share it!' : 'See the right answers below and try again next week.',
+        onShare: () => showShareCard(
+          context,
+          kind: 'Quiz',
+          badge: full ? 'quiz_full' : null,
+          icon: full ? Icons.emoji_events : Icons.quiz,
+          color: full ? _gold : SioColors.purple,
+          big: '${r['score']}/${r['total']}',
+          title: full ? 'Full marks in the weekly quiz!' : 'I scored ${r['score']}/${r['total']} in the weekly quiz',
+          line: '${_q!['title']}',
+          person: AppState.i.me,
+        ),
       );
     } on ApiException catch (e) {
       if (mounted) toast(context, e.message);
@@ -960,7 +955,31 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     p: p,
                     subtitle:
                         'Their streak ${_int(_map(p['reading'])['current'])} · together ${_int(_map(p['together'])['current'])}',
-                    trailing: _DuoFlame(together: _map(p['together'])),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_map(p['reading'])['today'] != true)
+                          Builder(
+                            builder: (bctx) => IconButton(
+                              tooltip: 'Nudge to read today',
+                              icon: const Text('👋', style: TextStyle(fontSize: 22)),
+                              onPressed: () async {
+                                HapticFeedback.mediumImpact();
+                                burst(bctx, emojis: const ['👋', '🔥', '✨'], count: 12, power: 0.7);
+                                try {
+                                  final r = _map(await Api.call('${Api.m}nudge', {'member': p['member']}));
+                                  if (context.mounted) {
+                                    toast(context, r['already'] == 1 ? 'Already nudged today' : 'Nudge sent 👋');
+                                  }
+                                } on ApiException catch (e) {
+                                  if (context.mounted) toast(context, e.message);
+                                }
+                              },
+                            ),
+                          ),
+                        _DuoFlame(together: _map(p['together'])),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -1154,6 +1173,7 @@ class _ProfileBodyState extends State<_ProfileBody> {
           child: Row(
             children: [
               StoryRing(
+                spin: true,
                 active: reading['today'] == true,
                 size: 92,
                 child: Avatar('${p['full_name']}', radius: 40, photo: p['photo']),
@@ -1548,19 +1568,34 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
   late int _cheers = _int(widget.post['cheers']);
   late bool _mine = widget.post['my_cheer'] == true;
   bool _burst = false;
+  int _pops = 0;
+  final _cheerKey = GlobalKey();
+  final _artKey = GlobalKey();
+  Offset? _tapAt;
 
-  Future<void> _cheer({bool onlyOn = false}) async {
-    if (onlyOn && _mine) {
-      setState(() => _burst = true);
-      Future.delayed(const Duration(milliseconds: 700), () => mounted ? setState(() => _burst = false) : null);
-      return;
+  static const _cheerEmojis = ['🎉', '✨', '💙', '❤️', '🔥', '⭐', '👏'];
+
+  void _flash() {
+    setState(() => _burst = true);
+    Future.delayed(const Duration(milliseconds: 750), () => mounted ? setState(() => _burst = false) : null);
+  }
+
+  Future<void> _cheer({bool onlyOn = false, Offset? at}) async {
+    HapticFeedback.mediumImpact();
+    if (onlyOn) {
+      _flash();
+      final ctx = _artKey.currentContext;
+      if (ctx != null) burst(ctx, at: at, emojis: _cheerEmojis, count: 22);
+      if (_mine) return;
+    } else if (!_mine) {
+      final ctx = _cheerKey.currentContext;
+      if (ctx != null) burst(ctx, emojis: _cheerEmojis, count: 14, power: 0.7);
     }
     setState(() {
       _mine = !_mine;
       _cheers += _mine ? 1 : -1;
-      _burst = _mine;
+      _pops++;
     });
-    Future.delayed(const Duration(milliseconds: 700), () => mounted ? setState(() => _burst = false) : null);
     try {
       final r = _map(await Api.call('${Api.m}post_action', {'name': widget.post['name']}));
       if (mounted) {
@@ -1631,16 +1666,25 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             ),
           ),
           GestureDetector(
-            onDoubleTap: () => _cheer(onlyOn: true),
+            key: _artKey,
+            onDoubleTapDown: (d) => _tapAt = d.globalPosition,
+            onDoubleTap: () => _cheer(onlyOn: true, at: _tapAt),
             child: Stack(
               alignment: Alignment.center,
               children: [
                 PostArt(post: p),
                 AnimatedScale(
                   scale: _burst ? 1 : 0,
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutBack,
-                  child: const Icon(Icons.celebration, color: Colors.white, size: 110),
+                  duration: Duration(milliseconds: _burst ? 380 : 200),
+                  curve: _burst ? Curves.elasticOut : Curves.easeIn,
+                  child: AnimatedOpacity(
+                    opacity: _burst ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: const Text(
+                      '🎉',
+                      style: TextStyle(fontSize: 120, shadows: [Shadow(blurRadius: 24, color: Colors.black26)]),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1650,12 +1694,25 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             child: Row(
               children: [
                 IconButton(
+                  key: _cheerKey,
                   tooltip: 'Cheer',
                   onPressed: _cheer,
-                  icon: Icon(
-                    _mine ? Icons.celebration : Icons.celebration_outlined,
-                    color: _mine ? _flame : SioColors.ink,
-                    size: 28,
+                  icon: Pop(
+                    trigger: _pops,
+                    scale: 1.6,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      transitionBuilder: (c, a) => RotationTransition(
+                        turns: Tween(begin: -0.15, end: 0.0).animate(a),
+                        child: ScaleTransition(scale: a, child: c),
+                      ),
+                      child: Icon(
+                        _mine ? Icons.celebration : Icons.celebration_outlined,
+                        key: ValueKey(_mine),
+                        color: _mine ? _flame : SioColors.ink,
+                        size: 28,
+                      ),
+                    ),
                   ),
                 ),
                 IconButton(
@@ -1677,11 +1734,24 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_cheers > 0)
-                  Text(
-                    '$_cheers cheer${_cheers == 1 ? '' : 's'}',
-                    style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
-                  ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  alignment: Alignment.topLeft,
+                  child: _cheers > 0
+                      ? AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 260),
+                          transitionBuilder: (c, a) => SlideTransition(
+                            position: Tween(begin: const Offset(0, 0.6), end: Offset.zero).animate(a),
+                            child: FadeTransition(opacity: a, child: c),
+                          ),
+                          child: Text(
+                            '$_cheers cheer${_cheers == 1 ? '' : 's'}',
+                            key: ValueKey(_cheers),
+                            style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                          ),
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
                 if (body.isNotEmpty && p['kind'] != 'Note' || (p['kind'] == 'Note' && body.isNotEmpty)) ...[
                   const SizedBox(height: 4),
                   Text.rich(
@@ -1718,33 +1788,36 @@ String timeAgo(dynamic v) {
 
 /// Instagram-style ring: SIO blue → red when active (read today), grey when not.
 class StoryRing extends StatelessWidget {
-  const StoryRing({super.key, required this.child, this.active = true, this.size = 68});
+  const StoryRing({super.key, required this.child, this.active = true, this.size = 68, this.spin = false});
   final Widget child;
   final bool active;
   final double size;
+  final bool spin; // slowly turning gradient (story row, my profile)
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    padding: EdgeInsets.all(size > 60 ? 3 : 2),
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: active
-          ? const LinearGradient(
-              colors: [Color(0xFF1A62A8), Color(0xFF7C3AED), Color(0xFFC8202A), Color(0xFFF26B1D)],
-              begin: Alignment.bottomLeft,
-              end: Alignment.topRight,
-            )
-          : null,
-      color: active ? null : SioColors.greyBg,
-    ),
-    child: Container(
-      padding: EdgeInsets.all(size > 60 ? 3 : 2),
-      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-      child: FittedBox(child: child),
-    ),
-  );
+  Widget build(BuildContext context) => spin
+      ? SpinRing(lit: active, size: size, child: child)
+      : Container(
+          width: size,
+          height: size,
+          padding: EdgeInsets.all(size > 60 ? 3 : 2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: active
+                ? const LinearGradient(
+                    colors: [Color(0xFF1A62A8), Color(0xFF7C3AED), Color(0xFFC8202A), Color(0xFFF26B1D)],
+                    begin: Alignment.bottomLeft,
+                    end: Alignment.topRight,
+                  )
+                : null,
+            color: active ? null : SioColors.greyBg,
+          ),
+          child: Container(
+            padding: EdgeInsets.all(size > 60 ? 3 : 2),
+            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+            child: FittedBox(child: child),
+          ),
+        );
 }
 
 class FeedScreen extends StatelessWidget {
@@ -2144,6 +2217,38 @@ Widget? journeyNotice(dynamic n) {
   final t = '${n['title'] ?? ''}';
   if (t.contains('friend request')) return const FriendsScreen();
   if (t.contains('cheered your post')) return const PersonPage();
-  if (t.startsWith('Keep your streak')) return const JourneyScreen();
+  if (t.startsWith('Keep your streak') || t.contains('nudged you')) return const JourneyScreen();
   return null;
+}
+
+/// After "I read it": the streak moment, every day (bigger words on milestones), with Share.
+Future<void> celebrateRead(BuildContext context, Map<String, dynamic> r) {
+  final n = _int(r['current']);
+  final milestone = r['milestone'] == true;
+  final title = n == 1
+      ? 'Your streak has begun!'
+      : milestone
+      ? '$n days. MashaAllah!'
+      : '$n days in a row';
+  final sub = n == 1
+      ? 'Come back tomorrow to make it 2 🔥'
+      : milestone
+      ? 'A milestone. Share it with your friends.'
+      : 'See you tomorrow, insha Allah. Don’t break the chain!';
+  return celebrate(
+    context,
+    number: n,
+    title: title,
+    subtitle: sub,
+    onShare: () => showShareCard(
+      context,
+      kind: 'Streak',
+      icon: Icons.local_fire_department,
+      color: _flame,
+      big: '$n',
+      title: n == 1 ? 'Day 1 of my reading streak' : '$n-day reading streak',
+      line: 'Reading a daily ayah / hadith with SIO Connect',
+      person: AppState.i.me,
+    ),
+  );
 }

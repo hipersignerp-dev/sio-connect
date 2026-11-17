@@ -1,9 +1,11 @@
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
 import '../app_state.dart';
+import '../fx.dart';
 import '../notify.dart';
 import '../theme.dart';
 import '../update_service.dart';
@@ -11,6 +13,7 @@ import '../widgets.dart';
 import 'collection_screens.dart';
 import 'event_detail_screen.dart';
 import 'home_screen.dart';
+import 'home_shell.dart';
 import 'journey_screens.dart';
 import 'meeting_screens.dart';
 import 'more_screen.dart';
@@ -66,7 +69,10 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
     }
   }
 
-  void _go(int i) => setState(() => _tab = i);
+  void _go(int i) {
+    if (i != _tab) HapticFeedback.selectionClick();
+    setState(() => _tab = i);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +94,11 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(_tab == i ? on : off, size: 27, color: _tab == i ? SioColors.blue : SioColors.ink),
+                Pop(
+                  trigger: _tab == i,
+                  scale: 1.25,
+                  child: Icon(_tab == i ? on : off, size: 27, color: _tab == i ? SioColors.blue : SioColors.ink),
+                ),
                 const SizedBox(height: 3),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -118,8 +128,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
                 item(1, Icons.explore_outlined, Icons.explore, 'Explore'),
                 Expanded(
                   child: Center(
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
+                    child: Squish(
                       onTap: () => showCreateSheet(context),
                       child: Container(
                         width: 46,
@@ -275,6 +284,12 @@ class SocialHome extends StatelessWidget {
         ],
       ),
       actions: [
+        if (AppState.i.isLeader)
+          IconButton(
+            tooltip: 'Admin dashboard',
+            icon: const Icon(Icons.space_dashboard_outlined, size: 26),
+            onPressed: () => openAdminDashboard(context),
+          ),
         IconButton(
           tooltip: 'Updates',
           icon: const Icon(Icons.notifications_none_rounded, size: 27),
@@ -290,6 +305,7 @@ class SocialHome extends StatelessWidget {
     ),
     body: Loader<Map<String, dynamic>>(
       padding: const EdgeInsets.only(bottom: 24),
+      skeleton: const _HomeSkeleton(),
       load: _load,
       builder: (context, d) {
         final h = _m(d['home']);
@@ -302,6 +318,7 @@ class SocialHome extends StatelessWidget {
             .where((e) => e['status'] != 'Completed' && (parseDate(e['starts_on'])?.isAfter(DateTime.now()) ?? false))
             .toList();
         final pending = AppState.i.pending;
+        if (j != null) checkNewBadges(context, j);
         return [
           _Stories(me: AppState.i.me, journey: j, friends: friends, openJourney: () => openTab(2)),
           const Divider(height: 1, color: SioColors.border),
@@ -332,6 +349,11 @@ class SocialHome extends StatelessWidget {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink),
             ),
           ),
+          if (AppState.i.isLeader)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Enter(child: _AdminCard(home: h)),
+            ),
           if (j != null && j['reading'] != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -416,7 +438,11 @@ class SocialHome extends StatelessWidget {
                 ),
               ),
             ),
-          for (final p in feed) PostCard(post: p),
+          for (final (i, p) in feed.indexed)
+            Enter(
+              index: i,
+              child: PostCard(post: p),
+            ),
         ];
       },
     ),
@@ -506,8 +532,7 @@ class _Stories extends StatelessWidget {
       int? flame,
       VoidCallback? onTap,
       bool plus = false,
-    }) => InkWell(
-      borderRadius: BorderRadius.circular(40),
+    }) => Squish(
       onTap: onTap,
       child: SizedBox(
         width: 78,
@@ -516,7 +541,7 @@ class _Stories extends StatelessWidget {
             Stack(
               clipBehavior: Clip.none,
               children: [
-                StoryRing(active: lit, size: 70, child: avatar),
+                StoryRing(spin: true, active: lit, size: 70, child: avatar),
                 if (plus)
                   Positioned(
                     right: 0,
@@ -578,7 +603,7 @@ class _Stories extends StatelessWidget {
               lit: _m(f['reading'])['today'] == true,
               flame: _i(_m(f['together'])['current']) > 0 ? _i(_m(f['together'])['current']) : _i(_m(f['reading'])['current']),
               label: '${f['username'] ?? '${f['full_name']}'.split(' ').first}',
-              onTap: () => push(context, PersonPage(member: '${f['member']}')),
+              onTap: () => _friendSheet(context, f),
             ),
           story(
             avatar: const CircleAvatar(
@@ -598,6 +623,110 @@ class _Stories extends StatelessWidget {
 
 const _flameC = Color(0xFFF26B1D);
 
+/// Tap a friend's ring: see their streak, nudge them if they haven't read, or open their page.
+void _friendSheet(BuildContext context, Map<String, dynamic> f) {
+  final read = _m(f['reading'])['today'] == true;
+  final together = _i(_m(f['together'])['current']);
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            StoryRing(
+              spin: true,
+              active: read,
+              size: 96,
+              child: Avatar('${f['full_name']}', radius: 40, photo: f['photo']),
+            ),
+            const SizedBox(height: 10),
+            Text('${f['full_name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            if ('${f['username'] ?? ''}'.isNotEmpty)
+              Text('@${f['username']}', style: const TextStyle(color: SioColors.textSecondary)),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _MiniStat('🔥 ${_i(_m(f['reading'])['current'])}', 'their streak'),
+                const SizedBox(width: 12),
+                _MiniStat('🤝 $together', 'together'),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              read ? '${'${f['full_name']}'.split(' ').first} has read today ✅' : 'Hasn’t read today yet',
+              style: TextStyle(color: read ? SioColors.green : SioColors.warning, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                if (!read) ...[
+                  Expanded(
+                    child: Builder(
+                      builder: (bctx) => FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _flameC,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () async {
+                          HapticFeedback.mediumImpact();
+                          burst(bctx, emojis: const ['👋', '🔥', '✨'], count: 14, power: 0.8);
+                          try {
+                            final r = _m(await Api.call('${Api.m}nudge', {'member': f['member']}));
+                            if (ctx.mounted) {
+                              toast(ctx, r['already'] == 1 ? 'You already nudged them today' : 'Nudge sent 👋');
+                            }
+                          } on ApiException catch (e) {
+                            if (ctx.mounted) toast(ctx, e.message);
+                          }
+                        },
+                        icon: const Text('👋', style: TextStyle(fontSize: 18)),
+                        label: const Text('Nudge', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      push(context, PersonPage(member: '${f['member']}'));
+                    },
+                    child: const Text('View profile'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat(this.value, this.label);
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(14)),
+    child: Column(
+      children: [
+        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        Text(label, style: const TextStyle(fontSize: 12, color: SioColors.textSecondary)),
+      ],
+    ),
+  );
+}
+
 class _AyahHero extends StatefulWidget {
   const _AyahHero({required this.journey});
   final Map<String, dynamic> journey;
@@ -606,8 +735,17 @@ class _AyahHero extends StatefulWidget {
   State<_AyahHero> createState() => _AyahHeroState();
 }
 
-class _AyahHeroState extends State<_AyahHero> {
+class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixin {
   bool _busy = false;
+  final _btn = GlobalKey();
+  late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -668,6 +806,16 @@ class _AyahHeroState extends State<_AyahHero> {
           ],
           const SizedBox(height: 6),
           Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Colors.white70)),
+          if (!done && _i(rs['current']) > 0 && DateTime.now().hour >= 17) ...[
+            const SizedBox(height: 10),
+            FadeTransition(
+              opacity: Tween(begin: 0.6, end: 1.0).animate(_pulse),
+              child: Text(
+                '⏳ ${24 - DateTime.now().hour}h left to keep your ${_i(rs['current'])}-day streak',
+                style: const TextStyle(color: Color(0xFFFFD2B3), fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [
@@ -685,16 +833,20 @@ class _AyahHeroState extends State<_AyahHero> {
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
                         ),
                       )
-                    : FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: SioColors.blue,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: const StadiumBorder(),
+                    : ScaleTransition(
+                        scale: Tween(begin: 1.0, end: 1.04).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
+                        child: FilledButton.icon(
+                          key: _btn,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: SioColors.blue,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: const StadiumBorder(),
+                          ),
+                          onPressed: _busy ? null : _read,
+                          icon: const Icon(Icons.local_fire_department, color: _flameC),
+                          label: Text(_busy ? 'Saving…' : 'I read it', style: const TextStyle(fontWeight: FontWeight.w800)),
                         ),
-                        onPressed: _busy ? null : _read,
-                        icon: const Icon(Icons.local_fire_department, color: _flameC),
-                        label: Text(_busy ? 'Saving…' : 'I read it', style: const TextStyle(fontWeight: FontWeight.w800)),
                       ),
               ),
               const SizedBox(width: 8),
@@ -716,24 +868,15 @@ class _AyahHeroState extends State<_AyahHero> {
   Future<void> _read() async {
     setState(() => _busy = true);
     try {
+      HapticFeedback.mediumImpact();
       final r = _m(await Api.call('${Api.m}read_today'));
       if (!mounted) return;
-      final n = _i(r['current']);
+      final b = _btn.currentContext;
+      if (b != null && b.mounted) burst(b, emojis: const ['🔥', '✨', '⭐', '💙'], count: 20);
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (!mounted) return;
+      await celebrateRead(context, r);
       AppState.i.refreshAll();
-      if (r['milestone'] == true || n == 1) {
-        showShareCard(
-          context,
-          kind: 'Streak',
-          icon: Icons.local_fire_department,
-          color: _flameC,
-          big: '$n',
-          title: n == 1 ? 'Day 1 of my reading streak' : '$n-day reading streak',
-          line: 'Reading a daily ayah / hadith with SIO Connect',
-          person: AppState.i.me,
-        );
-      } else {
-        toast(context, '🔥 $n days in a row!');
-      }
     } on ApiException catch (e) {
       if (mounted) toast(context, e.message);
     } finally {
@@ -1022,4 +1165,169 @@ class SettingsMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const MoreScreen();
+}
+
+/// Opens the management app (meetings, collections, members…) on top, sliding up.
+Future<void> openAdminDashboard(BuildContext context) {
+  HapticFeedback.mediumImpact();
+  return Navigator.of(context).push(
+    PageRouteBuilder<void>(
+      transitionDuration: const Duration(milliseconds: 420),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, _, _) => const HomeShell(dashboard: true),
+      transitionsBuilder: (_, a, _, child) => SlideTransition(
+        position: Tween(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+        child: child,
+      ),
+    ),
+  );
+}
+
+class _AdminCard extends StatelessWidget {
+  const _AdminCard({required this.home});
+  final Map<String, dynamic> home;
+
+  @override
+  Widget build(BuildContext context) {
+    final members = home['members'] as Map?;
+    final exp = home['pending_expenses'] as Map?;
+    final todo = <String>[
+      if (members != null && numOf(members['pending']) > 0) '${members['pending']} to approve',
+      if (exp != null && numOf(exp['count']) > 0) '${exp['count']} expenses waiting',
+      if (numOf(home['my_tasks']) > 0) '${home['my_tasks']} tasks',
+    ];
+    return Squish(
+      onTap: () => openAdminDashboard(context),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFF1F1F23), Color(0xFF0E3F70)]),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(gradient: sioGradient, borderRadius: BorderRadius.circular(14)),
+              child: const Icon(Icons.space_dashboard, color: Colors.white),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Open admin dashboard',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    todo.isEmpty ? 'Meetings, collections, members and more' : todo.join(' · '),
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+            if (todo.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(color: SioColors.red, borderRadius: BorderRadius.circular(12)),
+                child: Text(
+                  '${todo.length}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                ),
+              ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shimmering outline of the home while it loads (rings, ayah card, programmes).
+class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) => Shimmer(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              for (var i = 0; i < 4; i++) ...[
+                const Column(children: [Bone(height: 66, circle: true), SizedBox(height: 8), Bone(width: 50, height: 10)]),
+                const SizedBox(width: 16),
+              ],
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Bone(width: 220, height: 20),
+          const SizedBox(height: 14),
+          const Bone(width: double.infinity, height: 210, radius: 22),
+          const SizedBox(height: 24),
+          const Bone(width: 140, height: 18),
+          const SizedBox(height: 12),
+          const Row(
+            children: [
+              Expanded(child: Bone(height: 170, radius: 20)),
+              SizedBox(width: 10),
+              Expanded(child: Bone(height: 170, radius: 20)),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// When a new badge is earned, celebrate it once (remembered on this phone) and offer to share it.
+final _badgeCheck = <String>{};
+void checkNewBadges(BuildContext context, Map<String, dynamic> j) {
+  final earned = [
+    for (final b in _l(j['badges']))
+      if (b['earned'] == true) b,
+  ];
+  final key = 'seen_badges_${AppState.i.me['member']}';
+  final seen = Api.prefs.getStringList(key);
+  final codes = [for (final b in earned) '${b['code']}'];
+  if (seen == null) {
+    Api.prefs.setStringList(key, codes); // first time: don't celebrate old badges
+    return;
+  }
+  final fresh = earned.where((b) => !seen.contains(b['code']) && !_badgeCheck.contains(b['code'])).toList();
+  if (fresh.isEmpty) return;
+  final b = fresh.first;
+  _badgeCheck.add('${b['code']}');
+  Api.prefs.setStringList(key, {...seen, ...codes}.toList());
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!context.mounted) return;
+    celebrate(
+      context,
+      number: earned.length,
+      emoji: '🏅',
+      colors: const [Color(0xFFE0A100), Color(0xFFF26B1D)],
+      title: 'New badge: ${b['title']}',
+      subtitle: '${b['how']}. That’s badge number ${earned.length}!',
+      onShare: () => showShareCard(
+        context,
+        kind: 'Badge',
+        badge: '${b['code']}',
+        icon: badgeIcon('${b['icon']}'),
+        color: const Color(0xFFE0A100),
+        title: '${b['title']}',
+        line: '${b['how']}',
+        person: AppState.i.me,
+      ),
+    );
+  });
 }
