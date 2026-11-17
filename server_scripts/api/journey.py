@@ -1,17 +1,19 @@
 # My journey: today's ayah / hadith, streaks, this week's quiz, badges, friends and invites.
 # @include journey
+# @include quran
 m = ctx["member"]
 if not m:
     frappe.throw(_("Your student record is not set up yet."))
 me_doc = frappe.db.get_value("SIO Member", m.name, ["name", "full_name", "username", "photo", "unit", "area",
                                                      "member_role"], as_dict=True)
 rows = frappe.get_all("SIO Daily Reading", filters={"active": 1},
-                      fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml"],
+                      fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml", "audio", "filled_from_quran_api"],
                       order_by="sort_order asc, creation asc")
 reading = None
 if rows:
     day_no = frappe.utils.date_diff(frappe.utils.nowdate(), "2026-01-01")
-    reading = rows[day_no % len(rows)]
+    reading = fill_ayah(rows[day_no % len(rows)])
+    reading["audio"] = [u for u in (reading.get("audio") or "").split("\n") if u]
 b = badges_for(me_doc)
 today = frappe.utils.nowdate()
 quiz = frappe.db.sql(

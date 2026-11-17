@@ -1,3 +1,4 @@
+# @include journey
 # A quiz to take (args: name, or the current one). Answers are only sent after it is taken.
 m = ctx["member"]
 name = args.get("name")
@@ -29,4 +30,21 @@ if name:
             item["correct"] = "ABCD".index(x.correct)
             item["explanation"] = x.explanation
         out["questions"].append(item)
+    out["prize"] = q.get("prize")
+    # leaderboard: me and my friends, and the top of my area
+    board = []
+    if m:
+        who = friend_ids(m.name) + [m.name]
+        for a in frappe.get_all("SIO Quiz Attempt", filters={"quiz": q.name, "member": ["in", who]},
+                                fields=["member", "score", "total", "creation"]):
+            c = frappe.db.get_value("SIO Member", a.member, ["full_name", "photo", "username"], as_dict=True) or {}
+            board.append({"member": a.member, "full_name": c.get("full_name"), "photo": c.get("photo"),
+                          "username": c.get("username"), "score": a.score, "total": a.total, "me": a.member == m.name,
+                          "at": str(a.creation)})
+    out["friends_board"] = sorted(board, key=lambda x: (-(x["score"] or 0), x["at"]))
+    top = frappe.db.sql("""select a.member, a.score, a.total, x.full_name, x.photo, x.unit from `tabSIO Quiz Attempt` a
+        join `tabSIO Member` x on x.name = a.member where a.quiz = %s order by a.score desc, a.creation asc limit 5""",
+                        q.name, as_dict=True)
+    out["top"] = top
+    out["takers"] = frappe.db.count("SIO Quiz Attempt", {"quiz": q.name})
     frappe.response["message"] = out

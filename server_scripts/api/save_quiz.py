@@ -10,6 +10,7 @@ if not title or not args.get("starts_on") or not args.get("ends_on"):
 doc.title = title
 doc.starts_on = args.get("starts_on")
 doc.ends_on = args.get("ends_on")
+doc.prize = (args.get("prize") or "").strip() or None
 if SCOPE_UNITS is not None:
     doc.area = ctx["area"]
 qs = json.loads(args.get("questions") or "[]") or []
