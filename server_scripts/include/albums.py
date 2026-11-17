@@ -26,6 +26,7 @@ def mini(member):
 
 
 def album_photos(album):
-    return frappe.get_all("File", filters={"attached_to_doctype": "SIO Album", "attached_to_name": album},
+    return frappe.get_all("File", filters={"attached_to_doctype": "SIO Album", "attached_to_name": album,
+                                   "attached_to_field": ["is", "not set"]},
                           fields=["name", "file_url", "creation"], order_by="creation asc")
 # --- end album helpers ---
