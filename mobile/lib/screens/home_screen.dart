@@ -94,7 +94,7 @@ class HomeScreen extends StatelessWidget {
           ],
           if (s.me['member'] != null && !s.pending) const JourneyHomeCard(),
           if (h['next_meeting'] != null) ...[
-            _MeetingCard(meeting: Map<String, dynamic>.from(h['next_meeting'])),
+            MeetingCard(meeting: Map<String, dynamic>.from(h['next_meeting'])),
             const SizedBox(height: 12),
           ],
           ..._tiles(context, h),
@@ -225,15 +225,15 @@ class _Tile extends StatelessWidget {
 }
 
 /// Next weekly meeting with the big RSVP button (the Hipersign Check In card).
-class _MeetingCard extends StatefulWidget {
-  const _MeetingCard({required this.meeting});
+class MeetingCard extends StatefulWidget {
+  const MeetingCard({super.key, required this.meeting});
   final Map<String, dynamic> meeting;
 
   @override
-  State<_MeetingCard> createState() => _MeetingCardState();
+  State<MeetingCard> createState() => MeetingCardState();
 }
 
-class _MeetingCardState extends State<_MeetingCard> {
+class MeetingCardState extends State<MeetingCard> {
   bool _busy = false;
 
   @override

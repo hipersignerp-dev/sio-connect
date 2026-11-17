@@ -10,6 +10,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'more_screen.dart';
 
 // My journey: daily ayah / hadith streak, weekly quiz, badges, friends and their pages, posts, unit board.
 
@@ -41,7 +42,8 @@ String handle(Map p) => '${p['username'] ?? ''}'.isEmpty ? '' : '@${p['username'
 // ---------------------------------------------------------------- journey home
 
 class JourneyScreen extends StatefulWidget {
-  const JourneyScreen({super.key});
+  const JourneyScreen({super.key, this.asTab = false});
+  final bool asTab;
 
   @override
   State<JourneyScreen> createState() => _JourneyScreenState();
@@ -83,13 +85,15 @@ class _JourneyScreenState extends State<JourneyScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('My journey'),
+      automaticallyImplyLeading: !widget.asTab,
+      title: const Text('My journey', style: TextStyle(fontWeight: FontWeight.w800)),
       actions: [
-        IconButton(
-          tooltip: 'My page',
-          icon: const Icon(Icons.account_circle_outlined),
-          onPressed: () => push(context, const PersonPage()),
-        ),
+        if (!widget.asTab)
+          IconButton(
+            tooltip: 'My page',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => push(context, const PersonPage()),
+          ),
       ],
     ),
     body: Loader<Map<String, dynamic>>(
@@ -1068,99 +1072,355 @@ Future<bool> _confirm(BuildContext context, String q) async =>
 // ---------------------------------------------------------------- a person's page
 
 class PersonPage extends StatelessWidget {
-  const PersonPage({super.key, this.member});
+  const PersonPage({super.key, this.member, this.asTab = false});
   final String? member; // null = my page
+  final bool asTab; // the Profile tab of the associate app (no back button, a menu instead)
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(member == null ? 'My page' : 'Profile')),
+    appBar: AppBar(
+      automaticallyImplyLeading: !asTab,
+      title: ListenableBuilder(
+        listenable: AppState.i,
+        builder: (context, _) => Text(
+          member == null && '${AppState.i.me['username'] ?? ''}'.isNotEmpty
+              ? '@${AppState.i.me['username']}'
+              : (member == null ? 'My page' : 'Profile'),
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      actions: [
+        if (member == null)
+          IconButton(tooltip: 'New post', icon: const Icon(Icons.add_box_outlined), onPressed: () => newNotePost(context)),
+        if (asTab)
+          IconButton(
+            tooltip: 'Settings and more',
+            icon: const Icon(Icons.menu),
+            onPressed: () => push(context, const MoreScreen()),
+          ),
+      ],
+    ),
     body: Loader<Map<String, dynamic>>(
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 110),
       load: () async => _map(await Api.call('${Api.m}profile', {'member': ?member})),
-      builder: (context, p) {
-        final st = '${_map(p['friend'])['state']}';
-        final posts = _list(p['posts']);
-        final badges = _list(p['badges']);
-        final self = st == 'self';
-        return [
-          const SizedBox(height: 8),
-          Center(child: Avatar('${p['full_name']}', radius: 46, photo: p['photo'])),
-          const SizedBox(height: 10),
-          Text(
-            '${p['full_name']}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.ink),
-          ),
-          Text(
-            [
-              if (handle(p).isNotEmpty) handle(p),
-              if (p['member_role'] != null) '${p['member_role']}',
-              if (p['unit'] != null) '${p['unit']}',
-            ].join(' · '),
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: SioColors.textSecondary),
-          ),
-          const SizedBox(height: 12),
-          if (self)
-            Center(
-              child: OutlinedButton.icon(
-                onPressed: () => pickUsername(context, '${p['username'] ?? ''}'),
-                icon: const Icon(Icons.alternate_email, size: 18),
-                label: Text(handle(p).isEmpty ? 'Choose username' : 'Change username'),
-              ),
-            )
-          else
-            Center(
-              child: _FriendButton(member: '${p['member']}', state: st),
-            ),
-          const SizedBox(height: 14),
-          Row(
+      builder: (context, p) => [_ProfileBody(p: p)],
+    ),
+  );
+}
+
+class _ProfileBody extends StatefulWidget {
+  const _ProfileBody({required this.p});
+  final Map<String, dynamic> p;
+
+  @override
+  State<_ProfileBody> createState() => _ProfileBodyState();
+}
+
+class _ProfileBodyState extends State<_ProfileBody> {
+  bool _grid = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.p;
+    final st = '${_map(p['friend'])['state']}';
+    final posts = _list(p['posts']);
+    final badges = _list(p['badges']);
+    final self = st == 'self';
+    final reading = _map(p['reading']);
+    final canSee = self || st == 'friends';
+    Widget count(String n, String label, [VoidCallback? onTap]) => Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
             children: [
-              Expanded(child: _Stat(Icons.local_fire_department, '${_int(_map(p['reading'])['current'])}', 'day streak', _flame)),
-              const SizedBox(width: 8),
-              Expanded(child: _Stat(Icons.emoji_events, '${badges.length}', 'badges', _gold)),
-              const SizedBox(width: 8),
-              Expanded(child: _Stat(Icons.people_alt, '${p['friends'] ?? 0}', 'friends', SioColors.blue)),
+              Text(
+                n,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: SioColors.ink),
+              ),
+              Text(label, style: const TextStyle(fontSize: 12.5, color: SioColors.text)),
             ],
           ),
-          if (p['together'] != null) ...[
-            const SizedBox(height: 8),
-            SioPanel(
-              color: const Color(0xFFFFEBDD),
+        ),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            children: [
+              StoryRing(
+                active: reading['today'] == true,
+                size: 92,
+                child: Avatar('${p['full_name']}', radius: 40, photo: p['photo']),
+              ),
+              const SizedBox(width: 8),
+              count('${p['posts_count'] ?? posts.length}', 'posts'),
+              count('${p['friends'] ?? 0}', 'friends', self ? () => push(context, const FriendsScreen()) : null),
+              count('${_int(reading['current'])}🔥', 'streak'),
+              count('${badges.length}', 'badges'),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${p['full_name']}',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: SioColors.ink),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                [if (p['member_role'] != null) '${p['member_role']}', if (p['unit'] != null) 'SIO ${p['unit']}'].join(' · '),
+                style: const TextStyle(color: SioColors.textSecondary),
+              ),
+              if (_int(_map(p['attendance'])['current']) > 1)
+                Text(
+                  '✅ ${_int(_map(p['attendance'])['current'])} meetings in a row',
+                  style: const TextStyle(color: SioColors.text),
+                ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: Row(
+            children: self
+                ? [
+                    Expanded(
+                      child: _SoftButton(label: 'Edit profile', onTap: () => push(context, const ProfileScreen())),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _SoftButton(
+                        label: handle(p).isEmpty ? 'Set username' : 'Username',
+                        onTap: () => pickUsername(context, '${p['username'] ?? ''}'),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _SoftButton(icon: Icons.person_add_alt, onTap: () => push(context, const FriendsScreen())),
+                  ]
+                : [
+                    Expanded(
+                      child: _FriendButton(member: '${p['member']}', state: st),
+                    ),
+                  ],
+          ),
+        ),
+        if (p['together'] != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFFFFEBDD), Color(0xFFFFE1E3)]),
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.local_fire_department, color: _flame, size: 36),
+                  const Icon(Icons.local_fire_department, color: _flame, size: 32),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Your streak together: ${_int(_map(p['together'])['current'])} days '
-                      '(best ${_int(_map(p['together'])['best'])}). Keep reading every day, both of you.',
+                      'Streak together: ${_int(_map(p['together'])['current'])} days · best ${_int(_map(p['together'])['best'])}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-          if (badges.isNotEmpty) ...[const SectionTitle('Badges'), _BadgeGrid(badges: badges, person: p, readOnly: !self)],
-          SectionTitle(
-            'Posts',
-            action: self
-                ? TextButton.icon(
-                    onPressed: () => _newNote(context),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Post'),
-                  )
-                : null,
           ),
-          if (!self && st != 'friends') const EmptyNote('Become friends to see their posts.'),
-          if ((self || st == 'friends') && posts.isEmpty) const EmptyNote('No posts yet.'),
-          for (final x in posts) PostCard(post: {...x, 'by': p}),
-        ];
-      },
+        if (badges.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 92,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                for (final b in badges)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(40),
+                    onTap: () => self
+                        ? showShareCard(
+                            context,
+                            kind: 'Badge',
+                            badge: '${b['code']}',
+                            icon: badgeIcon('${b['icon']}'),
+                            color: _gold,
+                            title: '${b['title']}',
+                            line: '${b['how']}',
+                            person: p,
+                          )
+                        : toast(context, '${b['title']}: ${b['how']}'),
+                    child: SizedBox(
+                      width: 76,
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 62,
+                            height: 62,
+                            padding: const EdgeInsets.all(2.5),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(colors: [_gold, _flame]),
+                            ),
+                            child: Container(
+                              decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                              padding: const EdgeInsets.all(2.5),
+                              child: CircleAvatar(
+                                backgroundColor: const Color(0xFFFFF4DC),
+                                foregroundColor: _gold,
+                                child: Icon(badgeIcon('${b['icon']}')),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${b['title']}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final (i, ic) in [Icons.grid_on, Icons.workspace_premium_outlined].indexed)
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _grid = i == 0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: (_grid == (i == 0)) ? SioColors.ink : SioColors.border,
+                          width: (_grid == (i == 0)) ? 1.6 : 1,
+                        ),
+                      ),
+                    ),
+                    child: Icon(ic, color: (_grid == (i == 0)) ? SioColors.ink : SioColors.textSecondary),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        if (_grid) ...[
+          if (!canSee)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  Icon(Icons.lock_outline, size: 40, color: SioColors.textSecondary),
+                  SizedBox(height: 8),
+                  Text('Become friends to see their posts', style: TextStyle(fontWeight: FontWeight.w700)),
+                ],
+              ),
+            )
+          else if (posts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  const Icon(Icons.photo_camera_outlined, size: 40, color: SioColors.textSecondary),
+                  const SizedBox(height: 8),
+                  const Text('No posts yet', style: TextStyle(fontWeight: FontWeight.w700)),
+                  if (self) ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Earn a badge or keep your streak, then post it here.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: SioColors.textSecondary),
+                    ),
+                  ],
+                ],
+              ),
+            )
+          else
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 2,
+              crossAxisSpacing: 2,
+              children: [
+                for (final x in posts)
+                  InkWell(
+                    onTap: () => push(
+                      context,
+                      Scaffold(
+                        appBar: AppBar(title: const Text('Post')),
+                        body: ListView(
+                          children: [
+                            PostCard(post: {...x, 'by': p}),
+                          ],
+                        ),
+                      ),
+                    ),
+                    child: PostArt(post: x, small: true),
+                  ),
+              ],
+            ),
+        ] else
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: _BadgeGrid(
+              badges: self
+                  ? _list(p['all_badges']).isNotEmpty
+                        ? _list(p['all_badges'])
+                        : badges
+                  : badges,
+              person: p,
+              readOnly: !self,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SoftButton extends StatelessWidget {
+  const _SoftButton({this.label, this.icon, required this.onTap});
+  final String? label;
+  final IconData? icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: SioColors.card,
+    borderRadius: BorderRadius.circular(10),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 9, horizontal: label == null ? 10 : 8),
+        child: label == null
+            ? Icon(icon, size: 20, color: SioColors.ink)
+            : Text(
+                label!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
+              ),
+      ),
     ),
   );
 }
 
-Future<void> _newNote(BuildContext context) async {
+Future<void> newNotePost(BuildContext context) async {
   final c = TextEditingController();
   final text = await showDialog<String>(
     context: context,
@@ -1185,113 +1445,71 @@ Future<void> _newNote(BuildContext context) async {
 
 // ---------------------------------------------------------------- posts
 
-class PostCard extends StatefulWidget {
-  const PostCard({super.key, required this.post});
+/// The picture part of a post: badge / streak / quiz achievements get a bold gradient tile, notes a quote card.
+class PostArt extends StatelessWidget {
+  const PostArt({super.key, required this.post, this.small = false});
   final Map<String, dynamic> post;
-
-  @override
-  State<PostCard> createState() => _PostCardState();
-}
-
-class _PostCardState extends State<PostCard> {
-  late int _cheers = _int(widget.post['cheers']);
-  late bool _mine = widget.post['my_cheer'] == true;
+  final bool small;
 
   @override
   Widget build(BuildContext context) {
-    final p = widget.post;
-    final by = _map(p['by']);
-    final kind = '${p['kind']}';
-    final (icon, color) = switch (kind) {
-      'Badge' => (Icons.emoji_events, _gold),
-      'Streak' => (Icons.local_fire_department, _flame),
-      'Quiz' => (Icons.quiz, SioColors.purple),
-      _ => (Icons.edit_note, SioColors.blue),
+    final kind = '${post['kind']}';
+    final (icon, colors) = switch (kind) {
+      'Badge' => (badgeIconForCode('${post['badge'] ?? ''}'), const [Color(0xFFE0A100), Color(0xFFF26B1D)]),
+      'Streak' => (Icons.local_fire_department, const [Color(0xFFF26B1D), Color(0xFFC8202A)]),
+      'Quiz' => (Icons.emoji_events, const [Color(0xFF7C3AED), Color(0xFF1A62A8)]),
+      _ => (Icons.format_quote, const [Color(0xFF1A62A8), Color(0xFF0E3F70)]),
     };
-    final isMe = by['member'] == AppState.i.me['member'];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: SioPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        ),
+        padding: EdgeInsets.all(small ? 8 : 28),
+        child: Stack(
           children: [
-            Row(
-              children: [
-                InkWell(
-                  onTap: () => push(context, PersonPage(member: '${by['member']}')),
-                  child: Avatar('${by['full_name'] ?? ''}', radius: 18, light: true, photo: by['photo']),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${by['full_name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(
-                        fmtDate(p['creation'], 'd MMM, h:mm a'),
-                        style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isMe || AppState.i.can('approve_members'))
-                  IconButton(
-                    tooltip: 'Delete',
-                    icon: const Icon(Icons.delete_outline, size: 20),
-                    onPressed: () async {
-                      if (await _confirm(context, 'Delete this post?') && context.mounted) {
-                        run(context, () => Api.call('${Api.m}post_action', {'name': p['name'], 'action': 'delete'}));
-                      }
-                    },
-                  ),
-              ],
+            Positioned(
+              right: small ? -14 : -40,
+              bottom: small ? -14 : -40,
+              child: Icon(icon, size: small ? 70 : 220, color: Colors.white.withValues(alpha: 0.12)),
             ),
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (kind != 'Note') ...[
-                  CircleAvatar(radius: 22, backgroundColor: color, foregroundColor: Colors.white, child: Icon(icon)),
-                  const SizedBox(width: 12),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (kind != 'Note')
+                    Container(
+                      padding: EdgeInsets.all(small ? 6 : 18),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.2),
+                        border: Border.all(color: Colors.white, width: small ? 1.5 : 3),
+                      ),
+                      child: Icon(icon, color: Colors.white, size: small ? 22 : 64),
+                    ),
+                  SizedBox(height: small ? 4 : 18),
+                  Text(
+                    '${post['title']}',
+                    textAlign: TextAlign.center,
+                    maxLines: small ? 3 : 6,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: small ? 11 : (kind == 'Note' ? 22 : 24),
+                      height: 1.25,
+                    ),
+                  ),
+                  if (!small) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'SIO CONNECT',
+                      style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 3, fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${p['title']}',
-                        style: TextStyle(fontSize: kind == 'Note' ? 15 : 16, fontWeight: kind == 'Note' ? null : FontWeight.w700),
-                      ),
-                      if ('${p['body'] ?? ''}'.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text('${p['body']}', style: const TextStyle(color: SioColors.text)),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: () async {
-                    try {
-                      final r = _map(await Api.call('${Api.m}post_action', {'name': p['name']}));
-                      if (mounted) {
-                        setState(() {
-                          _cheers = _int(r['cheers']);
-                          _mine = r['my_cheer'] == true;
-                        });
-                      }
-                    } on ApiException catch (e) {
-                      if (context.mounted) toast(context, e.message);
-                    }
-                  },
-                  icon: Icon(_mine ? Icons.celebration : Icons.celebration_outlined, color: _mine ? _flame : null),
-                  label: Text(_cheers == 0 ? 'Cheer' : '$_cheers cheer${_cheers == 1 ? '' : 's'}'),
-                ),
-              ],
+              ),
             ),
           ],
         ),
@@ -1300,13 +1518,242 @@ class _PostCardState extends State<PostCard> {
   }
 }
 
+IconData badgeIconForCode(String code) {
+  if (code.startsWith('reader')) return Icons.local_fire_department;
+  return switch (code) {
+    'first_programme' => Icons.event_available,
+    'meetings_10' => Icons.groups,
+    'attend_4' => Icons.verified,
+    'volunteer' => Icons.volunteer_activism,
+    'giver' => Icons.favorite,
+    'quiz_first' => Icons.quiz,
+    'quiz_full' => Icons.emoji_events,
+    'quiz_4' => Icons.military_tech,
+    'inviter' => Icons.person_add,
+    'friends_5' => Icons.diversity_3,
+    _ => Icons.workspace_premium,
+  };
+}
+
+/// A post in the feed, Instagram style: who, the picture, cheers, caption.
+class PostCard extends StatefulWidget {
+  const PostCard({super.key, required this.post});
+  final Map<String, dynamic> post;
+
+  @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin {
+  late int _cheers = _int(widget.post['cheers']);
+  late bool _mine = widget.post['my_cheer'] == true;
+  bool _burst = false;
+
+  Future<void> _cheer({bool onlyOn = false}) async {
+    if (onlyOn && _mine) {
+      setState(() => _burst = true);
+      Future.delayed(const Duration(milliseconds: 700), () => mounted ? setState(() => _burst = false) : null);
+      return;
+    }
+    setState(() {
+      _mine = !_mine;
+      _cheers += _mine ? 1 : -1;
+      _burst = _mine;
+    });
+    Future.delayed(const Duration(milliseconds: 700), () => mounted ? setState(() => _burst = false) : null);
+    try {
+      final r = _map(await Api.call('${Api.m}post_action', {'name': widget.post['name']}));
+      if (mounted) {
+        setState(() {
+          _cheers = _int(r['cheers']);
+          _mine = r['my_cheer'] == true;
+        });
+      }
+    } on ApiException catch (e) {
+      if (mounted) toast(context, e.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.post;
+    final by = _map(p['by']);
+    final isMe = by['member'] == AppState.i.me['member'];
+    final body = '${p['body'] ?? ''}';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 4, 8),
+            child: Row(
+              children: [
+                InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => push(context, PersonPage(member: '${by['member']}')),
+                  child: StoryRing(
+                    size: 40,
+                    active: true,
+                    child: Avatar('${by['full_name'] ?? ''}', radius: 16, light: true, photo: by['photo']),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => push(context, PersonPage(member: '${by['member']}')),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          handle(by).isNotEmpty ? '${by['username']}' : '${by['full_name'] ?? ''}',
+                          style: const TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
+                        ),
+                        Text(
+                          [if (by['unit'] != null) 'SIO ${by['unit']}', timeAgo(p['creation'])].join(' · '),
+                          style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (isMe || AppState.i.can('approve_members'))
+                  IconButton(
+                    tooltip: 'Delete',
+                    icon: const Icon(Icons.more_horiz),
+                    onPressed: () async {
+                      if (await _confirm(context, 'Delete this post?') && context.mounted) {
+                        run(context, () => Api.call('${Api.m}post_action', {'name': p['name'], 'action': 'delete'}));
+                      }
+                    },
+                  ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onDoubleTap: () => _cheer(onlyOn: true),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                PostArt(post: p),
+                AnimatedScale(
+                  scale: _burst ? 1 : 0,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  child: const Icon(Icons.celebration, color: Colors.white, size: 110),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Cheer',
+                  onPressed: _cheer,
+                  icon: Icon(
+                    _mine ? Icons.celebration : Icons.celebration_outlined,
+                    color: _mine ? _flame : SioColors.ink,
+                    size: 28,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Share',
+                  onPressed: () => SharePlus.instance.share(
+                    ShareParams(
+                      text:
+                          '${p['title']}${body.isNotEmpty ? '\n$body' : ''}\n— ${by['full_name'] ?? ''}'
+                          '${handle(by).isNotEmpty ? ' (${handle(by)})' : ''} on SIO Connect',
+                    ),
+                  ),
+                  icon: const Icon(Icons.send_outlined, size: 26, color: SioColors.ink),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_cheers > 0)
+                  Text(
+                    '$_cheers cheer${_cheers == 1 ? '' : 's'}',
+                    style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                  ),
+                if (body.isNotEmpty && p['kind'] != 'Note' || (p['kind'] == 'Note' && body.isNotEmpty)) ...[
+                  const SizedBox(height: 4),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '${handle(by).isNotEmpty ? by['username'] : by['full_name']}  ',
+                          style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                        ),
+                        TextSpan(text: body),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String timeAgo(dynamic v) {
+  final d = parseDate(v);
+  if (d == null) return '';
+  final s = DateTime.now().difference(d);
+  if (s.inMinutes < 1) return 'now';
+  if (s.inMinutes < 60) return '${s.inMinutes}m';
+  if (s.inHours < 24) return '${s.inHours}h';
+  if (s.inDays < 7) return '${s.inDays}d';
+  return fmtDate(v, 'd MMM');
+}
+
+/// Instagram-style ring: SIO blue → red when active (read today), grey when not.
+class StoryRing extends StatelessWidget {
+  const StoryRing({super.key, required this.child, this.active = true, this.size = 68});
+  final Widget child;
+  final bool active;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    padding: EdgeInsets.all(size > 60 ? 3 : 2),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: active
+          ? const LinearGradient(
+              colors: [Color(0xFF1A62A8), Color(0xFF7C3AED), Color(0xFFC8202A), Color(0xFFF26B1D)],
+              begin: Alignment.bottomLeft,
+              end: Alignment.topRight,
+            )
+          : null,
+      color: active ? null : SioColors.greyBg,
+    ),
+    child: Container(
+      padding: EdgeInsets.all(size > 60 ? 3 : 2),
+      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+      child: FittedBox(child: child),
+    ),
+  );
+}
+
 class FeedScreen extends StatelessWidget {
   const FeedScreen({super.key});
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Friends’ posts')),
-    floatingActionButton: AddFab(onPressed: () => _newNote(context), tooltip: 'New post'),
+    floatingActionButton: AddFab(onPressed: () => newNotePost(context), tooltip: 'New post'),
     body: Loader<List<Map<String, dynamic>>>(
       load: () async => _list(await Api.call('${Api.m}feed')),
       builder: (context, posts) => [

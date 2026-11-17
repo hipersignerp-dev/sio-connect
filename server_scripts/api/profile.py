@@ -17,11 +17,14 @@ b = badges_for(p)
 out = card(p)
 out["friend"] = st
 out["badges"] = [x for x in b["badges"] if x["earned"]]
+if st["state"] == "self":
+    out["all_badges"] = b["badges"]
 out["reading"] = b["reading"]
 out["attendance"] = b["attendance"]
 out["quiz"] = b["quiz"]
 out["friends"] = b["friends"]
 out["posts"] = []
+out["posts_count"] = frappe.db.count("SIO Post", {"member": p.name})
 if st["state"] in ("self", "friends"):
     out["posts"] = frappe.get_all("SIO Post", filters={"member": p.name},
                                   fields=["name", "kind", "badge", "title", "body", "cheers", "creation"],

@@ -177,6 +177,16 @@ class MoreScreen extends StatelessWidget {
                 onTap: () => push(context, const NoticesScreen()),
               ),
               const _BiometricTile(),
+              if (s.role != 'Associate' && !s.pending)
+                SioTile(
+                  icon: s.socialView ? Icons.dashboard_outlined : Icons.auto_awesome,
+                  title: s.socialView ? 'Switch to leader view' : 'Switch to associate view',
+                  subtitle: s.socialView ? 'Meetings, collections and management tools' : 'The social app associates see',
+                  onTap: () {
+                    Navigator.of(context).popUntil((r) => r.isFirst);
+                    s.setSocialView(!s.socialView);
+                  },
+                ),
               SioTile(
                 icon: Icons.system_update_outlined,
                 title: 'Check for updates',
