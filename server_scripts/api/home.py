@@ -14,7 +14,7 @@ if ctx["unit"]:
 for a in frappe.get_all("SIO Meeting", filters={"area": ["is", "set"], "unit": ["is", "not set"], "status": "Scheduled",
                                                 "meeting_date": [">=", frappe.utils.nowdate()]},
                         fields=mfields, order_by="meeting_date asc, meeting_time asc", limit=5):
-    if ctx["is_admin"] or invited_to(a, member):
+    if can_see_meeting(a):
         upcoming.append(a)
         break
 upcoming = sorted(upcoming, key=lambda r: (str(r.meeting_date or ""), str(r.meeting_time or "")))
@@ -47,8 +47,8 @@ out["my_offers"] = {"offered": sum([c["my_offered"] for c in collections]),
                     "paid": sum([c["my_paid"] for c in collections])}
 if caps["view_members"]:
     base = {}
-    if ctx["scope"]:
-        base["unit"] = ctx["scope"]
+    if SCOPE_UNITS is not None:
+        base["unit"] = ["in", scope_list()]
     active_f = dict(base)
     active_f["status"] = "Active"
     pending_f = dict(base)
@@ -64,7 +64,7 @@ if caps["approve_expense"]:
             """select count(*), coalesce(sum(amount), 0) from `tabSIO Expense Claim`
             where status = 'Pending' and unit in %(u)s""", {"u": ctx["approver_units"]})[0]
     out["pending_expenses"] = {"count": frappe.utils.cint(pend[0]), "amount": frappe.utils.flt(pend[1])}
-if caps["all_units"]:
+if SCOPE_UNITS is None:
     pub = frappe.db.get_value("SIO Settings", "SIO Settings", "public_collection")
     if pub:
         out["public_to_confirm"] = frappe.db.count("SIO Collection Entry",

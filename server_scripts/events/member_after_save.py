@@ -6,6 +6,8 @@ role_map = {
     "Unit Secretary": ["SIO Member", "SIO Unit Admin"],
     "Unit President": ["SIO Member", "SIO Unit Admin"],
     "Finance": ["SIO Member", "SIO Finance"],
+    "Area President": ["SIO Member", "SIO Unit Admin"],
+    "Area Secretary": ["SIO Member", "SIO Unit Admin"],
     "Area Admin": ["SIO Member", "SIO Unit Admin", "SIO Finance", "SIO Admin"],
 }
 sio_roles = ["SIO Associate", "SIO Member", "SIO Unit Admin", "SIO Finance", "SIO Admin"]
@@ -25,17 +27,19 @@ if doc.user and frappe.db.exists("User", doc.user):
         user.enabled = enabled
         user.save(ignore_permissions=True)
 
-# Unit presidents and secretaries are tied to their own unit on the desk (a User Permission on SIO Unit),
-# so they can't open another unit's records. Everyone else has none.
+# On the desk, unit presidents and secretaries are tied to their own unit, and area presidents and secretaries
+# to the units of their area (User Permissions on SIO Unit), so they can't open other units' records.
 if doc.user and frappe.db.exists("User", doc.user):
-    want_unit = None
+    want = []
     if doc.status == "Active" and doc.member_role in ("Unit President", "Unit Secretary") and doc.unit:
-        want_unit = doc.unit
+        want = [doc.unit]
+    elif doc.status == "Active" and doc.member_role in ("Area President", "Area Secretary") and doc.get("area"):
+        want = frappe.get_all("SIO Unit", filters={"district": doc.area}, pluck="name") or []
     for up in frappe.get_all("User Permission", filters={"user": doc.user, "allow": "SIO Unit"},
                              fields=["name", "for_value"]):
-        if up.for_value != want_unit:
+        if up.for_value not in want:
             frappe.delete_doc("User Permission", up.name, ignore_permissions=True)
-    if want_unit and not frappe.db.exists("User Permission", {"user": doc.user, "allow": "SIO Unit",
-                                                             "for_value": want_unit}):
-        frappe.get_doc({"doctype": "User Permission", "user": doc.user, "allow": "SIO Unit",
-                        "for_value": want_unit, "apply_to_all_doctypes": 1}).insert(ignore_permissions=True)
+    for u in want:
+        if not frappe.db.exists("User Permission", {"user": doc.user, "allow": "SIO Unit", "for_value": u}):
+            frappe.get_doc({"doctype": "User Permission", "user": doc.user, "allow": "SIO Unit",
+                            "for_value": u, "apply_to_all_doctypes": 1}).insert(ignore_permissions=True)

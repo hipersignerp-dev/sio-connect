@@ -3,6 +3,8 @@ caps = ctx["caps"]
 if not caps["approve_funds"]:
     frappe.throw(_("Only finance or area admins can decide fund requests."), frappe.PermissionError)
 doc = frappe.get_doc("SIO Fund Request", args.get("name"))
+if not in_scope(doc.unit):
+    frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
 action = args.get("action")
 if args.get("remarks"):
     doc.remarks = args.get("remarks")

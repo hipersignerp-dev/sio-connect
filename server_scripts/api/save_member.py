@@ -6,7 +6,7 @@ if not ctx["caps"]["add_members"]:
 name = args.get("name")
 if name:
     doc = frappe.get_doc("SIO Member", name)
-    if ctx["scope"] and doc.unit != ctx["scope"]:
+    if not in_scope(doc.unit):
         frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
 else:
     doc = frappe.get_doc({"doctype": "SIO Member", "status": "Active", "member_role": "Associate"})
@@ -16,12 +16,31 @@ if len(full_name) < 3:
     frappe.throw(_("Enter the full name."))
 if len([c for c in mobile if c.isdigit()]) < 10:
     frappe.throw(_("Enter a valid mobile number."))
-unit = args.get("unit") or doc.unit or ctx["unit"]
-if ctx["scope"]:
-    unit = ctx["scope"]
+# roles this person may give: area admins any; area presidents / secretaries up to unit office bearers in their
+# area; unit presidents / secretaries Associate and Worker
+if ctx["is_admin"]:
+    can_give = None
+elif ctx["is_area_lead"]:
+    can_give = ["Associate", "Worker", "Member", "Unit Secretary", "Unit President"]
+else:
+    can_give = ["Associate", "Worker"]
 role = args.get("member_role") or doc.member_role or "Associate"
-if not ctx["is_admin"] and role != doc.member_role and role not in ("Associate", "Worker"):
-    frappe.throw(_("Only area admins can give that role."), frappe.PermissionError)
+if can_give is not None and role != doc.member_role and role not in can_give:
+    frappe.throw(_("You can't give that role."), frappe.PermissionError)
+area_role = role in ("Area President", "Area Secretary", "Area Admin")
+unit = args.get("unit") or doc.unit or ctx["unit"]
+if "unit" in args and not args.get("unit"):
+    unit = None
+if unit and not in_scope(unit):
+    frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
+if not unit and not area_role:
+    frappe.throw(_("Pick the unit."))
+area = args.get("area") or doc.get("area") or ctx["area"]
+if unit:
+    area = frappe.db.get_value("SIO Unit", unit, "district") or area
+if SCOPE_UNITS is not None and area != ctx["area"]:
+    frappe.throw(_("That area is not yours."), frappe.PermissionError)
+doc.area = area
 doc.full_name = full_name
 doc.mobile = mobile
 doc.email = (args.get("email") or "").strip().lower() or None

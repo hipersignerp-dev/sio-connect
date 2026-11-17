@@ -9,7 +9,7 @@ if not own:
     if not ctx["caps"]["add_members"]:
         frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
     unit = frappe.db.get_value("SIO Member", target, "unit")
-    if ctx["scope"] and unit != ctx["scope"]:
+    if not in_scope(unit):
         frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
 if not frappe.db.exists("SIO Member", target):
     frappe.throw(_("Student not found."))

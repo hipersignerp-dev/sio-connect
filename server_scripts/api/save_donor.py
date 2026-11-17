@@ -6,8 +6,8 @@ name = args.get("name")
 member = ctx["member"]
 if name:
     doc = frappe.get_doc("SIO Donor", name)
-    if not ctx["caps"]["all_units"]:
-        mine = doc.unit == ctx["unit"] and (ctx["is_unit_admin"] or (member and doc.added_by == member.name))
+    if SCOPE_UNITS is not None:
+        mine = in_scope(doc.unit) and (ctx["is_unit_admin"] or (member and doc.added_by == member.name))
         if not mine:
             frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
 else:
@@ -26,6 +26,8 @@ if digits:
 unit = args.get("unit") or doc.unit or ctx["unit"]
 if not ctx["caps"]["all_units"]:
     unit = ctx["unit"]
+if unit and not in_scope(unit):
+    frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
 if not unit:
     frappe.throw(_("Pick the unit."))
 doc.donor_name = dname

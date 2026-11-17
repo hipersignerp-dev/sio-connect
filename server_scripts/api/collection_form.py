@@ -8,6 +8,7 @@ units = frappe.db.sql(
     left join `tabSIO Member` m on m.unit = u.name and m.status = 'Active'
     where u.active = 1
     group by u.name order by u.name""", as_dict=True)
+units = [u for u in units if in_scope(u.unit)]
 out = {"units": units, "collection": None, "entries": 0}
 name = args.get("name")
 if name:

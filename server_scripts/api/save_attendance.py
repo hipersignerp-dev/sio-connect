@@ -3,11 +3,8 @@
 if not ctx["caps"]["mark_attendance"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 doc = frappe.get_doc("SIO Meeting", args.get("name"))
-if is_area_meeting(doc):
-    if not ctx["caps"]["schedule_area_meeting"]:
-        frappe.throw(_("Only area admins mark area meeting attendance."), frappe.PermissionError)
-elif ctx["scope"] and doc.unit != ctx["scope"]:
-    frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
+if not can_manage_meeting(doc):
+    frappe.throw(_("You can't mark attendance for this meeting."), frappe.PermissionError)
 present = args.get("present") or "[]"
 if isinstance(present, str):
     present = json.loads(present)

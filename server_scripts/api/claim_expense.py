@@ -8,7 +8,7 @@ if fund_request:
     fr = frappe.db.get_value("SIO Fund Request", fund_request, ["status", "unit", "event"], as_dict=True)
     if not fr or fr.status != "Released":
         frappe.throw(_("Pick a fund request whose money has been released."))
-    if not ctx["caps"]["all_units"] and fr.unit != ctx["unit"]:
+    if not in_scope(fr.unit):
         frappe.throw(_("That fund request belongs to another unit."), frappe.PermissionError)
 doc = frappe.get_doc({
     "doctype": "SIO Expense Claim",
@@ -19,7 +19,7 @@ doc = frappe.get_doc({
     "event": args.get("event") or None,
     "paid_from": None,
     "fund_request": fund_request,
-    "unit": ctx["unit"],
+    "unit": fr.unit if fund_request else ctx["unit"],
     "claimed_by": ctx["member"].name,
 }).insert(ignore_permissions=True)
 if args.get("bill_data"):

@@ -35,6 +35,21 @@ def invited_to(m, member):
     return frappe.db.get_value("SIO Unit", member.unit, "district") == m.get("area")
 
 
+def can_manage_meeting(m):
+    # schedule / edit / mark / write the summary
+    if is_area_meeting(m):
+        return ctx["caps"]["schedule_area_meeting"] and (SCOPE_UNITS is None or m.get("area") == ctx["area"])
+    return ctx["caps"]["schedule_meeting"] and in_scope(m.get("unit"))
+
+
+def can_see_meeting(m):
+    if SCOPE_UNITS is None:
+        return True
+    if is_area_meeting(m):
+        return can_manage_meeting(m) or invited_to(m, ctx["member"])
+    return in_scope(m.get("unit"))
+
+
 def meeting_place(m):
     if is_area_meeting(m):
         return m.get("area") + " Area"

@@ -1,16 +1,9 @@
 # @include meeting
 doc = frappe.get_doc("SIO Meeting", args.get("name"))
 area_mtg = is_area_meeting(doc)
-if not (ctx["is_admin"] or ctx["is_finance"]):
-    if area_mtg:
-        if not invited_to(doc, ctx["member"]):
-            frappe.throw(_("This area meeting is not for you."), frappe.PermissionError)
-    elif doc.unit != ctx["unit"]:
-        frappe.throw(_("This meeting is for another unit."), frappe.PermissionError)
-if area_mtg:
-    can_edit = ctx["caps"]["schedule_area_meeting"]
-else:
-    can_edit = ctx["caps"]["schedule_meeting"] and (not ctx["scope"] or doc.unit == ctx["scope"])
+if not can_see_meeting(doc):
+    frappe.throw(_("This meeting is not for you."), frappe.PermissionError)
+can_edit = can_manage_meeting(doc)
 out = {
     "name": doc.name, "unit": doc.unit, "area": doc.get("area"), "invite": doc.get("invite"),
     "level": "Area" if area_mtg else "Unit", "where": meeting_place(doc),
@@ -26,7 +19,7 @@ for r in doc.attendance:
     rows[r.member] = r
 if ctx["member"] and ctx["member"].name in rows:
     out["my_rsvp"] = rows[ctx["member"].name].rsvp
-if (area_mtg and ctx["caps"]["schedule_area_meeting"]) or (not area_mtg and ctx["caps"]["mark_attendance"]):
+if can_edit and ((area_mtg and ctx["caps"]["schedule_area_meeting"]) or (not area_mtg and ctx["caps"]["mark_attendance"])):
     if area_mtg:
         roster = area_invitees(doc.area, doc.get("invite"))
     else:

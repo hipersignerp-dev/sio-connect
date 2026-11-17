@@ -5,8 +5,9 @@ if status not in ("Approved", "Rejected", "Paid"):
     frappe.throw(_("Unknown status."))
 doc = frappe.get_doc("SIO Expense Claim", args.get("name"))
 if not ctx["is_finance"]:
-    if doc.unit not in ctx["approver_units"]:
-        frappe.throw(_("Only this unit's expense approver or finance can do this."), frappe.PermissionError)
+    if doc.unit not in ctx["approver_units"] and not (ctx["is_area_lead"] and in_scope(doc.unit)):
+        frappe.throw(_("Only this unit's expense approver, the area leaders or finance can do this."),
+                     frappe.PermissionError)
     if ctx["member"] and doc.claimed_by == ctx["member"].name:
         frappe.throw(_("Someone else has to approve your own claim."), frappe.PermissionError)
 doc.status = status

@@ -1,8 +1,8 @@
 if not ctx["caps"]["view_members"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 filters = {}
-if ctx["scope"]:
-    filters["unit"] = ctx["scope"]
+if SCOPE_UNITS is not None:
+    filters["unit"] = ["in", scope_list()]
 if args.get("status"):
     filters["status"] = args.get("status")
 or_filters = None

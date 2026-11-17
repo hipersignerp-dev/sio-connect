@@ -15,6 +15,8 @@ if ctx["caps"]["all_units"] and args.get("unit"):
     unit = args.get("unit")
     if not frappe.db.exists("SIO Unit", unit):
         frappe.throw(_("Pick a unit from the list."))
+    if not in_scope(unit):
+        frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
 if not unit and not frappe.utils.cint(args.get("for_self")):
     frappe.throw(_("Pick the unit this collection is for."))
 doc = frappe.get_doc({"doctype": "SIO Collection Entry", "collection": collection, "entry_type": entry_type,

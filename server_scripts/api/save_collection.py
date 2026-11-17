@@ -18,11 +18,17 @@ doc.ends_on = args.get("ends_on") or None
 doc.description = args.get("description") or None
 doc.target_amount = frappe.utils.flt(args.get("target_amount"))
 doc.is_active = 0 if str(args.get("is_active")) in ("0", "false", "False") else 1
+if doc.unit and not in_scope(doc.unit):
+    frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
 targets = json.loads(args.get("unit_targets") or "[]") or []
+# area presidents / secretaries set targets for their own units; other areas' targets stay as they are
+keep = [{"unit": r.unit, "target": r.target} for r in doc.get("unit_targets") or [] if not in_scope(r.unit)]
 doc.set("unit_targets", [])
+for t in keep:
+    doc.append("unit_targets", t)
 for t in targets:
     amt = frappe.utils.flt(t.get("target"))
-    if t.get("unit") and amt > 0:
+    if t.get("unit") and amt > 0 and in_scope(t.get("unit")):
         doc.append("unit_targets", {"unit": t.get("unit"), "target": amt})
 if name:
     doc.save(ignore_permissions=True)

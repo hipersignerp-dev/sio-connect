@@ -1,9 +1,11 @@
 # Add or change a unit. Area admins only. A unit's name can't be changed once added.
 if not ctx["caps"]["manage_units"]:
-    frappe.throw(_("Only area admins can add or change units."), frappe.PermissionError)
+    frappe.throw(_("Only area leaders can add or change units."), frappe.PermissionError)
 name = args.get("name")
 if name:
     doc = frappe.get_doc("SIO Unit", name)
+    if not in_scope(doc.name):
+        frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
 else:
     uname = (args.get("unit_name") or "").strip()
     if len(uname) < 2:
@@ -12,6 +14,8 @@ else:
         frappe.throw(_("A unit with this name already exists."))
     doc = frappe.get_doc({"doctype": "SIO Unit", "unit_name": uname})
 doc.district = (args.get("district") or "").strip() or None
+if SCOPE_UNITS is not None:
+    doc.district = ctx["area"]  # area presidents / secretaries: units of their own area
 doc.area = (args.get("area") or "").strip() or None
 doc.active = 0 if str(args.get("active")) in ("0", "false", "False") else 1
 for f in ("president", "secretary", "expense_approver"):

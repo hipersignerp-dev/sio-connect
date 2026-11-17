@@ -13,7 +13,7 @@ member = None
 if user != "Guest":
     member = frappe.db.get_value(
         "SIO Member", {"user": user},
-        ["name", "full_name", "photo", "mobile", "email", "member_role", "status", "unit", "campus", "course",
+        ["name", "full_name", "photo", "mobile", "email", "member_role", "status", "unit", "area", "campus", "course",
          "year_of_study", "home_town", "joined_on"],
         as_dict=True)
 
@@ -26,6 +26,22 @@ else:
 active = status == "Active"
 is_member = active and (is_unit_admin or is_finance or "SIO Member" in roles)
 unit = member.unit if member else None
+
+# Who sees what. Area admins (overall admins) and finance see every unit. Area presidents and secretaries see
+# the units of their own area. Everyone else sees only their own unit.
+AREA_ROLES = ("Area President", "Area Secretary")
+area = None
+if member:
+    area = member.get("area") or (frappe.db.get_value("SIO Unit", unit, "district") if unit else None)
+is_area_lead = bool(member) and active and member.member_role in AREA_ROLES and not (is_admin or is_finance)
+if is_admin or is_finance:
+    units = None  # every unit
+elif is_area_lead:
+    units = [u[0] for u in frappe.db.sql("select name from `tabSIO Unit` where district = %s", area or "__none__")]
+elif unit:
+    units = [unit]
+else:
+    units = []
 # units whose expense approver this person is
 approver_units = []
 if member:
@@ -42,24 +58,26 @@ caps = {
     "approve_members": is_unit_admin,
     "mark_attendance": is_unit_admin,
     "schedule_meeting": is_unit_admin,
-    "schedule_area_meeting": is_admin,
+    "schedule_area_meeting": is_admin or is_area_lead,
     "view_collection_totals": is_unit_admin or is_finance,
-    "approve_expense": is_finance or len(approver_units) > 0,
+    "approve_expense": is_finance or is_area_lead or len(approver_units) > 0,
     "send_notice": is_unit_admin,
-    "all_units": is_admin or is_finance,
+    "all_units": is_admin or is_finance or is_area_lead,  # works across more than one unit
     "view_accounts": is_unit_admin or is_finance,
-    "manage_collections": is_admin or is_finance,
+    "manage_collections": is_admin or is_finance or is_area_lead,
     "manage_events": is_unit_admin,
     "add_members": is_unit_admin,
-    "manage_units": is_admin,
+    "manage_units": is_admin or is_area_lead,
     "view_donors": is_unit_admin or is_finance or is_member,
     "request_funds": is_unit_admin and member is not None,
-    "approve_funds": is_finance,
+    "approve_funds": is_finance or is_area_lead,
 }
 
-scope = None  # None = every unit
-if not (is_admin or is_finance):
-    scope = unit or "__none__"
+# Old single-unit scope, kept so nothing can widen by mistake: None = every unit; a unit name; or for area
+# leads a value that matches no unit (scripts use units / in_scope instead).
+scope = None
+if units is not None:
+    scope = unit if (unit and not is_area_lead) else "__area__"
 
 if member:
     role_label = member.member_role
@@ -76,6 +94,8 @@ me = {
     "member_role": role_label,
     "status": status,
     "unit": unit,
+    "area": area,
+    "level": "all" if units is None else ("area" if is_area_lead else "unit"),
     "mobile": member.mobile if member else None,
     "email": member.email if member else user,
     "campus": member.campus if member else None,
@@ -99,6 +119,9 @@ frappe.flags.sio_ctx = {
     "is_member": is_member,
     "caps": caps,
     "scope": scope,
+    "units": units,
+    "area": area,
+    "is_area_lead": is_area_lead,
     "approver_units": approver_units,
     "me": me,
 }

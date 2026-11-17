@@ -10,14 +10,14 @@ rows = frappe.get_all("SIO Collection", filters=filters,
                       order_by="creation desc")
 out = []
 for c in rows:
-    if c.unit and not caps["all_units"] and c.unit != ctx["unit"]:
+    if c.unit and ctx["units"] is not None and c.unit not in ctx["units"]:
         continue
     open_to = c.open_to or "Everyone"
     # Baithul Mal and the like are for workers and above, not associates
     if open_to == "Workers and above" and not ctx["is_member"]:
         continue
     # the public donations fund is handled by finance only
-    if open_to == "Public donations" and not caps["all_units"]:
+    if open_to == "Public donations" and ctx["units"] is not None:
         continue
     item = {"name": c.name, "collection_type": c.collection_type, "target": frappe.utils.flt(c.target_amount),
             "starts_on": c.starts_on, "ends_on": c.ends_on, "description": c.description, "unit": c.unit,
@@ -28,7 +28,9 @@ for c in rows:
                                  {"parent": c.name, "parenttype": "SIO Collection", "unit": ctx["unit"]}, "target")
         item["unit_target"] = frappe.utils.flt(ut) if ut else None
     if caps["view_collection_totals"]:
-        item["totals"] = run_script("SIO lib totals", collection=c.name, unit=ctx["scope"] or "").sio_totals
+        scope_units = ctx["units"]
+        item["totals"] = run_script("SIO lib totals", collection=c.name,
+                                    units="" if scope_units is None else "|".join(scope_units or ["__none__"])).sio_totals
     elif caps["collect"] and member:
         t = frappe.db.sql(
             """select coalesce(sum(case when entry_type != 'Items' then offered_amount end), 0),

@@ -17,6 +17,15 @@ PRELUDE = '''ctx = run_script("SIO lib ctx").sio_ctx
 if ctx["user"] == "Guest":
     frappe.throw(_("Please sign in."), frappe.AuthenticationError)
 args = frappe.form_dict
+SCOPE_UNITS = ctx["units"]  # None = every unit, else the units this person may see
+
+
+def in_scope(u):
+    return SCOPE_UNITS is None or (u in SCOPE_UNITS)
+
+
+def scope_list():
+    return SCOPE_UNITS or ["__none__"]
 
 '''
 
@@ -60,7 +69,15 @@ EVENTS = [
     ("SIO Notice email", "SIO Notice", "After Insert", "notice_after_insert"),
     ("SIO Device revoke", "SIO Device Token", "After Save", "device_after_save"),
     ("SIO Collection targets", "SIO Collection", "Before Save", "collection_targets"),
+    ("SIO Unit area leads", "SIO Unit", "After Save", "unit_after_save"),
 ]
+
+
+PQ = {  # permission query scripts: file -> (doctype, label)
+    "sio_member": ("SIO Member", "Member"), "sio_collection_entry": ("SIO Collection Entry", "Collection Entry"),
+    "sio_expense_claim": ("SIO Expense Claim", "Expense Claim"), "sio_meeting": ("SIO Meeting", "Meeting"),
+    "sio_event": ("SIO Event", "Event"), "sio_notice": ("SIO Notice", "Notice"),
+}
 
 
 REPORTS = [
@@ -133,6 +150,15 @@ if __name__ == "__main__":
     for r in recs:
         with open(os.path.join(dist, r["name"].replace(" ", "_") + ".json"), "w") as fh:
             json.dump(r, fh, indent=1)
+    # one bundle for the "SIO deployer" script (Note "SIO deploy" + commit id): every script incl. permission queries
+    bundle = [{k: r.get(k) for k in ("name", "script_type", "api_method", "reference_doctype", "doctype_event",
+                                     "allow_guest", "module", "script", "enable_rate_limit", "rate_limit_count",
+                                     "rate_limit_seconds") if r.get(k) is not None} for r in recs]
+    for f, (dt, label) in PQ.items():
+        bundle.append({"name": f"SIO {label} unit scope", "script_type": "Permission Query", "reference_doctype": dt,
+                       "module": "SIO Connect", "script": read("permission", f + ".py")})
+    with open(os.path.join(dist, "bundle.json"), "w") as fh:
+        json.dump(bundle, fh, indent=0)
     print(len(recs), "server scripts")
     for r in reports():
         with open(os.path.join(dist, "report_" + r["report_name"].replace(" ", "_") + ".json"), "w") as fh:

@@ -1,5 +1,5 @@
 # Add or change an area. Area admins only. An area's name can't be changed once added.
-if not ctx["caps"]["manage_units"]:
+if not ctx["is_admin"]:
     frappe.throw(_("Only area admins can add or change areas."), frappe.PermissionError)
 name = args.get("name")
 if name:

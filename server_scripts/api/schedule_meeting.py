@@ -6,17 +6,17 @@ if not ctx["caps"]["schedule_meeting"]:
 name = args.get("name")
 if name:
     doc = frappe.get_doc("SIO Meeting", name)
-    if is_area_meeting(doc) and not ctx["caps"]["schedule_area_meeting"]:
-        frappe.throw(_("Only area admins can change area meetings."), frappe.PermissionError)
-    if ctx["scope"] and doc.unit != ctx["scope"]:
-        frappe.throw(_("This meeting is for another unit."), frappe.PermissionError)
+    if not can_manage_meeting(doc):
+        frappe.throw(_("You can't change this meeting."), frappe.PermissionError)
 else:
     doc = frappe.get_doc({"doctype": "SIO Meeting"})
 level = args.get("level") or ("Area" if is_area_meeting(doc) else "Unit")
 if level == "Area":
     if not ctx["caps"]["schedule_area_meeting"]:
-        frappe.throw(_("Only area admins can schedule area meetings."), frappe.PermissionError)
-    area = args.get("area") or doc.area
+        frappe.throw(_("Only area leaders can schedule area meetings."), frappe.PermissionError)
+    area = args.get("area") or doc.area or ctx["area"]
+    if SCOPE_UNITS is not None:
+        area = ctx["area"]  # area presidents / secretaries: their own area only
     if not area:
         areas = frappe.get_all("SIO Area", pluck="name")
         if len(areas) == 1:
@@ -30,7 +30,7 @@ else:
     unit = args.get("unit") or doc.unit or ctx["unit"]
     if not unit:
         frappe.throw(_("Pick a unit."))
-    if ctx["scope"] and unit != ctx["scope"]:
+    if not in_scope(unit):
         frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
     doc.unit = unit
     doc.area = None

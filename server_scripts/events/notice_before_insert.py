@@ -6,6 +6,8 @@ if doc.audience == "Unit":
     filters["unit"] = doc.unit
 elif doc.audience == "Role":
     filters["member_role"] = doc.member_role
+if doc.audience in ("Everyone", "Role") and doc.get("area"):
+    filters["area"] = doc.area
 elif doc.audience == "Event Registrants":
     regs = frappe.get_all("SIO Event Registration", filters={"event": doc.event, "status": ["!=", "Cancelled"]},
                           pluck="member")

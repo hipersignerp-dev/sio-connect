@@ -17,10 +17,7 @@ if selected:
     out["totals"] = selected["totals"]
     # each unit's progress against its target: everyone sees their own unit, finance and admins all units
     progress = run_script("SIO lib unit_progress", collection=selected["name"]).sio_unit_progress
-    if caps["all_units"]:
-        out["units"] = progress
-    else:
-        out["units"] = [u for u in progress if u["unit"] == ctx["unit"]]
+    out["units"] = [u for u in progress if in_scope(u["unit"])]
     if member:
         out["my_offers"] = frappe.get_all("SIO Collection Entry",
                                           filters={"collection": selected["name"], "contributor_member": member.name},
@@ -29,8 +26,8 @@ if selected:
     if args.get("status"):
         filters["status"] = args.get("status")
     if caps["view_collection_totals"]:
-        if ctx["scope"]:
-            filters["unit"] = ctx["scope"]
+        if SCOPE_UNITS is not None:
+            filters["unit"] = ["in", scope_list()]
         out["entries"] = frappe.get_all("SIO Collection Entry", filters=filters, fields=fields,
                                         order_by="creation desc", limit=200)
     elif caps["collect"] and member:

@@ -6,7 +6,7 @@ mine = member and doc.collected_by == member.name
 if not mine:
     if not (ctx["is_unit_admin"] or ctx["is_finance"]):
         frappe.throw(_("Only the collector or the unit admin can add payments."), frappe.PermissionError)
-    if ctx["scope"] and doc.unit != ctx["scope"]:
+    if not in_scope(doc.unit):
         frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
 amount = frappe.utils.flt(args.get("amount"))
 if amount <= 0:

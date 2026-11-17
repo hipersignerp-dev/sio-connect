@@ -9,8 +9,9 @@ if upcoming_only:
     conds.append("e.starts_on >= %(now)s and e.status in ('Registrations Open', 'Planning')")
 else:
     conds.append("(e.starts_on >= %(since)s or e.status != 'Completed')")
-if not ctx["caps"]["all_units"]:
-    conds.append("(ifnull(e.unit, '') = '' or e.unit = %(unit)s)")
+if ctx["units"] is not None:
+    # area-wide events of my area, and events of the units I may see
+    conds.append("((ifnull(e.unit, '') = '' and (ifnull(e.area, '') = '' or e.area = %(area)s)) or e.unit in %(units)s)")
 if not ctx["is_member"]:
     conds.append("e.open_to = 'Everyone'")
 
@@ -18,6 +19,8 @@ params = {
     "now": frappe.utils.now_datetime(),
     "since": frappe.utils.add_days(frappe.utils.nowdate(), -60),
     "unit": ctx["unit"] or "__none__",
+    "area": ctx["area"] or "__none__",
+    "units": tuple(ctx["units"] or ["__none__"]),
     "member": ctx["member"].name if ctx["member"] else "__none__",
 }
 rows = frappe.db.sql(

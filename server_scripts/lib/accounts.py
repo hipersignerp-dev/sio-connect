@@ -9,8 +9,15 @@ today = frappe.utils.getdate(frappe.utils.nowdate())
 from_date = frappe.utils.getdate(f.get("from_date") or frappe.utils.get_first_day(today))
 to_date = frappe.utils.getdate(f.get("to_date") or today)
 unit = f.get("unit") or None
-if not ctx["caps"]["all_units"]:
-    unit = ctx["unit"] or "__none__"
+units = ctx["units"]  # None = every unit
+if units is not None:
+    if ctx["is_area_lead"]:
+        if unit and unit not in units:
+            unit = "__none__"
+    else:
+        unit = ctx["unit"] or "__none__"
+# area presidents / secretaries looking at their whole area
+area_units = tuple(units or ["__none__"]) if (units is not None and not unit) else None
 collection = f.get("collection") or None
 event = f.get("event") or None
 
@@ -21,7 +28,12 @@ out_cond = ["x.status = 'Paid'"]
 if not unit:
     out_cond.append("ifnull(x.fund_request, '') = ''")
 fr_cond = ["f.status in ('Released', 'Closed')"]
-params = {"from": from_date, "to": to_date, "unit": unit, "collection": collection, "event": event}
+params = {"from": from_date, "to": to_date, "unit": unit, "collection": collection, "event": event,
+          "units": area_units}
+if area_units is not None:
+    in_cond.append("e.unit in %(units)s")
+    out_cond.append("x.unit in %(units)s")
+    fr_cond.append("f.unit in %(units)s")
 if unit:
     in_cond.append("e.unit = %(unit)s")
     out_cond.append("x.unit = %(unit)s")

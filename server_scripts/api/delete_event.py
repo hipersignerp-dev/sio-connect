@@ -3,7 +3,7 @@ if not ctx["caps"]["manage_events"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 name = args.get("name")
 doc = frappe.get_doc("SIO Event", name)
-if ctx["scope"] and doc.unit != ctx["scope"]:
+if not in_scope(doc.unit):
     frappe.throw(_("That belongs to another unit."), frappe.PermissionError)
 n = frappe.db.count("SIO Event Registration", {"event": name})
 x = frappe.db.count("SIO Expense Claim", {"event": name})

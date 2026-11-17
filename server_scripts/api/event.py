@@ -7,11 +7,11 @@ out = found[0]
 ev = frappe.db.get_value("SIO Event", out.name, ["description", "budget", "unit"], as_dict=True)
 out["description"] = ev.description
 filters = {"event": out.name}
-see_all = ctx["caps"]["all_units"] or (ctx["is_unit_admin"] and ev.unit and ev.unit == ctx["unit"])
+see_all = SCOPE_UNITS is None or (ctx["is_unit_admin"] and ev.unit and in_scope(ev.unit))
 if see_all:
     pass
 elif ctx["is_unit_admin"]:
-    filters["unit"] = ctx["unit"] or "__none__"
+    filters["unit"] = ["in", scope_list()]
 elif ctx["member"]:
     filters["claimed_by"] = ctx["member"].name
 else:

@@ -1,5 +1,6 @@
 # Turn rough spoken notes into clean meeting minutes with the AI service set in SIO Settings
 # (Anthropic Claude or Google Gemini). The notes may be Malayalam, English or a mix, with speech errors.
+# @include meeting
 if not ctx["caps"]["schedule_meeting"]:
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 notes = (args.get("notes") or "").strip()
@@ -17,9 +18,9 @@ else:
 meeting = ""
 if args.get("name"):
     m = frappe.get_doc("SIO Meeting", args.get("name"))
-    if ctx["scope"] and m.unit != ctx["scope"]:
-        frappe.throw(_("This meeting is for another unit."), frappe.PermissionError)
-    meeting = ("Meeting: " + (m.topic or "") + " (" + (m.meeting_type or "") + "), " + (m.unit or "") + " unit, "
+    if not can_manage_meeting(m):
+        frappe.throw(_("This meeting is not yours to write up."), frappe.PermissionError)
+    meeting = ("Meeting: " + (m.topic or "") + " (" + (m.meeting_type or "") + "), " + (meeting_place(m) or "") + ", "
                + str(m.meeting_date or "") + ". Agenda: " + (m.agenda or "not given") + ".\n\n")
 settings = frappe.get_doc("SIO Settings")
 key = settings.get_password("ai_api_key", raise_exception=False) if settings.get("ai_api_key") else None

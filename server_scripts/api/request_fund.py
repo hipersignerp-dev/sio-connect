@@ -10,6 +10,8 @@ if not title or not purpose or amount <= 0:
 unit = ctx["unit"]
 if caps["all_units"] and args.get("unit"):
     unit = args.get("unit")
+    if not in_scope(unit):
+        frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
 if not unit:
     frappe.throw(_("Pick the unit asking for the money."))
 event = args.get("event") or None

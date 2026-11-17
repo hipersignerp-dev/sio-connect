@@ -10,12 +10,13 @@ params = {}
 if not (caps["view_collection_totals"]):
     cond.append("e.collected_by = %(me)s")
     params["me"] = ctx["member"].name if ctx["member"] else "__none__"
-elif ctx["scope"]:
-    cond.append("e.unit = %(unit)s")
-    params["unit"] = ctx["scope"]
-elif args.get("unit"):
-    cond.append("e.unit = %(unit)s")
-    params["unit"] = args.get("unit")
+else:
+    if SCOPE_UNITS is not None:
+        cond.append("e.unit in %(units)s")
+        params["units"] = tuple(scope_list())
+    if args.get("unit"):
+        cond.append("e.unit = %(unit)s")
+        params["unit"] = args.get("unit")
 q = (args.get("q") or "").strip()
 if q:
     cond.append("(e.contributor_name like %(q)s or e.contributor_mobile like %(q)s or e.contributor_place like %(q)s)")
@@ -63,10 +64,10 @@ for r in rows:
 dcond = {}
 if not caps["view_collection_totals"]:
     dcond["added_by"] = ctx["member"].name if ctx["member"] else "__none__"
-elif ctx["scope"]:
-    dcond["unit"] = ctx["scope"]
-elif args.get("unit"):
+elif args.get("unit") and in_scope(args.get("unit")):
     dcond["unit"] = args.get("unit")
+elif SCOPE_UNITS is not None:
+    dcond["unit"] = ["in", scope_list()]
 saved = frappe.get_all("SIO Donor", filters=dcond,
                        fields=["name", "donor_name", "mobile", "place", "donor_type", "unit", "notes", "creation"],
                        order_by="creation desc", limit=5000)

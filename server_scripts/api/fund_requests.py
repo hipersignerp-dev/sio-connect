@@ -3,8 +3,8 @@ caps = ctx["caps"]
 if not (caps["request_funds"] or caps["approve_funds"] or caps["view_accounts"]):
     frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
 filters = {}
-if not caps["all_units"]:
-    filters["unit"] = ctx["unit"] or "__none__"
+if SCOPE_UNITS is not None:
+    filters["unit"] = ["in", scope_list()]
 if args.get("status"):
     filters["status"] = args.get("status")
 rows = frappe.get_all("SIO Fund Request", filters=filters,
