@@ -40,8 +40,11 @@ jobs:
         if: ${{ env.KEYSTORE_BASE64 != '' }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+          # trim stray spaces/newlines from pasted secrets; the key password is the same as the store password
+          SP="$(printf %s "$KEYSTORE_PASSWORD" | tr -d '[:space:]')"
+          KA="$(printf %s "$KEY_ALIAS" | tr -d '[:space:]')"; KA="${KA:-sio-connect}"
           printf "storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" \
-            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > android/key.properties
+            "$SP" "$KA" "$SP" > android/key.properties
       - name: Version
         id: version
         run: |
