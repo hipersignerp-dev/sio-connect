@@ -10,7 +10,6 @@ import '../notify.dart';
 import '../theme.dart';
 import '../update_service.dart';
 import '../widgets.dart';
-import 'collection_screens.dart';
 import 'event_detail_screen.dart';
 import 'find_members_screen.dart';
 import 'home_screen.dart';
@@ -211,17 +210,10 @@ Future<void> showCreateSheet(BuildContext context) => showModalBottomSheet<void>
               Icons.workspace_premium,
               const [Color(0xFFE0A100), Color(0xFFF26B1D)],
               'Share an achievement',
-              'Post or send one of your badges',
+              'Send one of your badges to WhatsApp',
               () => push(context, const JourneyScreen()),
             ),
-            if (AppState.i.can('offer'))
-              row(
-                Icons.favorite,
-                const [Color(0xFFC8202A), Color(0xFFF26B1D)],
-                'Give an offer',
-                'For a running collection',
-                () => push(context, const NewEntryScreen(forSelf: true)),
-              ),
+
             row(
               Icons.person_add_alt_1,
               const [Color(0xFF7C3AED), Color(0xFF1A62A8)],
@@ -332,8 +324,7 @@ class SocialHome extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: SioBanner(
-                text:
-                    'Your registration is waiting for your unit’s approval. Meanwhile you can see programmes and give an offer.',
+                text: 'Your unit will confirm you soon. Meanwhile, read today’s ayah, take the quiz and add friends.',
               ),
             ),
           if (requests.isNotEmpty)
@@ -393,16 +384,6 @@ class SocialHome extends StatelessWidget {
                 onTap: () => push(context, QuizScreen(name: '${_m(j['quiz'])['name']}')),
               ),
             ),
-          if (_collections(h).isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _Pill(
-                icon: Icons.favorite,
-                color: SioColors.red,
-                text: '${_collections(h).first['name']} is open. Give your offer',
-                onTap: () => push(context, const NewEntryScreen(forSelf: true)),
-              ),
-            ),
           if (suggest.isNotEmpty) ...[
             _Header('Suggested for you', action: 'Find members', onAction: () => push(context, const FindMembersScreen())),
             SizedBox(
@@ -453,8 +434,6 @@ class SocialHome extends StatelessWidget {
       },
     ),
   );
-
-  static List<dynamic> _collections(Map<String, dynamic> h) => AppState.i.can('offer') ? ((h['collections'] as List?) ?? []) : [];
 
   static String _greeting() {
     final hr = DateTime.now().hour;
@@ -1097,11 +1076,10 @@ class ExploreScreen extends StatelessWidget {
       (Icons.travel_explore, const [Color(0xFF1A62A8), Color(0xFFC8202A)], 'Find members', const FindMembersScreen()),
       (Icons.people_alt, const [Color(0xFF7C3AED), Color(0xFF1A62A8)], 'Friends', const FriendsScreen()),
       (Icons.quiz, const [Color(0xFF7C3AED), Color(0xFFC8202A)], 'Weekly quiz', const JourneyScreen()),
-      (Icons.leaderboard, const [Color(0xFFE0A100), Color(0xFFF26B1D)], 'Unit board', const UnitBoardScreen()),
+
       if (s.can('rsvp'))
         (Icons.event_note, const [Color(0xFF1A62A8), Color(0xFF0E3F70)], 'Meetings', const MeetingsScreen(standalone: true)),
-      if (s.can('offer'))
-        (Icons.favorite, const [Color(0xFFC8202A), Color(0xFFF26B1D)], 'Give', const CollectionScreen(title: 'Give')),
+
       (Icons.campaign, const [Color(0xFF1E8E3E), Color(0xFF1A62A8)], 'Updates', const NoticesScreen()),
       if (s.me['member'] != null)
         (Icons.task_alt, const [Color(0xFF1A62A8), Color(0xFF1E8E3E)], 'My tasks', const MyTasksScreen()),

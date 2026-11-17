@@ -43,7 +43,7 @@ class WelcomeScreen extends StatelessWidget {
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: () => push(context, const RegisterScreen()),
-                child: const Text('New here? Register as an associate'),
+                child: const Text('New here? Join SIO Connect'),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -404,12 +404,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register as associate')),
+      appBar: AppBar(title: const Text('Join SIO Connect')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           const SioBanner(
-            text: 'You join as an associate. Your unit approves you as a member later; until then you can see events, updates and give an offer.',
+            text: 'Welcome! Your unit will confirm you soon. Until then you can see programmes, the daily ayah and updates.',
           ),
           const SizedBox(height: 16),
           if (_error != null) ...[SioBanner(text: _error!, error: true), const SizedBox(height: 16)],
@@ -531,14 +531,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           _field(_town, 'Home town', icon: Icons.home_outlined, cap: TextCapitalization.words),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: LocationField(
-              value: _loc,
-              hint: 'Optional. At home? Tap the button to add it.',
-              onChanged: (g) => setState(() => _loc = g),
-            ),
-          ),
           _field(_invite, 'Invite code (optional)', icon: Icons.card_giftcard_outlined),
           CheckboxListTile(
             value: _agree,

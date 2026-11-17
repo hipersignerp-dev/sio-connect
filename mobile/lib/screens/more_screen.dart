@@ -57,7 +57,9 @@ class MoreScreen extends StatelessWidget {
                           ),
                           Text(
                             [
-                              s.pending ? 'Associate · waiting approval' : me['member_role'],
+                              s.pending
+                                  ? 'Waiting for your unit to confirm'
+                                  : (dashboardOpen ? me['member_role'] : friendlyRole(me['member_role'])),
                               me['unit'],
                             ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
                             style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
@@ -130,7 +132,7 @@ class MoreScreen extends StatelessWidget {
                   subtitle: 'Weekly meetings',
                   onTap: () => push(context, const MeetingsScreen(standalone: true)),
                 ),
-              if (s.can('collect') || s.can('view_collection_totals') || s.can('offer'))
+              if (dashboardOpen && (s.can('collect') || s.can('view_collection_totals') || s.can('offer')))
                 SioTile(
                   icon: Icons.volunteer_activism_outlined,
                   title: s.can('collect') || s.can('view_collection_totals') ? 'Collections' : 'Give',

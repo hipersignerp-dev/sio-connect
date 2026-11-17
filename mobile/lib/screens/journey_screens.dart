@@ -115,10 +115,6 @@ class _JourneyScreenState extends State<JourneyScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(
-                child: _Stat(Icons.groups, '${_int(_map(j['attendance'])['current'])}', 'meetings in a row', SioColors.blue),
-              ),
-              const SizedBox(width: 8),
               Expanded(child: _Stat(Icons.quiz, '${_int(_map(j['quiz_streak'])['current'])}', 'quiz weeks', SioColors.purple)),
               const SizedBox(width: 8),
               Expanded(child: _Stat(Icons.emoji_events, '$earned/${badges.length}', 'badges', _gold)),
@@ -176,15 +172,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
           SioTile(
             icon: Icons.dynamic_feed_outlined,
             title: 'Friends’ posts',
-            subtitle: 'Achievements from you and your friends',
+            subtitle: 'What you and your friends shared',
             onTap: () => push(context, const FeedScreen()),
           ),
-          SioTile(
-            icon: Icons.leaderboard_outlined,
-            title: 'Unit challenge board',
-            subtitle: 'Attendance, daily readers and quiz, unit against unit',
-            onTap: () => push(context, const UnitBoardScreen()),
-          ),
+
           SioTile(
             icon: Icons.person_add_alt_1,
             title: 'Invite a friend',
@@ -555,53 +546,11 @@ Future<void> showShareCard(
                     label: const Text('Share'),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final caption = await _askCaption(ctx);
-                      if (caption == null || !ctx.mounted) return;
-                      final ok = await run(
-                        ctx,
-                        () => Api.call('${Api.m}create_post', {
-                          'kind': kind,
-                          'badge': badge,
-                          'title': title,
-                          'body': caption.isEmpty ? line : caption,
-                        }),
-                        done: 'Posted on your page',
-                      );
-                      if (ok && ctx.mounted) Navigator.pop(ctx);
-                    },
-                    icon: const Icon(Icons.post_add),
-                    label: const Text('Post on my page'),
-                  ),
-                ),
               ],
             ),
           ],
         ),
       ),
-    ),
-  );
-}
-
-Future<String?> _askCaption(BuildContext context) {
-  final c = TextEditingController();
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Add a caption'),
-      content: TextField(
-        controller: c,
-        maxLines: 3,
-        maxLength: 300,
-        decoration: const InputDecoration(hintText: 'Optional: say something to your friends'),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Post')),
-      ],
     ),
   );
 }
@@ -1228,14 +1177,12 @@ class _ProfileBodyState extends State<_ProfileBody> {
               ),
               const SizedBox(height: 2),
               Text(
-                [if (p['member_role'] != null) '${p['member_role']}', if (p['unit'] != null) 'SIO ${p['unit']}'].join(' · '),
+                [
+                  if (friendlyRole(p['member_role']) != null) friendlyRole(p['member_role'])!,
+                  if (p['unit'] != null) 'SIO ${p['unit']}',
+                ].join(' · '),
                 style: const TextStyle(color: SioColors.textSecondary),
               ),
-              if (_int(_map(p['attendance'])['current']) > 1)
-                Text(
-                  '✅ ${_int(_map(p['attendance'])['current'])} meetings in a row',
-                  style: const TextStyle(color: SioColors.text),
-                ),
             ],
           ),
         ),
@@ -2283,3 +2230,12 @@ Future<void> celebrateRead(BuildContext context, Map<String, dynamic> r) {
     ),
   );
 }
+
+/// How a role is shown to students: no internal words like Associate or Worker.
+String? friendlyRole(dynamic role) => switch ('${role ?? ''}') {
+  '' => null,
+  'Associate' || 'Worker' => 'Student',
+  'Member' => 'SIO Member',
+  'Area Admin' => 'Area Team',
+  final r => r,
+};

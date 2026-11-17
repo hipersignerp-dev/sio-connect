@@ -338,8 +338,8 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: SioColors.warningBg, borderRadius: BorderRadius.circular(14)),
         child: const Text(
-          'Others find you by your unit, college and home town. To show up in “near me”, add your house location in '
-          'My profile. Your phone number and exact location are never shown.',
+          'Others find you by your unit, college and home town. “Near me” shows only people who chose to add a location '
+          'in My profile. Phone numbers and exact locations are never shown.',
           style: TextStyle(color: SioColors.text, fontSize: 13),
         ),
       ),
@@ -406,7 +406,7 @@ class _MemberCardState extends State<_MemberCard> {
                     Text(
                       [
                         if ('${p['username'] ?? ''}'.isNotEmpty) '@${p['username']}',
-                        if ('${p['member_role'] ?? ''}'.isNotEmpty) '${p['member_role']}',
+                        if (friendlyRole(p['member_role']) != null) friendlyRole(p['member_role'])!,
                       ].join(' · '),
                       style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
                     ),

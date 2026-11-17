@@ -99,20 +99,12 @@ def card(m):
 
 
 BADGES = [
-    # code, title, icon, what it takes
-    ("reader_3", "Getting started", "local_fire_department", "Read the daily ayah / hadith 3 days in a row"),
-    ("reader_7", "One week strong", "local_fire_department", "A 7-day reading streak"),
-    ("reader_30", "Thirty days", "whatshot", "A 30-day reading streak"),
-    ("first_programme", "First programme", "event_available", "Register for a programme"),
-    ("meetings_10", "Regular", "groups", "Be present at 10 meetings"),
-    ("attend_4", "Never missed", "verified", "Present at 4 meetings in a row"),
-    ("volunteer", "Volunteer", "volunteer_activism", "Finish a task for an event"),
-    ("giver", "Giver", "favorite", "Pay an offer to a collection"),
-    ("quiz_first", "Quiz taker", "quiz", "Take a weekly quiz"),
-    ("quiz_full", "Full marks", "emoji_events", "Get every answer right in a quiz"),
-    ("quiz_4", "Quiz streak", "military_tech", "Take 4 weekly quizzes in a row"),
-    ("inviter", "Inviter", "person_add", "Invite a friend who joins SIO Connect"),
-    ("friends_5", "Circle of five", "diversity_3", "Have 5 friends in the app"),
+    # code, title, icon, what it takes. Kept to five that mean something (no attendance or giving badges).
+    ("reader_7", "One week strong", "local_fire_department", "Read the daily ayah 7 days in a row"),
+    ("reader_30", "Thirty days", "whatshot", "Read the daily ayah 30 days in a row"),
+    ("first_programme", "First programme", "event_available", "Join your first SIO programme"),
+    ("volunteer", "Volunteer", "volunteer_activism", "Finish a task for a programme"),
+    ("quiz_full", "Full marks", "emoji_events", "Get every answer right in a weekly quiz"),
 ]
 
 
