@@ -41,6 +41,19 @@ class Biometric {
 
   static Future<void> clear() => _storage.delete(key: _key);
 
+  /// Google sign-in keeps its own token (no fingerprint needed to read it).
+  static const _gkey = 'sio_google_token';
+  static Future<void> saveGoogleToken(String token) => _storage.write(key: _gkey, value: token);
+  static Future<String?> readGoogleToken() async {
+    try {
+      return await _storage.read(key: _gkey);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> clearGoogleToken() => _storage.delete(key: _gkey);
+
   static Future<String> deviceName() async {
     try {
       final info = DeviceInfoPlugin();

@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
+import 'package:google_sign_in/google_sign_in.dart';
+
 import 'api.dart';
 import 'biometric.dart';
 import 'notify.dart';
@@ -96,6 +98,8 @@ class AppState extends ChangeNotifier {
       _set(Stage.locked);
       return;
     }
+    final g = await Biometric.readGoogleToken();
+    if (g != null && g.isNotEmpty) Api.token = g;
     if (Api.hasSession) {
       try {
         await loadMe();
@@ -114,6 +118,7 @@ class AppState extends ChangeNotifier {
   void _expired() {
     if (stage != Stage.signedIn) return;
     Api.token = null;
+    Biometric.clearGoogleToken();
     if (biometricOn) {
       _set(Stage.locked);
     } else {
@@ -148,6 +153,46 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  static const googleWebClient = '280665319397-ggctdep18o9afufgc2a7nr3serc2bll0.apps.googleusercontent.com';
+  static bool _googleReady = false;
+
+  /// Asks Google who this is. Returns the ID token, or null if the person closed the picker.
+  static Future<String?> googleIdToken() async {
+    final g = GoogleSignIn.instance;
+    if (!_googleReady) {
+      await g.initialize(serverClientId: googleWebClient);
+      _googleReady = true;
+    }
+    try {
+      final acct = await g.authenticate();
+      return acct.authentication.idToken;
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) return null;
+      throw ApiException('Google sign-in failed: ${e.description ?? e.code.name}');
+    }
+  }
+
+  /// Continue with Google. Returns null when signed in, the Google details for a new person (to finish
+  /// signing up), or {'cancelled': true}.
+  Future<Map<String, dynamic>?> googleSignIn() async {
+    final idToken = await googleIdToken();
+    if (idToken == null) return {'cancelled': true};
+    final r = Map<String, dynamic>.from(
+      await Api.call('${Api.a}google_login', {'id_token': idToken, 'device_name': await Biometric.deviceName()}) as Map,
+    );
+    if (r['new'] == 1 || r['new'] == true) return {...r, 'id_token': idToken};
+    await useGoogleToken('${r['token']}');
+    return null;
+  }
+
+  Future<void> useGoogleToken(String token) async {
+    await Biometric.saveGoogleToken(token);
+    Api.token = token;
+    await loadMe();
+  }
+
+  Future<bool> get googleSession async => (await Biometric.readGoogleToken() ?? '').isNotEmpty;
+
   Future<void> passwordLogin(String user, String password) async {
     await Api.login(user, password);
     await Api.prefs.setString('last_login', user.trim());
@@ -166,6 +211,11 @@ class AppState extends ChangeNotifier {
     }
     final res = await Api.call('${Api.a}enable_biometric', {'device_name': await Biometric.deviceName()}) as Map;
     await Biometric.saveToken('${res['api_key']}:${res['api_secret']}');
+    // the new secret replaces the old one; keep a Google sign-in on this phone working
+    if (await googleSession) {
+      await Biometric.saveGoogleToken('${res['api_key']}:${res['api_secret']}');
+      Api.token = '${res['api_key']}:${res['api_secret']}';
+    }
     await Api.prefs.setBool('biometric_on', true);
     notifyListeners();
   }
@@ -185,6 +235,10 @@ class AppState extends ChangeNotifier {
 
   Future<void> signOut() async {
     await Notify.stop();
+    await Biometric.clearGoogleToken();
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {}
     await disableBiometric();
     await Api.logout();
     me = {};
@@ -193,6 +247,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> usePasswordInstead() async {
     Api.token = null;
+    await Biometric.clearGoogleToken();
     _set(Stage.signedOut);
   }
 }

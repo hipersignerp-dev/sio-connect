@@ -59,10 +59,89 @@ class WelcomeScreen extends StatelessWidget {
   }
 }
 
-/// After a password sign-in or sign-up: offer fingerprint sign-in, then open the app.
+/// Continue with Google: signs in, or opens the short sign-up for someone new.
+Future<void> continueWithGoogle(BuildContext context) async {
+  try {
+    final r = await AppState.i.googleSignIn();
+    if (!context.mounted) return;
+    if (r == null) {
+      await finishSignIn(context);
+    } else if (r['cancelled'] != true) {
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RegisterScreen(google: r)));
+    }
+  } on ApiException catch (e) {
+    if (context.mounted) toast(context, e.message);
+  } catch (e) {
+    if (context.mounted) toast(context, 'Google sign-in failed. Try again.');
+  }
+}
+
+class GoogleButton extends StatefulWidget {
+  const GoogleButton({super.key, this.label = 'Continue with Google'});
+  final String label;
+
+  @override
+  State<GoogleButton> createState() => _GoogleButtonState();
+}
+
+class _GoogleButtonState extends State<GoogleButton> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton(
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(54),
+      backgroundColor: Colors.white,
+      foregroundColor: SioColors.ink,
+      side: const BorderSide(color: SioColors.border, width: 1.4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+    onPressed: _busy
+        ? null
+        : () async {
+            setState(() => _busy = true);
+            await continueWithGoogle(context);
+            if (mounted) setState(() => _busy = false);
+          },
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _busy
+            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))
+            : const Text(
+                'G',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF4285F4)),
+              ),
+        const SizedBox(width: 12),
+        Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+      ],
+    ),
+  );
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 18),
+    child: Row(
+      children: [
+        Expanded(child: Divider()),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('or', style: TextStyle(color: SioColors.textSecondary)),
+        ),
+        Expanded(child: Divider()),
+      ],
+    ),
+  );
+}
+
+/// After a sign-in or sign-up: offer fingerprint sign-in (not needed with Google), then open the app.
 Future<void> finishSignIn(BuildContext context) async {
   final state = AppState.i;
-  if (!state.biometricOn && await Biometric.available() && context.mounted) {
+  if (!state.biometricOn && !await state.googleSession && await Biometric.available() && context.mounted) {
     final yes = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -153,6 +232,8 @@ class _LoginScreenState extends State<LoginScreen> {
           const Center(child: _logo),
           const SizedBox(height: 24),
           if (_error != null) ...[SioBanner(text: _error!, error: true), const SizedBox(height: 16)],
+          const GoogleButton(),
+          const _OrDivider(),
           TextField(
             controller: _user,
             keyboardType: TextInputType.emailAddress,
@@ -207,16 +288,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
 /// Self sign-up as an associate. The unit admin approves later.
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({super.key, this.google});
+  final Map<String, dynamic>? google; // from Continue with Google: email, full_name, id_token
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _name = TextEditingController();
+  late final _name = TextEditingController(text: '${widget.google?['full_name'] ?? ''}');
   final _mobile = TextEditingController();
-  final _email = TextEditingController();
+  late final _email = TextEditingController(text: '${widget.google?['email'] ?? ''}');
+  bool get _viaGoogle => widget.google != null;
   final _pass = TextEditingController();
   final _campus = TextEditingController();
   final _course = TextEditingController();
@@ -259,7 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (_name.text.trim().length < 3) err = 'Enter your full name.';
     if (err == null && _mobile.text.replaceAll(RegExp(r'\D'), '').length < 10) err = 'Enter a valid mobile number.';
     if (err == null && !_email.text.contains('@')) err = 'Enter a valid email.';
-    if (err == null && _pass.text.length < 8) err = 'Password needs at least 8 characters.';
+    if (err == null && !_viaGoogle && _pass.text.length < 8) err = 'Password needs at least 8 characters.';
     if (err == null && _unit == null && _units.isNotEmpty) err = 'Pick your unit.';
     if (err == null && !_agree) err = 'Please agree to share your details with SIO.';
     if (err != null) {
@@ -271,11 +354,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _error = null;
     });
     try {
-      await Api.call('${Api.a}register', {
+      final res = await Api.call('${Api.a}register', {
         'full_name': _name.text.trim(),
         'mobile': _mobile.text.trim(),
         'email': _email.text.trim(),
-        'password': _pass.text,
+        'password': _viaGoogle ? null : _pass.text,
+        'google_token': widget.google?['id_token'],
+        'device_name': await Biometric.deviceName(),
         'unit': _unit,
         'campus': _campus.text.trim(),
         'course': _course.text.trim(),
@@ -285,7 +370,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'longitude': _loc?.lng,
         'invite': _invite.text.trim(),
       });
-      await AppState.i.passwordLogin(_email.text, _pass.text);
+      if (_viaGoogle && res is Map && res['token'] != null) {
+        await AppState.i.useGoogleToken('${res['token']}');
+      } else {
+        await AppState.i.passwordLogin(_email.text, _pass.text);
+      }
       if (mounted) await finishSignIn(context);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -324,6 +413,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 16),
           if (_error != null) ...[SioBanner(text: _error!, error: true), const SizedBox(height: 16)],
+          if (!_viaGoogle) ...[
+            const GoogleButton(label: 'Sign up with Google'),
+            const _OrDivider(),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: SioColors.greenBg, borderRadius: BorderRadius.circular(14)),
+              child: Row(
+                children: [
+                  const Icon(Icons.verified, color: SioColors.green),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text('Signing up with Google as ${_email.text}. No password needed.')),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           _field(
             _name,
             'Full name',
@@ -338,24 +444,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
             icon: Icons.phone_outlined,
             hints: const [AutofillHints.telephoneNumber],
           ),
-          _field(_email, 'Email', type: TextInputType.emailAddress, icon: Icons.mail_outline, hints: const [AutofillHints.email]),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: TextField(
-              controller: _pass,
-              obscureText: _hide,
-              autofillHints: const [AutofillHints.newPassword],
-              decoration: InputDecoration(
-                labelText: 'Create a password (8+ characters)',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  tooltip: _hide ? 'Show password' : 'Hide password',
-                  icon: Icon(_hide ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                  onPressed: () => setState(() => _hide = !_hide),
+          if (!_viaGoogle)
+            _field(
+              _email,
+              'Email',
+              type: TextInputType.emailAddress,
+              icon: Icons.mail_outline,
+              hints: const [AutofillHints.email],
+            ),
+          if (!_viaGoogle)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: TextField(
+                controller: _pass,
+                obscureText: _hide,
+                autofillHints: const [AutofillHints.newPassword],
+                decoration: InputDecoration(
+                  labelText: 'Create a password (8+ characters)',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    tooltip: _hide ? 'Show password' : 'Hide password',
+                    icon: Icon(_hide ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setState(() => _hide = !_hide),
+                  ),
                 ),
               ),
             ),
-          ),
           const SectionTitle('Your area, unit and studies'),
           Builder(
             builder: (context) {

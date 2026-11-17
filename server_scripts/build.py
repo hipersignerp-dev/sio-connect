@@ -35,6 +35,7 @@ GUEST_API = {
     # file: (method, rate limit (count, seconds) or None)
     "units": ("sio_connect.api.auth.units", None),
     "register": ("sio_connect.api.auth.register", (5, 3600)),
+    "google_login": ("sio_connect.api.auth.google_login", (30, 3600)),
     "public_info": ("sio_connect.api.public.info", (120, 3600)),
     "public_donate": ("sio_connect.api.public.donate", (10, 3600)),
     "public_donation_paid": ("sio_connect.api.public.donation_paid", (20, 3600)),

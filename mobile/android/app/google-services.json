@@ -12,7 +12,20 @@
           "package_name": "com.hipersign.sio_connect"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "280665319397-2r71ushf3s1g81ijmk4odm2d16i5fan2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hipersign.sio_connect",
+            "certificate_hash": "bf1398000e2179ab762f4a3a9ce67a42a93e3af1"
+          }
+        },
+        {
+          "client_id": "280665319397-ggctdep18o9afufgc2a7nr3serc2bll0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAnCpin_-11sOv5Rhub5kzHLc-WIiUzYt8"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "280665319397-ggctdep18o9afufgc2a7nr3serc2bll0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

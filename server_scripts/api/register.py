@@ -1,9 +1,16 @@
 # Self sign-up as an Associate (guest). The unit admin approves later. Rate limited on the script.
+# With google_token (Continue with Google) the email comes from Google, no password is needed, and a sign-in
+# token for this phone is returned.
+# @include google
 f = frappe.form_dict
 full_name = (f.get("full_name") or "").strip()
 mobile = "".join([c for c in (f.get("mobile") or "") if c.isdigit() or c == "+"])
 email = (f.get("email") or "").strip().lower()
 password = f.get("password") or ""
+via_google = bool(f.get("google_token"))
+if via_google:
+    email = google_identity(f.get("google_token"))["email"]
+    password = frappe.utils.generate_hash(length=24)
 unit = f.get("unit") or None
 digits = "".join([c for c in mobile if c.isdigit()])
 if len(full_name) < 3:
@@ -65,4 +72,7 @@ else:
                                           "name") if (f.get("invite") or "").strip() else None,
     })
     member.insert(ignore_permissions=True)
-frappe.response["message"] = {"user": user.name, "member": member.name, "status": member.status}
+out = {"user": user.name, "member": member.name, "status": member.status}
+if via_google:
+    out["token"] = issue_token(user.name, f.get("device_name"))
+frappe.response["message"] = out
