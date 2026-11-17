@@ -45,6 +45,7 @@ jobs:
           KA="$(printf %s "$KEY_ALIAS" | tr -d '[:space:]')"; KA="${KA:-sio-connect}"
           printf "storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" \
             "$SP" "$KA" "$SP" > android/key.properties
+          echo "key check: pw_len=${#SP} pw_sha=$(printf %s "$SP" | sha256sum | cut -c1-12) alias=$(printf %s "$KA" | sha256sum | cut -c1-12) jks_sha=$(sha256sum android/app/release.jks | cut -c1-12) b64_len=${#KEYSTORE_BASE64}"
           if ! keytool -list -keystore android/app/release.jks -storepass "$SP" -alias "$KA" > /dev/null 2>&1; then
             echo "::warning::Release key could not be opened with the ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS secrets; building with the default key instead."
             rm -f android/key.properties android/app/release.jks
