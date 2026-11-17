@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
@@ -200,15 +201,28 @@ class _MembersScreenState extends State<MembersScreen> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            trailing: m['status'] == 'Active'
-                                ? StatusChip(
-                                    m['member_role'].toString(),
-                                    tone: m['member_role'] == 'Associate' ? Tone.grey : Tone.blue,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                m['status'] == 'Active'
+                                    ? StatusChip(
+                                        m['member_role'].toString(),
+                                        tone: m['member_role'] == 'Associate' ? Tone.grey : Tone.blue,
+                                      )
+                                    : StatusChip(
+                                        m['status'] == 'Pending Approval' ? 'Approve' : m['status'].toString(),
+                                        tone: StatusChip.toneFor(m['status'].toString()),
+                                      ),
+                                if ('${m['mobile'] ?? ''}'.isNotEmpty)
+                                  IconButton(
+                                    tooltip: 'Call ${m['full_name']}',
+                                    icon: const Icon(Icons.call, color: SioColors.green),
+                                    onPressed: () => launchUrl(Uri.parse('tel:${m['mobile']}')),
                                   )
-                                : StatusChip(
-                                    m['status'] == 'Pending Approval' ? 'Approve' : m['status'].toString(),
-                                    tone: StatusChip.toneFor(m['status'].toString()),
-                                  ),
+                                else
+                                  const SizedBox(width: 48),
+                              ],
+                            ),
                           ),
                       ],
                     ),
