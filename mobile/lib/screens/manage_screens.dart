@@ -7,6 +7,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../photo.dart';
 import '../widgets.dart';
+import '../location.dart';
 import 'collection_screens.dart';
 
 Future<bool> confirm(BuildContext context, String title, String body, {String yes = 'Delete'}) async =>
@@ -632,6 +633,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   final _campus = TextEditingController();
   final _course = TextEditingController();
   final _town = TextEditingController();
+  final _landmark = TextEditingController();
+  GeoPoint? _loc;
   final _books = TextEditingController();
   final _note = TextEditingController();
   bool _mulakath = false;
@@ -657,6 +660,8 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
       _campus.text = '${m['campus'] ?? ''}';
       _course.text = '${m['course'] ?? ''}';
       _town.text = '${m['home_town'] ?? ''}';
+      _landmark.text = '${m['location_note'] ?? ''}';
+      _loc = GeoPoint.from(m['latitude'], m['longitude']);
       _year = years.contains(m['year_of_study']) ? '${m['year_of_study']}' : '';
       _role = '${m['member_role'] ?? 'Associate'}';
       _status = m['status'] == 'Inactive' ? 'Inactive' : 'Active';
@@ -712,6 +717,10 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         'course': _course.text.trim(),
         'year_of_study': _year,
         'home_town': _town.text.trim(),
+        'latitude': _loc?.lat,
+        'longitude': _loc?.lng,
+        'clear_location': _loc == null ? 1 : null,
+        'location_note': _landmark.text.trim(),
         if (_m != null) ...{
           'mulakath_done': _mulakath ? 1 : 0,
           'books_read': _books.text.trim(),
@@ -847,6 +856,13 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
             controller: _town,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(labelText: 'Home town'),
+          ),
+          const SizedBox(height: 14),
+          LocationField(value: _loc, hint: 'Use this when you are at their house', onChanged: (g) => setState(() => _loc = g)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _landmark,
+            decoration: const InputDecoration(labelText: 'House name / landmark (optional)'),
           ),
           if (_m != null && (_role == 'Associate' || _role == 'Worker' || _mulakath || _books.text.isNotEmpty)) ...[
             const SectionTitle('Path to membership'),

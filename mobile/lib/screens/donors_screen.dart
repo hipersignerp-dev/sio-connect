@@ -5,6 +5,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../location.dart';
 import 'collection_screens.dart';
 
 Future<void> callNumber(BuildContext context, String? mobile) async {
@@ -301,6 +302,14 @@ class _DonorRow extends StatelessWidget {
                     ),
                   ],
                 ),
+              if (GeoPoint.from(d['latitude'], d['longitude']) != null) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => openInMaps(context, GeoPoint.from(d['latitude'], d['longitude'])!),
+                  icon: const Icon(Icons.directions),
+                  label: const Text('Directions to their place'),
+                ),
+              ],
               const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: () async {
@@ -355,6 +364,7 @@ class _DonorFormScreenState extends State<DonorFormScreen> {
   static const types = ['Well-wisher', 'Member', 'Associate', 'Alumni', 'Business', 'Unit'];
   final _name = TextEditingController();
   final _mobile = TextEditingController();
+  GeoPoint? _loc;
   final _place = TextEditingController();
   final _notes = TextEditingController();
   String _type = 'Well-wisher';
@@ -372,6 +382,7 @@ class _DonorFormScreenState extends State<DonorFormScreen> {
       _name.text = '${d['name'] ?? ''}';
       _mobile.text = '${d['mobile'] ?? ''}';
       _place.text = '${d['place'] ?? ''}';
+      _loc = GeoPoint.from(d['latitude'], d['longitude']);
       _notes.text = '${d['notes'] ?? ''}';
       if (types.contains(d['type'])) _type = d['type'].toString();
       _unit = d['unit']?.toString();
@@ -395,6 +406,9 @@ class _DonorFormScreenState extends State<DonorFormScreen> {
         'donor_name': _name.text.trim(),
         'mobile': _mobile.text.trim(),
         'place': _place.text.trim(),
+        'latitude': _loc?.lat,
+        'longitude': _loc?.lng,
+        'clear_location': _loc == null ? 1 : null,
         'donor_type': _type,
         'unit': _unit,
         'notes': _notes.text.trim(),
@@ -428,6 +442,12 @@ class _DonorFormScreenState extends State<DonorFormScreen> {
             controller: _place,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(labelText: 'Place / address'),
+          ),
+          const SizedBox(height: 14),
+          LocationField(
+            value: _loc,
+            hint: 'Use this when you are at their house or shop',
+            onChanged: (g) => setState(() => _loc = g),
           ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(

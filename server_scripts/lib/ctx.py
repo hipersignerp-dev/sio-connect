@@ -14,7 +14,7 @@ if user != "Guest":
     member = frappe.db.get_value(
         "SIO Member", {"user": user},
         ["name", "full_name", "photo", "mobile", "email", "member_role", "status", "unit", "area", "campus", "course",
-         "year_of_study", "home_town", "joined_on"],
+         "year_of_study", "home_town", "joined_on", "latitude", "longitude", "location_note"],
         as_dict=True)
 
 if member:
@@ -102,6 +102,9 @@ me = {
     "course": member.course if member else None,
     "year_of_study": member.year_of_study if member else None,
     "home_town": member.home_town if member else None,
+    "latitude": member.latitude if member else None,
+    "longitude": member.longitude if member else None,
+    "location_note": member.location_note if member else None,
     "joined_on": member.joined_on if member else None,
     "capabilities": caps,
     "approver_units": approver_units,

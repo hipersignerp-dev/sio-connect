@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../update_service.dart';
 import '../photo.dart';
 import '../widgets.dart';
+import '../location.dart';
 import 'task_screens.dart';
 import 'accounts_screen.dart';
 import 'donors_screen.dart';
@@ -253,6 +254,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String? _unit = me['unit']?.toString();
   List<dynamic> _units = [];
   bool _busy = false;
+  late GeoPoint? _loc = GeoPoint.from(me['latitude'], me['longitude']);
+  late final _landmark = TextEditingController(text: (me['location_note'] ?? '').toString());
 
   static const years = [
     '1st Year',
@@ -287,6 +290,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'year_of_study': _year,
         'home_town': _town.text.trim().isEmpty ? null : _town.text.trim(),
         'unit': AppState.i.pending ? _unit : null,
+        'latitude': _loc?.lat,
+        'longitude': _loc?.lng,
+        'clear_location': _loc == null ? 1 : null,
+        'location_note': _landmark.text.trim(),
       });
       AppState.i.me = Map<String, dynamic>.from(r as Map);
     }, done: 'Profile saved.');
@@ -372,6 +379,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             controller: _town,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(labelText: 'Home town'),
+          ),
+          const SizedBox(height: 14),
+          LocationField(value: _loc, onChanged: (g) => setState(() => _loc = g)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _landmark,
+            maxLines: 2,
+            decoration: const InputDecoration(labelText: 'House name / landmark (optional)', alignLabelWithHint: true),
           ),
           const SizedBox(height: 20),
           FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),

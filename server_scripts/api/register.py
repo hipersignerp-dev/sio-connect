@@ -40,7 +40,7 @@ if existing:
     member = frappe.get_doc("SIO Member", existing.name)
     member.user = user.name
     member.email = email
-    for k in ("campus", "course", "home_town"):
+    for k in ("campus", "course", "home_town", "latitude", "longitude", "location_note"):
         if f.get(k) and not member.get(k):
             member.set(k, f.get(k))
     member.save(ignore_permissions=True)
@@ -58,6 +58,9 @@ else:
         "course": f.get("course"),
         "year_of_study": f.get("year_of_study") or "",
         "home_town": f.get("home_town"),
+        "latitude": frappe.utils.flt(f.get("latitude")) or None,
+        "longitude": frappe.utils.flt(f.get("longitude")) or None,
+        "location_note": f.get("location_note") or None,
     })
     member.insert(ignore_permissions=True)
 frappe.response["message"] = {"user": user.name, "member": member.name, "status": member.status}

@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
+import '../location.dart';
 import '../photo.dart';
 import '../widgets.dart';
 import 'manage_screens.dart';
@@ -170,6 +171,7 @@ class _MembersScreenState extends State<MembersScreen> {
                     [m['course'], m['year_of_study']].where((x) => x != null && '$x'.isNotEmpty).join(', '),
                   ],
                   ['Joined', fmtDate(m['joined_on'])],
+                  ['House', m['location_note']],
                 ])
                   if (line[1] != null && '${line[1]}'.isNotEmpty)
                     Padding(
@@ -263,6 +265,14 @@ class _MembersScreenState extends State<MembersScreen> {
                   },
                   child: Text(m['status'] == 'Pending Approval' ? 'Approve' : 'Save role'),
                 ),
+                if (GeoPoint.from(m['latitude'], m['longitude']) != null) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => openInMaps(context, GeoPoint.from(m['latitude'], m['longitude'])!),
+                    icon: const Icon(Icons.directions),
+                    label: const Text('Directions to their house'),
+                  ),
+                ],
                 if (AppState.i.can('add_members') && m['status'] != 'Pending Approval') ...[
                   const SizedBox(height: 8),
                   OutlinedButton.icon(

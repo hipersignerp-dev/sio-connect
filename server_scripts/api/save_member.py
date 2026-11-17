@@ -51,6 +51,18 @@ if args.get("status") in ("Active", "Inactive"):
 for f in ("campus", "course", "home_town"):
     doc.set(f, args.get(f) or None)
 doc.year_of_study = args.get("year_of_study") or ""
+# house location: latitude / longitude from the phone, and an address or landmark
+if args.get("latitude") not in (None, "") and args.get("longitude") not in (None, ""):
+    lat = frappe.utils.flt(args.get("latitude"))
+    lng = frappe.utils.flt(args.get("longitude"))
+    if -90 <= lat <= 90 and -180 <= lng <= 180:
+        doc.latitude = lat
+        doc.longitude = lng
+elif args.get("clear_location"):
+    doc.latitude = None
+    doc.longitude = None
+if args.get("location_note") is not None:
+    doc.location_note = args.get("location_note") or None
 # path to membership
 if args.get("mulakath_done") is not None:
     doc.mulakath_done = frappe.utils.cint(args.get("mulakath_done"))

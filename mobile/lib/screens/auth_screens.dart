@@ -5,6 +5,7 @@ import '../app_state.dart';
 import '../biometric.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../location.dart';
 
 const _logo = Image(image: AssetImage('assets/sio-logo.png'), width: 96, height: 96);
 
@@ -220,6 +221,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _campus = TextEditingController();
   final _course = TextEditingController();
   final _town = TextEditingController();
+  GeoPoint? _loc;
   String? _unit;
   String? _area;
   String? _year;
@@ -278,6 +280,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'course': _course.text.trim(),
         'year_of_study': _year,
         'home_town': _town.text.trim(),
+        'latitude': _loc?.lat,
+        'longitude': _loc?.lng,
       });
       await AppState.i.passwordLogin(_email.text, _pass.text);
       if (mounted) await finishSignIn(context);
@@ -411,6 +415,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           _field(_town, 'Home town', icon: Icons.home_outlined, cap: TextCapitalization.words),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 14),
+            child: LocationField(
+              value: _loc,
+              hint: 'Optional. At home? Tap the button to add it.',
+              onChanged: (g) => setState(() => _loc = g),
+            ),
+          ),
           CheckboxListTile(
             value: _agree,
             contentPadding: EdgeInsets.zero,

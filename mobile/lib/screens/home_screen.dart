@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'event_detail_screen.dart';
 import 'task_screens.dart';
+import '../location.dart';
 import 'more_screen.dart';
 import 'collection_screens.dart';
 import 'events_screen.dart';
@@ -81,6 +82,12 @@ class HomeScreen extends StatelessWidget {
             const SioBanner(
               text: 'Your registration is waiting for your unit’s approval. Meanwhile you can see events and updates, and give an offer.',
             ),
+            const SizedBox(height: 12),
+          ],
+          if (s.me['member'] != null &&
+              GeoPoint.from(s.me['latitude'], s.me['longitude']) == null &&
+              Api.prefs.getBool('hide_location_prompt') != true) ...[
+            const _LocationPrompt(),
             const SizedBox(height: 12),
           ],
           if (h['next_meeting'] != null) ...[
@@ -415,4 +422,86 @@ class _NoticesPanel extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Asks once for the person's house location (they can do it later from My profile).
+class _LocationPrompt extends StatefulWidget {
+  const _LocationPrompt();
+
+  @override
+  State<_LocationPrompt> createState() => _LocationPromptState();
+}
+
+class _LocationPromptState extends State<_LocationPrompt> {
+  bool _busy = false;
+  bool _hidden = false;
+
+  Future<void> _add() async {
+    setState(() => _busy = true);
+    final g = await currentLocation(context);
+    if (g == null || !mounted) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+    final ok = await run(context, () async {
+      final r = await Api.call('${Api.m}update_my_profile', {'latitude': g.lat, 'longitude': g.lng});
+      AppState.i.me = Map<String, dynamic>.from(r as Map);
+    }, done: 'House location saved. Thank you!');
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (ok) _hidden = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hidden) return const SizedBox.shrink();
+    return SioPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.home_work_outlined, color: SioColors.red),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Add your house location', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Are you at home now? Tap the button and your unit can find your house for visits and programmes.',
+            style: TextStyle(color: SioColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _busy ? null : _add,
+                  icon: _busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.my_location),
+                  label: Text(_busy ? 'Finding you…' : 'I am at home, use this place'),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Api.prefs.setBool('hide_location_prompt', true);
+                  setState(() => _hidden = true);
+                },
+                child: const Text('Later'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -36,6 +36,17 @@ doc.place = (args.get("place") or "").strip() or None
 doc.donor_type = args.get("donor_type") or doc.donor_type or "Well-wisher"
 doc.unit = unit
 doc.notes = (args.get("notes") or "").strip() or None
+# house location: latitude / longitude from the phone, and an address or landmark
+if args.get("latitude") not in (None, "") and args.get("longitude") not in (None, ""):
+    lat = frappe.utils.flt(args.get("latitude"))
+    lng = frappe.utils.flt(args.get("longitude"))
+    if -90 <= lat <= 90 and -180 <= lng <= 180:
+        doc.latitude = lat
+        doc.longitude = lng
+elif args.get("clear_location"):
+    doc.latitude = None
+    doc.longitude = None
+
 if name:
     doc.save(ignore_permissions=True)
 else:

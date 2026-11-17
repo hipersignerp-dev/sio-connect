@@ -69,7 +69,8 @@ elif args.get("unit") and in_scope(args.get("unit")):
 elif SCOPE_UNITS is not None:
     dcond["unit"] = ["in", scope_list()]
 saved = frappe.get_all("SIO Donor", filters=dcond,
-                       fields=["name", "donor_name", "mobile", "place", "donor_type", "unit", "notes", "creation"],
+                       fields=["name", "donor_name", "mobile", "place", "donor_type", "unit", "notes", "creation",
+                               "latitude", "longitude"],
                        order_by="creation desc", limit=5000)
 for s in saved:
     if q and q.lower() not in ((s.donor_name or "") + " " + (s.mobile or "") + " " + (s.place or "")).lower():
@@ -89,6 +90,8 @@ for s in saved:
     d["donor"] = s.name
     d["name"] = s.donor_name
     d["notes"] = s.notes
+    d["latitude"] = s.latitude or None
+    d["longitude"] = s.longitude or None
     if s.mobile:
         d["mobile"] = s.mobile
     if s.place:
