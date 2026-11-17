@@ -18,9 +18,7 @@ class Notify {
 
   static Future<void> _init() async {
     if (_ready) return;
-    await _plugin.initialize(
-      settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
-    );
+    await _plugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
     _ready = true;
   }
 
@@ -67,10 +65,10 @@ class Notify {
         final id = n['name'].toString();
         if (seen.contains(id) || n['sent_by'] == me) continue;
         await _plugin.show(
-          id: id.hashCode & 0x7fffffff,
-          title: '${n['title']}',
-          body: '${n['message']}',
-          notificationDetails: const NotificationDetails(
+          id.hashCode & 0x7fffffff,
+          '${n['title']}',
+          '${n['message']}',
+          const NotificationDetails(
             android: AndroidNotificationDetails(
               'sio_updates',
               'SIO updates',
