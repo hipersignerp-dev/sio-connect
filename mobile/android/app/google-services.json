@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "280665319397",
+    "project_id": "sio-connect-1459f",
+    "storage_bucket": "sio-connect-1459f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:280665319397:android:3067dfddbdc85f3e8a310c",
+        "android_client_info": {
+          "package_name": "com.hipersign.sio_connect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnCpin_-11sOv5Rhub5kzHLc-WIiUzYt8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

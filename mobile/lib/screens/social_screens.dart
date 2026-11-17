@@ -812,6 +812,29 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
           ],
           const SizedBox(height: 6),
           Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Colors.white70)),
+          if ('${r['lesson_en'] ?? ''}'.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '💡 TODAY’S LESSON',
+                    style: TextStyle(color: Color(0xFFFFD2B3), fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 4),
+                  Text('${r['lesson_en']}', style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
+                  if ('${r['lesson_ml'] ?? ''}'.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text('${r['lesson_ml']}', style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)),
+                  ],
+                ],
+              ),
+            ),
+          ],
           if (!done && _i(rs['current']) > 0 && DateTime.now().hour >= 17) ...[
             const SizedBox(height: 10),
             FadeTransition(

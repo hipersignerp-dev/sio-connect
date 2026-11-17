@@ -293,6 +293,29 @@ class _ReadingCard extends StatelessWidget {
         ],
         const SizedBox(height: 8),
         Text('— ${reading['reference'] ?? ''}', style: const TextStyle(color: SioColors.textSecondary)),
+        if ('${reading['lesson_en'] ?? ''}'.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: const Color(0xFFFFF4DC), borderRadius: BorderRadius.circular(14)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '💡 TODAY’S LESSON',
+                  style: TextStyle(color: Color(0xFFB07800), fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text('${reading['lesson_en']}', style: const TextStyle(fontSize: 15, height: 1.4, color: SioColors.ink)),
+                if ('${reading['lesson_ml'] ?? ''}'.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text('${reading['lesson_ml']}', style: const TextStyle(fontSize: 14, height: 1.5)),
+                ],
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Row(
           children: [

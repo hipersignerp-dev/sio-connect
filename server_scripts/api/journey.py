@@ -6,7 +6,7 @@ if not m:
 me_doc = frappe.db.get_value("SIO Member", m.name, ["name", "full_name", "username", "photo", "unit", "area",
                                                      "member_role"], as_dict=True)
 rows = frappe.get_all("SIO Daily Reading", filters={"active": 1},
-                      fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar"],
+                      fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml"],
                       order_by="sort_order asc, creation asc")
 reading = None
 if rows:
