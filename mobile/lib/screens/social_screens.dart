@@ -12,6 +12,7 @@ import '../update_service.dart';
 import '../widgets.dart';
 import 'collection_screens.dart';
 import 'event_detail_screen.dart';
+import 'find_members_screen.dart';
 import 'home_screen.dart';
 import 'home_shell.dart';
 import 'journey_screens.dart';
@@ -291,6 +292,11 @@ class SocialHome extends StatelessWidget {
             onPressed: () => openAdminDashboard(context),
           ),
         IconButton(
+          tooltip: 'Find SIO members',
+          icon: const Icon(Icons.search_rounded, size: 27),
+          onPressed: () => push(context, const FindMembersScreen()),
+        ),
+        IconButton(
           tooltip: 'Updates',
           icon: const Icon(Icons.notifications_none_rounded, size: 27),
           onPressed: () => push(context, const NoticesScreen()),
@@ -398,7 +404,7 @@ class SocialHome extends StatelessWidget {
               ),
             ),
           if (suggest.isNotEmpty) ...[
-            _Header('Suggested for you', action: 'Find people', onAction: () => push(context, const FriendsScreen())),
+            _Header('Suggested for you', action: 'Find members', onAction: () => push(context, const FindMembersScreen())),
             SizedBox(
               height: 206,
               child: ListView.separated(
@@ -1065,6 +1071,7 @@ class ExploreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppState.i;
     final tiles = <(IconData, List<Color>, String, Widget)>[
+      (Icons.travel_explore, const [Color(0xFF1A62A8), Color(0xFFC8202A)], 'Find members', const FindMembersScreen()),
       (Icons.people_alt, const [Color(0xFF7C3AED), Color(0xFF1A62A8)], 'Friends', const FriendsScreen()),
       (Icons.quiz, const [Color(0xFF7C3AED), Color(0xFFC8202A)], 'Weekly quiz', const JourneyScreen()),
       (Icons.leaderboard, const [Color(0xFFE0A100), Color(0xFFF26B1D)], 'Unit board', const UnitBoardScreen()),
@@ -1090,7 +1097,7 @@ class ExploreScreen extends StatelessWidget {
         builder: (context, events) => [
           InkWell(
             borderRadius: BorderRadius.circular(14),
-            onTap: () => push(context, const FriendsScreen()),
+            onTap: () => push(context, const FindMembersScreen()),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(14)),
@@ -1098,7 +1105,7 @@ class ExploreScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.search, color: SioColors.textSecondary),
                   SizedBox(width: 10),
-                  Text('Search people by @username or name', style: TextStyle(color: SioColors.textSecondary)),
+                  Text('Find SIO members anywhere', style: TextStyle(color: SioColors.textSecondary)),
                 ],
               ),
             ),

@@ -11,6 +11,7 @@ import '../fx.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'find_members_screen.dart';
 import 'more_screen.dart';
 
 // My journey: daily ayah / hadith streak, weekly quiz, badges, friends and their pages, posts, unit board.
@@ -899,6 +900,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
             ),
           ),
+          const SizedBox(height: 8),
+          SioTile(
+            icon: Icons.travel_explore,
+            title: 'Find SIO members anywhere',
+            subtitle: 'By unit, college, home town, or near you',
+            onTap: () => push(context, const FindMembersScreen()),
+          ),
           if (_found != null) ...[
             const SectionTitle('People'),
             if (_found!.isEmpty) const EmptyNote('No one found.'),
@@ -1224,7 +1232,7 @@ class _ProfileBodyState extends State<_ProfileBody> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    _SoftButton(icon: Icons.person_add_alt, onTap: () => push(context, const FriendsScreen())),
+                    _SoftButton(icon: Icons.person_add_alt, onTap: () => push(context, const FindMembersScreen())),
                   ]
                 : [
                     Expanded(
