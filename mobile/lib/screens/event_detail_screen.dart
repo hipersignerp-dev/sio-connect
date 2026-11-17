@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'expense_screens.dart';
 import 'manage_screens.dart';
+import 'task_screens.dart';
 
 /// One event: details, and its expenses. Office bearers see budget, spent, waiting and what is left,
 /// split by category; members see their own claims for the event.
@@ -84,6 +85,7 @@ class EventDetailScreen extends StatelessWidget {
               const SizedBox(height: 12),
               _RegisterButton(event: e),
             ],
+            ...teamAndTaskSections(context, e),
             if (sum != null) ...[
               const SectionTitle('Spending'),
               SioPanel(

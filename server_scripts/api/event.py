@@ -59,10 +59,12 @@ tfilters = {"event": out.name}
 on_team = ctx["member"] and ctx["member"].name in [t.member for t in out["team"]]
 if not (boss or on_team):
     tfilters["assigned_to"] = ctx["member"].name if ctx["member"] else "__none__"
-out["tasks"] = frappe.get_all("SIO Event Task", filters=tfilters,
-                              fields=["name", "title", "responsibility", "assigned_to", "assigned_name", "due_on",
-                                      "status", "notes", "last_reminded"],
-                              order_by="status = 'Done', due_on is null, due_on asc, creation asc")
+tasks = frappe.get_all("SIO Event Task", filters=tfilters,
+                       fields=["name", "title", "responsibility", "assigned_to", "assigned_name", "due_on",
+                               "status", "notes", "last_reminded", "creation"],
+                       order_by="creation asc")
+# open first, then by due date (no date last), then done
+out["tasks"] = sorted(tasks, key=lambda t: (t.status == "Done", t.due_on is None, str(t.due_on or "")))
 if boss:
     # people who can be put on the team: the event's unit, or its area, or everyone
     pf = {"status": "Active"}

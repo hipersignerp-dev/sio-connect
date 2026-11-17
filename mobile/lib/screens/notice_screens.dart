@@ -5,6 +5,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'event_detail_screen.dart';
+import 'task_screens.dart';
 
 class NoticesScreen extends StatelessWidget {
   const NoticesScreen({super.key});
@@ -22,7 +23,9 @@ class NoticesScreen extends StatelessWidget {
           if (list.isEmpty) const EmptyNote('No updates yet.'),
           for (final n in list) ...[
             SioPanel(
-              onTap: (n['event'] ?? '').toString().isEmpty
+              onTap: (n['task'] ?? '').toString().isNotEmpty
+                  ? () => push(context, const MyTasksScreen())
+                  : (n['event'] ?? '').toString().isEmpty
                   ? null
                   : () => push(context, EventDetailScreen(name: n['event'].toString(), title: n['title'].toString())),
               child: Column(

@@ -6,6 +6,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'event_detail_screen.dart';
+import 'task_screens.dart';
 import 'more_screen.dart';
 import 'collection_screens.dart';
 import 'events_screen.dart';
@@ -121,6 +122,9 @@ class HomeScreen extends StatelessWidget {
           () => openTab(2),
         ),
       );
+    }
+    if (numOf(h['my_tasks']) > 0) {
+      tiles.add(_Tile(Icons.task_alt, 'My tasks to do', '${h['my_tasks']}', () => push(context, const MyTasksScreen())));
     }
     final members = h['members'] as Map?;
     if (members != null) {
@@ -389,7 +393,9 @@ class _NoticesPanel extends StatelessWidget {
         if (notices.isEmpty) const Text('No updates yet.', style: TextStyle(color: SioColors.textSecondary)),
         for (final n in notices)
           InkWell(
-            onTap: (n['event'] ?? '').toString().isEmpty
+            onTap: (n['task'] ?? '').toString().isNotEmpty
+                ? () => push(context, const MyTasksScreen())
+                : (n['event'] ?? '').toString().isEmpty
                 ? () => push(context, const NoticesScreen())
                 : () => push(context, EventDetailScreen(name: n['event'].toString(), title: n['title'].toString())),
             child: Padding(

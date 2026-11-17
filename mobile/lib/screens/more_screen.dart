@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../update_service.dart';
 import '../photo.dart';
 import '../widgets.dart';
+import 'task_screens.dart';
 import 'accounts_screen.dart';
 import 'donors_screen.dart';
 import 'fund_screens.dart';
@@ -73,6 +74,13 @@ class MoreScreen extends StatelessWidget {
                 subtitle: 'College, course, unit',
                 onTap: () => push(context, const ProfileScreen()),
               ),
+              if (me['member'] != null)
+                SioTile(
+                  icon: Icons.task_alt,
+                  title: 'My tasks',
+                  subtitle: 'Event tasks given to me, reminders',
+                  onTap: () => push(context, const MyTasksScreen()),
+                ),
               if (s.can('view_members'))
                 SioTile(
                   icon: Icons.groups_outlined,
