@@ -157,7 +157,7 @@ if __name__ == "__main__":
     for f, (dt, label) in PQ.items():
         bundle.append({"name": f"SIO {label} unit scope", "script_type": "Permission Query", "reference_doctype": dt,
                        "module": "SIO Connect", "script": read("permission", f + ".py")})
-    with open(os.path.join(dist, "bundle.json"), "w") as fh:
+    with open(os.path.join(HERE, "bundle.json"), "w") as fh:
         json.dump(bundle, fh, indent=0)
     print(len(recs), "server scripts")
     for r in reports():
