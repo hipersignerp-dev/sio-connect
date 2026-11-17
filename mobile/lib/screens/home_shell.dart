@@ -77,7 +77,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       (Icons.home_outlined, Icons.home, 'Home'),
       meetingsTab ? (Icons.event_note_outlined, Icons.event_note, 'Meetings') : (Icons.event_outlined, Icons.event, 'Events'),
       (Icons.volunteer_activism_outlined, Icons.volunteer_activism, collectLabel),
-      (Icons.more_horiz, Icons.more_horiz, 'More'),
+      widget.dashboard
+          ? (Icons.admin_panel_settings_outlined, Icons.admin_panel_settings, 'Admin')
+          : (Icons.more_horiz, Icons.more_horiz, 'More'),
     ];
     Widget nav(int i) => _NavItem(
       icon: _tab == i ? tabs[i].$2 : tabs[i].$1,

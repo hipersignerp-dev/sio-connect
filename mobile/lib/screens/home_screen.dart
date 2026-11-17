@@ -68,7 +68,7 @@ class HomeScreen extends StatelessWidget {
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () => push(context, const NoticesScreen()),
           ),
-          if (s.me['member'] != null)
+          if (s.me['member'] != null && !dashboardOpen)
             Padding(
               padding: const EdgeInsets.only(right: 12, left: 2),
               child: InkWell(
@@ -95,13 +95,14 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          if (s.me['member'] != null &&
+          if (!dashboardOpen &&
+              s.me['member'] != null &&
               GeoPoint.from(s.me['latitude'], s.me['longitude']) == null &&
               Api.prefs.getBool('hide_location_prompt') != true) ...[
             const _LocationPrompt(),
             const SizedBox(height: 12),
           ],
-          if (s.me['member'] != null && !s.pending) const JourneyHomeCard(),
+          if (!dashboardOpen && s.me['member'] != null && !s.pending) const JourneyHomeCard(),
           if (h['next_meeting'] != null) ...[
             MeetingCard(meeting: Map<String, dynamic>.from(h['next_meeting'])),
             const SizedBox(height: 12),
@@ -129,8 +130,9 @@ class HomeScreen extends StatelessWidget {
         );
       }
     }
-    final mine = h['my_offers'] as Map?;
-    if (mine != null && numOf(mine['offered']) > 0) {
+    final mine = dashboardOpen ? null : h['my_offers'] as Map?;
+    if (dashboardOpen) {
+    } else if (mine != null && numOf(mine['offered']) > 0) {
       tiles.add(_Tile(Icons.favorite_outline, 'My offers', inr(mine['offered']), () => openTab(2)));
     } else if (collections.isNotEmpty && AppState.i.can('offer') && !AppState.i.can('view_collection_totals')) {
       tiles.add(
@@ -142,7 +144,7 @@ class HomeScreen extends StatelessWidget {
         ),
       );
     }
-    if (numOf(h['my_tasks']) > 0) {
+    if (!dashboardOpen && numOf(h['my_tasks']) > 0) {
       tiles.add(_Tile(Icons.task_alt, 'My tasks to do', '${h['my_tasks']}', () => push(context, const MyTasksScreen())));
     }
     final members = h['members'] as Map?;

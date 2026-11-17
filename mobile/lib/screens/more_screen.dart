@@ -37,7 +37,7 @@ class MoreScreen extends StatelessWidget {
         final me = s.me;
         final meetingsTab = s.can('rsvp') || s.can('mark_attendance');
         return Scaffold(
-          appBar: AppBar(title: const Text('More')),
+          appBar: AppBar(title: Text(dashboardOpen ? 'Admin' : 'More')),
           body: ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
             children: [
@@ -73,20 +73,21 @@ class MoreScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              SioTile(
-                icon: Icons.person_outline,
-                title: 'My profile',
-                subtitle: 'College, course, unit',
-                onTap: () => push(context, const ProfileScreen()),
-              ),
-              if (me['member'] != null)
+              if (!dashboardOpen)
+                SioTile(
+                  icon: Icons.person_outline,
+                  title: 'My profile',
+                  subtitle: 'College, course, unit',
+                  onTap: () => push(context, const ProfileScreen()),
+                ),
+              if (me['member'] != null && !dashboardOpen)
                 SioTile(
                   icon: Icons.local_fire_department_outlined,
                   title: 'My journey',
                   subtitle: 'Daily ayah streak, quiz, badges, friends',
                   onTap: () => push(context, const JourneyScreen()),
                 ),
-              if (me['member'] != null)
+              if (me['member'] != null && !dashboardOpen)
                 SioTile(
                   icon: Icons.account_circle_outlined,
                   title: 'My page',
@@ -100,7 +101,7 @@ class MoreScreen extends StatelessWidget {
                   subtitle: 'Make the quiz for the week, see scores',
                   onTap: () => push(context, const QuizzesScreen()),
                 ),
-              if (me['member'] != null)
+              if (me['member'] != null && !dashboardOpen)
                 SioTile(
                   icon: Icons.task_alt,
                   title: 'My tasks',
@@ -193,38 +194,41 @@ class MoreScreen extends StatelessWidget {
                   subtitle: 'Feed, friends and my journey',
                   onTap: () => Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst),
                 ),
-              SioTile(
-                icon: Icons.system_update_outlined,
-                title: 'Check for updates',
-                subtitle: UpdateService.versionLabel,
-                onTap: () => UpdateService.check(context, force: true),
-              ),
-              SioTile(
-                icon: Icons.dns_outlined,
-                title: 'Server',
-                subtitle: Api.baseUrl.replaceFirst('https://', ''),
-                onTap: () {},
-              ),
+              if (!dashboardOpen)
+                SioTile(
+                  icon: Icons.system_update_outlined,
+                  title: 'Check for updates',
+                  subtitle: UpdateService.versionLabel,
+                  onTap: () => UpdateService.check(context, force: true),
+                ),
+              if (!dashboardOpen)
+                SioTile(
+                  icon: Icons.dns_outlined,
+                  title: 'Server',
+                  subtitle: Api.baseUrl.replaceFirst('https://', ''),
+                  onTap: () {},
+                ),
               const SizedBox(height: 8),
-              SioTile(
-                icon: Icons.logout,
-                title: 'Sign out',
-                danger: true,
-                onTap: () async {
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Sign out?'),
-                      content: const Text('Fingerprint sign-in will be turned off on this phone.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign out')),
-                      ],
-                    ),
-                  );
-                  if (ok == true) await AppState.i.signOut();
-                },
-              ),
+              if (!dashboardOpen)
+                SioTile(
+                  icon: Icons.logout,
+                  title: 'Sign out',
+                  danger: true,
+                  onTap: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Sign out?'),
+                        content: const Text('Fingerprint sign-in will be turned off on this phone.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sign out')),
+                        ],
+                      ),
+                    );
+                    if (ok == true) await AppState.i.signOut();
+                  },
+                ),
             ],
           ),
         );
