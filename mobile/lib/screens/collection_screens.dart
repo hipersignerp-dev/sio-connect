@@ -82,7 +82,13 @@ class _CollectionScreenState extends State<CollectionScreen> {
                         padding: const EdgeInsets.only(right: 8),
                         child: ChoiceChip(
                           avatar: Icon(collectionIcon(c['collection_type']?.toString()), size: 18),
-                          label: Text(c['name'].toString()),
+                          label: Text(
+                            c['phase'] == 'Ended'
+                                ? '${c['name']} · ended'
+                                : c['phase'] == 'Upcoming'
+                                ? '${c['name']} · from ${fmtDate(c['starts_on'], 'd MMM')}'
+                                : c['name'].toString(),
+                          ),
                           selected: c['name'] == sel['name'],
                           onSelected: (_) => setState(() {
                             _selected = c['name'].toString();
@@ -177,32 +183,42 @@ class _CollectionScreenState extends State<CollectionScreen> {
                     push(context, NewEntryScreen(forSelf: true, collection: sel['name'].toString(), collections: collections)),
               ),
             ],
+            if (sel['phase'] != null && sel['phase'] != 'Running') ...[
+              const SizedBox(height: 12),
+              SioBanner(
+                text: sel['phase'] == 'Upcoming'
+                    ? 'This collection starts on ${fmtDate(sel['starts_on'], 'd MMM yyyy')}. Offers open then.'
+                    : 'This collection ended on ${fmtDate(sel['ends_on'], 'd MMM yyyy')}. No new offers; '
+                          'payments of earlier offers can still be recorded.',
+              ),
+            ],
             const SizedBox(height: 12),
-            Row(
-              children: [
-                if (s.can('offer') && sel['my_pledge'] == null)
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => push(
-                        context,
-                        NewEntryScreen(forSelf: true, collection: sel['name'].toString(), collections: collections),
+            if (sel['phase'] == null || sel['phase'] == 'Running')
+              Row(
+                children: [
+                  if (s.can('offer') && sel['my_pledge'] == null)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => push(
+                          context,
+                          NewEntryScreen(forSelf: true, collection: sel['name'].toString(), collections: collections),
+                        ),
+                        icon: const Icon(Icons.favorite_outline),
+                        label: Text(sel['collection_type'] == 'Baithul Mal' ? 'Set my Baithul Mal' : 'Give an offer'),
                       ),
-                      icon: const Icon(Icons.favorite_outline),
-                      label: Text(sel['collection_type'] == 'Baithul Mal' ? 'Set my Baithul Mal' : 'Give an offer'),
                     ),
-                  ),
-                if (s.can('offer') && sel['my_pledge'] == null && s.can('collect')) const SizedBox(width: 12),
-                if (s.can('collect'))
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () =>
-                          push(context, NewEntryScreen(collection: sel['name'].toString(), collections: collections)),
-                      icon: const Icon(Icons.add),
-                      label: const Text('New entry'),
+                  if (s.can('offer') && sel['my_pledge'] == null && s.can('collect')) const SizedBox(width: 12),
+                  if (s.can('collect'))
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () =>
+                            push(context, NewEntryScreen(collection: sel['name'].toString(), collections: collections)),
+                        icon: const Icon(Icons.add),
+                        label: const Text('New entry'),
+                      ),
                     ),
-                  ),
-              ],
-            ),
+                ],
+              ),
             if (s.can('view_donors')) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -422,7 +438,11 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
   void initState() {
     super.initState();
     _collection = widget.collection;
-    _collections = widget.collections ?? [];
+    // new offers and entries only go into collections running now
+    _collections = [
+      for (final c in widget.collections ?? [])
+        if (c['phase'] == null || c['phase'] == 'Running') c,
+    ];
     final c = widget.contributor;
     if (c != null) {
       _name.text = '${c['name'] ?? ''}';
@@ -454,8 +474,11 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
             final list = ((v as Map)['collections'] as List?) ?? [];
             if (mounted) {
               setState(() {
-                _collections = list;
-                _collection ??= list.isNotEmpty ? list.first['name'].toString() : null;
+                _collections = [
+                  for (final c in list)
+                    if (c['phase'] == null || c['phase'] == 'Running') c,
+                ];
+                _collection ??= _collections.isNotEmpty ? _collections.first['name'].toString() : null;
               });
             }
           })

@@ -9,7 +9,17 @@ rows = frappe.get_all("SIO Collection", filters=filters,
                               "open_to"],
                       order_by="creation desc")
 out = []
+today = frappe.utils.getdate(frappe.utils.nowdate())
 for c in rows:
+    # Each collection runs for its own period (Ramadan collection, Baithul Mal year ...). Outside it, members don't
+    # see it; leaders still see an ended one to follow up balances.
+    phase = "Running"
+    if c.starts_on and frappe.utils.getdate(c.starts_on) > today:
+        phase = "Upcoming"
+    elif c.ends_on and frappe.utils.getdate(c.ends_on) < today:
+        phase = "Ended"
+    if phase == "Ended" and not caps["view_collection_totals"]:
+        continue
     if c.unit and ctx["units"] is not None and c.unit not in ctx["units"]:
         continue
     open_to = c.open_to or "Everyone"
@@ -21,7 +31,7 @@ for c in rows:
         continue
     item = {"name": c.name, "collection_type": c.collection_type, "target": frappe.utils.flt(c.target_amount),
             "starts_on": c.starts_on, "ends_on": c.ends_on, "description": c.description, "unit": c.unit,
-            "totals": None, "my_offered": 0, "my_paid": 0, "unit_target": None, "open_to": open_to,
+            "totals": None, "my_offered": 0, "my_paid": 0, "unit_target": None, "open_to": open_to, "phase": phase,
             "my_pledge": None}
     if ctx["unit"]:
         ut = frappe.db.get_value("SIO Collection Unit Target",
@@ -61,4 +71,6 @@ for c in rows:
                                  "months_so_far": elapsed, "paid": frappe.utils.flt(p.paid_amount),
                                  "due_now": max(due, 0)}
     out.append(item)
+order = {"Running": 0, "Upcoming": 1, "Ended": 2}
+out = sorted(out, key=lambda x: order.get(x["phase"], 3))
 frappe.flags.sio_collections = out

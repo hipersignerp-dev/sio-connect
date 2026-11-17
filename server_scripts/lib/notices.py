@@ -14,7 +14,7 @@ params = {
     "user": ctx["user"],
 }
 frappe.flags.sio_notices = frappe.db.sql(
-    """select n.name, n.title, n.message, n.audience, n.unit, n.member_role, n.event, n.sent_on,
+    """select n.name, n.title, n.message, n.audience, n.unit, n.member_role, n.event, n.task, n.sent_on,
         n.recipient_count, n.sent_by
     from `tabSIO Notice` n
     where (n.audience = 'Everyone' and (%(all)s = 1 or ifnull(n.area, '') = '' or n.area = %(area)s))
@@ -23,6 +23,7 @@ frappe.flags.sio_notices = frappe.db.sql(
             or n.area = %(area)s))
         or (n.audience = 'Event Registrants' and exists (select 1 from `tabSIO Event Registration` r
             where r.event = n.event and r.member = %(member)s and r.status != 'Cancelled'))
-        or n.sent_by = %(user)s
+        or (n.audience = 'Person' and n.member = %(member)s)
+        or (n.sent_by = %(user)s and n.audience != 'Person')
     order by n.sent_on desc limit """ + str(limit),
     params, as_dict=True)

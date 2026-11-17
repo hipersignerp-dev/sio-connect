@@ -1,8 +1,16 @@
 # A new entry in a collection. entry_type: Offer (will pay later), Payment (paid now) or Items.
 # for_self=1: the signed-in person makes their own offer. Otherwise a collector records someone else's.
 member = ctx["member"]
-visible = [c["name"] for c in run_script("SIO lib collections").sio_collections]
+all_visible = run_script("SIO lib collections").sio_collections
+visible = [c["name"] for c in all_visible if c["phase"] == "Running"]
 collection = args.get("collection") or (visible[0] if visible else None)
+if collection and collection not in visible:
+    for c in all_visible:
+        if c["name"] == collection and c["phase"] == "Upcoming":
+            frappe.throw(_("This collection starts on ") + frappe.utils.formatdate(c["starts_on"]) + ".")
+        if c["name"] == collection and c["phase"] == "Ended":
+            frappe.throw(_("This collection ended on ") + frappe.utils.formatdate(c["ends_on"])
+                         + _(". You can still record payments of earlier offers."))
 if not collection or collection not in visible:
     frappe.throw(_("Pick an open collection."))
 entry_type = args.get("entry_type")

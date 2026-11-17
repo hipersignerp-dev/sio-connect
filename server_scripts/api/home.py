@@ -40,7 +40,7 @@ events = run_script("SIO lib events", upcoming_only=1, limit=1).sio_events
 if events:
     out["next_event"] = events[0]
 
-collections = run_script("SIO lib collections").sio_collections
+collections = [c for c in run_script("SIO lib collections").sio_collections if c["phase"] == "Running"]
 out["collections"] = [{"name": c["name"], "collection_type": c["collection_type"], "totals": c["totals"]}
                       for c in collections]
 out["my_offers"] = {"offered": sum([c["my_offered"] for c in collections]),
@@ -73,4 +73,6 @@ if SCOPE_UNITS is None:
                                                    {"collection": pub, "status": "Offered", "payment_ref": ["is", "set"]})
 if caps["approve_funds"]:
     out["pending_funds"] = frappe.db.count("SIO Fund Request", {"status": "Pending"})
+if member:
+    out["my_tasks"] = frappe.db.count("SIO Event Task", {"assigned_to": member.name, "status": ["!=", "Done"]})
 frappe.response["message"] = out

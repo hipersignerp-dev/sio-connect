@@ -47,7 +47,7 @@ MOBILE = ["me", "update_my_profile", "home", "meetings", "meeting", "rsvp", "sav
           "events", "event", "register_event", "collection", "add_collection_entry", "add_payment", "expenses",
           "claim_expense", "set_expense_status", "notices", "send_notice", "members", "approve_member", "accounts",
           "collection_form", "manage_collections", "save_collection", "delete_collection", "save_event",
-          "delete_event", "save_member", "manage_units", "save_unit", "donors", "manage_areas", "save_area", "save_donor", "fund_requests", "request_fund", "set_fund_request", "set_member_photo", "save_meeting_summary", "ai_summary"]
+          "delete_event", "save_member", "manage_units", "save_unit", "donors", "manage_areas", "save_area", "save_donor", "fund_requests", "request_fund", "set_fund_request", "set_member_photo", "save_meeting_summary", "ai_summary", "save_event_team", "save_task", "delete_task", "remind_task", "my_tasks"]
 for m in MOBILE:
     API[m] = f"sio_connect.api.mobile.{m}"
 
@@ -158,6 +158,8 @@ if __name__ == "__main__":
     for f, (dt, label) in PQ.items():
         bundle.append({"name": f"SIO {label} unit scope", "script_type": "Permission Query", "reference_doctype": dt,
                        "module": "SIO Connect", "script": read("permission", f + ".py")})
+    bundle.append({"name": "SIO task reminders", "script_type": "Scheduler Event", "event_frequency": "Cron",
+                   "cron_format": "0 8 * * *", "module": "SIO Connect", "script": read("events", "task_reminders.py")})
     with open(os.path.join(HERE, "bundle.json"), "w") as fh:
         json.dump(bundle, fh, indent=0)
     print(len(recs), "server scripts")

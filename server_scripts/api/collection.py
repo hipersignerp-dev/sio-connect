@@ -10,7 +10,7 @@ for c in collections:
     if c["name"] == args.get("collection"):
         selected = c
 if not selected and collections:
-    selected = collections[0]
+    selected = collections[0]  # running ones come first
 out = {"collections": collections, "collection": selected, "my_offers": [], "entries": None, "totals": None,
        "units": []}
 if selected:

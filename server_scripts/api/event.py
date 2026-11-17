@@ -1,4 +1,5 @@
-# One event, with its expenses: office bearers see budget, spent, pending and every expense;
+# @include tasks
+# One event, with its team, tasks and expenses: office bearers see budget, spent, pending and every expense;
 # members see their own claims for the event.
 found = [e for e in run_script("SIO lib events", limit=500).sio_events if e.name == args.get("name")]
 if not found:
@@ -48,4 +49,27 @@ if ctx["is_unit_admin"] or ctx["is_finance"]:
                               key=lambda r: -r["amount"]),
         "scope": "all" if see_all else "my unit",
     }
+# team and tasks
+evr = task_event(out.name)
+boss = can_run_tasks(evr)
+out["can_manage_tasks"] = boss
+out["team"] = frappe.get_all("SIO Event Team Member", filters={"parent": out.name, "parenttype": "SIO Event"},
+                             fields=["member", "member_name", "responsibility"], order_by="idx asc")
+tfilters = {"event": out.name}
+on_team = ctx["member"] and ctx["member"].name in [t.member for t in out["team"]]
+if not (boss or on_team):
+    tfilters["assigned_to"] = ctx["member"].name if ctx["member"] else "__none__"
+out["tasks"] = frappe.get_all("SIO Event Task", filters=tfilters,
+                              fields=["name", "title", "responsibility", "assigned_to", "assigned_name", "due_on",
+                                      "status", "notes", "last_reminded"],
+                              order_by="status = 'Done', due_on is null, due_on asc, creation asc")
+if boss:
+    # people who can be put on the team: the event's unit, or its area, or everyone
+    pf = {"status": "Active"}
+    if evr.unit:
+        pf["unit"] = evr.unit
+    elif evr.area:
+        pf["area"] = evr.area
+    out["people"] = frappe.get_all("SIO Member", filters=pf, fields=["name", "full_name", "unit", "member_role"],
+                                   order_by="full_name asc", limit=500)
 frappe.response["message"] = out
