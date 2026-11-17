@@ -1,3 +1,5 @@
+import 'journey_screens.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
@@ -23,7 +25,9 @@ class NoticesScreen extends StatelessWidget {
           if (list.isEmpty) const EmptyNote('No updates yet.'),
           for (final n in list) ...[
             SioPanel(
-              onTap: (n['task'] ?? '').toString().isNotEmpty
+              onTap: journeyNotice(n) != null
+                  ? () => push(context, journeyNotice(n)!)
+                  : (n['task'] ?? '').toString().isNotEmpty
                   ? () => push(context, const MyTasksScreen())
                   : (n['event'] ?? '').toString().isEmpty
                   ? null

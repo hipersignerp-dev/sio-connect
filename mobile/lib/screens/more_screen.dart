@@ -1,3 +1,5 @@
+import 'journey_screens.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../api.dart';
@@ -75,6 +77,27 @@ class MoreScreen extends StatelessWidget {
                 subtitle: 'College, course, unit',
                 onTap: () => push(context, const ProfileScreen()),
               ),
+              if (me['member'] != null)
+                SioTile(
+                  icon: Icons.local_fire_department_outlined,
+                  title: 'My journey',
+                  subtitle: 'Daily ayah streak, quiz, badges, friends',
+                  onTap: () => push(context, const JourneyScreen()),
+                ),
+              if (me['member'] != null)
+                SioTile(
+                  icon: Icons.account_circle_outlined,
+                  title: 'My page',
+                  subtitle: 'Username, badges and posts friends see',
+                  onTap: () => push(context, const PersonPage()),
+                ),
+              if (s.can('manage_events'))
+                SioTile(
+                  icon: Icons.quiz_outlined,
+                  title: 'Weekly quizzes',
+                  subtitle: 'Make the quiz for the week, see scores',
+                  onTap: () => push(context, const QuizzesScreen()),
+                ),
               if (me['member'] != null)
                 SioTile(
                   icon: Icons.task_alt,

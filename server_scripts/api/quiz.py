@@ -20,9 +20,12 @@ if name:
            "score": att.score if att else None, "total": att.total if att else None,
            "my_answers": json.loads(att.answers or "[]") if att else [],
            "questions": []}
+    leader = ctx["caps"]["manage_events"] and frappe.utils.cint(args.get("edit"))
+    if leader:
+        out["starts_on"] = q.starts_on
     for x in q.questions:
         item = {"question": x.question, "options": [o for o in [x.option_a, x.option_b, x.option_c, x.option_d] if o]}
-        if done:
+        if done or leader:
             item["correct"] = "ABCD".index(x.correct)
             item["explanation"] = x.explanation
         out["questions"].append(item)

@@ -221,6 +221,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _campus = TextEditingController();
   final _course = TextEditingController();
   final _town = TextEditingController();
+  final _invite = TextEditingController();
   GeoPoint? _loc;
   String? _unit;
   String? _area;
@@ -282,6 +283,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'home_town': _town.text.trim(),
         'latitude': _loc?.lat,
         'longitude': _loc?.lng,
+        'invite': _invite.text.trim(),
       });
       await AppState.i.passwordLogin(_email.text, _pass.text);
       if (mounted) await finishSignIn(context);
@@ -423,6 +425,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onChanged: (g) => setState(() => _loc = g),
             ),
           ),
+          _field(_invite, 'Invite code (optional)', icon: Icons.card_giftcard_outlined),
           CheckboxListTile(
             value: _agree,
             contentPadding: EdgeInsets.zero,

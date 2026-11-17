@@ -1,3 +1,5 @@
+import 'journey_screens.dart';
+
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -90,6 +92,7 @@ class HomeScreen extends StatelessWidget {
             const _LocationPrompt(),
             const SizedBox(height: 12),
           ],
+          if (s.me['member'] != null && !s.pending) const JourneyHomeCard(),
           if (h['next_meeting'] != null) ...[
             _MeetingCard(meeting: Map<String, dynamic>.from(h['next_meeting'])),
             const SizedBox(height: 12),
@@ -400,7 +403,9 @@ class _NoticesPanel extends StatelessWidget {
         if (notices.isEmpty) const Text('No updates yet.', style: TextStyle(color: SioColors.textSecondary)),
         for (final n in notices)
           InkWell(
-            onTap: (n['task'] ?? '').toString().isNotEmpty
+            onTap: journeyNotice(n) != null
+                ? () => push(context, journeyNotice(n)!)
+                : (n['task'] ?? '').toString().isNotEmpty
                 ? () => push(context, const MyTasksScreen())
                 : (n['event'] ?? '').toString().isEmpty
                 ? () => push(context, const NoticesScreen())
