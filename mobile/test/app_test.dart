@@ -19,14 +19,14 @@ void main() {
   testWidgets('welcome screen offers sign in and associate registration', (tester) async {
     await tester.pumpWidget(wrap(const WelcomeScreen()));
     expect(find.text('Sign in'), findsOneWidget);
-    expect(find.text('New here? Register as an associate'), findsOneWidget);
+    expect(find.text('New here? Join SIO Connect'), findsOneWidget);
   });
 
   testWidgets('register screen has the sign-up fields', (tester) async {
     await tester.pumpWidget(wrap(const RegisterScreen()));
     expect(find.text('Full name'), findsOneWidget);
     expect(find.text('Mobile number'), findsOneWidget);
-    expect(find.text('Register as associate'), findsOneWidget);
+    expect(find.text('Join SIO Connect'), findsOneWidget);
   });
 
   testWidgets('associate gets Events tab and Give, no Meetings', (tester) async {
