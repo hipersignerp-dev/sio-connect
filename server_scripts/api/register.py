@@ -61,6 +61,8 @@ else:
         "latitude": frappe.utils.flt(f.get("latitude")) or None,
         "longitude": frappe.utils.flt(f.get("longitude")) or None,
         "location_note": f.get("location_note") or None,
+        "invited_by": frappe.db.get_value("SIO Member", {"username": (f.get("invite") or "").strip().lower().lstrip("@")},
+                                          "name") if (f.get("invite") or "").strip() else None,
     })
     member.insert(ignore_permissions=True)
 frappe.response["message"] = {"user": user.name, "member": member.name, "status": member.status}
