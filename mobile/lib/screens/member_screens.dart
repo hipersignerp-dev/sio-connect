@@ -19,7 +19,60 @@ class MembersScreen extends StatefulWidget {
 class _MembersScreenState extends State<MembersScreen> {
   final _q = TextEditingController();
   String _status = 'All';
+  String? _unit;
+  String? _area;
+  String? _role;
   int _version = 0;
+
+  void _set(VoidCallback f) => setState(() {
+    f();
+    _version++;
+  });
+
+  /// A filter chip that opens a list of choices with how many people each has.
+  Widget _filter(String label, String? value, List<Map<String, dynamic>> options, void Function(String?) pick) {
+    final on = value != null;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: PopupMenuButton<String>(
+        tooltip: label,
+        onSelected: (v) => _set(() => pick(v == '__all__' ? null : v)),
+        itemBuilder: (_) => [
+          PopupMenuItem(value: '__all__', child: Text('All ${label.toLowerCase()}s')),
+          for (final o in options)
+            PopupMenuItem(
+              value: '${o['value']}',
+              child: Row(
+                children: [
+                  Expanded(child: Text('${o['value']}')),
+                  const SizedBox(width: 16),
+                  Text('${o['count']}', style: const TextStyle(color: SioColors.textSecondary)),
+                ],
+              ),
+            ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: on ? SioColors.blue : SioColors.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: on ? SioColors.blue : SioColors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value ?? label,
+                style: TextStyle(color: on ? Colors.white : SioColors.ink, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.arrow_drop_down, size: 20, color: on ? Colors.white : SioColors.ink),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,40 +128,92 @@ class _MembersScreenState extends State<MembersScreen> {
             ),
           ),
           Expanded(
-            child: Loader<List<dynamic>>(
+            child: Loader<Map<String, dynamic>>(
               key: ValueKey('$_version'),
-              load: () async =>
-                  (await Api.call('${Api.m}members', {'q': _q.text.trim(), 'status': _status == 'All' ? null : _status})
-                      as List?) ??
-                  [],
-              builder: (context, list) => [
-                if (list.isEmpty) const EmptyNote('No one found.'),
-                if (list.isNotEmpty)
-                  PanelList(
-                    children: [
-                      for (final m in list)
-                        ListTile(
-                          onTap: () => _open(context, Map<String, dynamic>.from(m)),
-                          leading: Avatar(m['full_name'].toString(), photo: m['photo']),
-                          title: Text(m['full_name'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text(
-                            [m['campus'], m['unit']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+              load: () async => Map<String, dynamic>.from(
+                await Api.call('${Api.m}members', {
+                  'q': _q.text.trim(),
+                  'status': _status == 'All' ? null : _status,
+                  'unit': _unit,
+                  'area': _area,
+                  'role': _role,
+                  'with_facets': 1,
+                }) as Map,
+              ),
+              builder: (context, data) {
+                final list = (data['people'] as List?) ?? [];
+                List<Map<String, dynamic>> opts(String k) => [
+                  for (final x in (data[k] as List? ?? [])) Map<String, dynamic>.from(x as Map),
+                ];
+                final areas = opts('areas');
+                final filtered = _unit != null || _area != null || _role != null || _q.text.trim().isNotEmpty;
+                return [
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        if (areas.length > 1 || _area != null) _filter('Area', _area, areas, (v) => _area = v),
+                        _filter('Unit', _unit, opts('units'), (v) => _unit = v),
+                        _filter('Role', _role, opts('roles'), (v) => _role = v),
+                        if (filtered)
+                          TextButton.icon(
+                            onPressed: () => _set(() {
+                              _unit = null;
+                              _area = null;
+                              _role = null;
+                              _q.clear();
+                            }),
+                            icon: const Icon(Icons.close, size: 18),
+                            label: const Text('Clear'),
                           ),
-                          trailing: m['status'] == 'Active'
-                              ? StatusChip(
-                                  m['member_role'].toString(),
-                                  tone: m['member_role'] == 'Associate' ? Tone.grey : Tone.blue,
-                                )
-                              : StatusChip(
-                                  m['status'] == 'Pending Approval' ? 'Approve' : m['status'].toString(),
-                                  tone: StatusChip.toneFor(m['status'].toString()),
-                                ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${data['total']} ${data['total'] == 1 ? 'person' : 'people'}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SioColors.ink),
+                        ),
+                        if (filtered) ...[
+                          const SizedBox(width: 6),
+                          Text('of ${data['all']}', style: const TextStyle(color: SioColors.textSecondary)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (list.isEmpty) const EmptyNote('No one found.'),
+                  if (list.isNotEmpty)
+                    PanelList(
+                      children: [
+                        for (final m in list)
+                          ListTile(
+                            onTap: () => _open(context, Map<String, dynamic>.from(m)),
+                            leading: Avatar(m['full_name'].toString(), photo: m['photo']),
+                            title: Text(m['full_name'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text(
+                              [m['unit'], m['campus']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: m['status'] == 'Active'
+                                ? StatusChip(
+                                    m['member_role'].toString(),
+                                    tone: m['member_role'] == 'Associate' ? Tone.grey : Tone.blue,
+                                  )
+                                : StatusChip(
+                                    m['status'] == 'Pending Approval' ? 'Approve' : m['status'].toString(),
+                                    tone: StatusChip.toneFor(m['status'].toString()),
+                                  ),
+                          ),
+                      ],
+                    ),
+                ];
+              },
             ),
           ),
         ],
