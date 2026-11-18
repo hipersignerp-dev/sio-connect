@@ -1,6 +1,10 @@
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'album_screens.dart';
+import 'card_screens.dart';
+import '../links.dart';
 import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
@@ -84,6 +88,66 @@ class EventDetailScreen extends StatelessWidget {
             if (s.can('register_events') && !const ['Completed', 'Cancelled'].contains(e['status'])) ...[
               const SizedBox(height: 12),
               _RegisterButton(event: e),
+            ],
+            if (e['status'] != 'Cancelled') ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  if (e['can_manage_tasks'] == true)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => push(context, CheckinHostScreen(event: '${e['name']}')),
+                        icon: const Icon(Icons.qr_code_2),
+                        label: const Text('Check-in QR'),
+                      ),
+                    )
+                  else
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => scanToCheckIn(context),
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Check in'),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final albums = (Map<String, dynamic>.from(await Api.call('${Api.m}albums') as Map)['albums'] as List)
+                            .where((a) => a['event'] == e['name'])
+                            .toList();
+                        if (!context.mounted) return;
+                        if (albums.isNotEmpty) {
+                          push(context, AlbumScreen(name: '${albums.first['name']}'));
+                        } else if (e['can_manage_tasks'] == true) {
+                          final n = await newAlbum(context, event: '${e['name']}');
+                          if (n != null && context.mounted) push(context, AlbumScreen(name: n));
+                        } else {
+                          toast(context, 'No photos from this programme yet.');
+                        }
+                      },
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Photos'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filled(
+                    style: IconButton.styleFrom(backgroundColor: const Color(0xFF25D366)),
+                    tooltip: 'Share on WhatsApp',
+                    onPressed: () => SharePlus.instance.share(
+                      ShareParams(
+                        text: [
+                          '📢 ${e['title']}',
+                          if (e['starts_on'] != null) '🗓 ${fmtDate(e['starts_on'], 'EEE d MMM, h:mm a')}',
+                          if ('${e['venue'] ?? ''}'.isNotEmpty) '📍 ${e['venue']}',
+                          'Details and registration: ${Links.share({'e': '${e['name']}'})}',
+                        ].join('\n'),
+                      ),
+                    ),
+                    icon: const Icon(Icons.share, color: Colors.white),
+                  ),
+                ],
+              ),
             ],
             ...teamAndTaskSections(context, e),
             if (sum != null) ...[

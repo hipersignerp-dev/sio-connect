@@ -5,6 +5,7 @@ import 'app_state.dart';
 import 'screens/auth_screens.dart';
 import 'screens/public_screens.dart';
 import 'screens/social_screens.dart';
+import 'links.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -12,6 +13,7 @@ Future<void> main() async {
   await Api.init();
   runApp(const SioApp());
   AppState.i.start();
+  Links.start();
 }
 
 class SioApp extends StatelessWidget {
@@ -21,6 +23,7 @@ class SioApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SIO Connect',
+      navigatorKey: navKey,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       home: ListenableBuilder(

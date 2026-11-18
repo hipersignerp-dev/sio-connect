@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../links.dart';
 import '../api.dart';
 import '../app_state.dart';
 import '../biometric.dart';
@@ -304,7 +305,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _campus = TextEditingController();
   final _course = TextEditingController();
   final _town = TextEditingController();
-  final _invite = TextEditingController();
+  final _invite = TextEditingController(text: Links.inviteCode ?? '');
   GeoPoint? _loc;
   String? _unit;
   String? _area;

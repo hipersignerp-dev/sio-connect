@@ -31,7 +31,7 @@ frappe.response["message"] = {
     "me": card(me_doc), "reading": reading, "reading_streak": b["reading"], "attendance": b["attendance"],
     "quiz_streak": b["quiz"], "quiz": quiz, "badges": b["badges"], "friends": b["friends"], "invited": b["invited"],
     "friend_requests": pending,
-    "invite_text": "Join SIO Connect, the app of SIO Ottapalam Area: programmes, meetings, daily ayah streak and more. "
-                   "Download: https://github.com/hipersignerp-dev/sio-connect/releases/latest"
-                   + (" and use my invite code " + me_doc.username + " when you register." if me_doc.username else ""),
+    "invite_text": "Join me on SIO Connect, the app of SIO Ottapalam Area: programmes, photos, daily ayah streak, "
+                   "quiz and more. " + frappe.utils.get_url("/go" + ("?i=" + me_doc.username if me_doc.username else ""))
+                   + (" (my invite code: " + me_doc.username + ")" if me_doc.username else ""),
 }

@@ -4,12 +4,17 @@ import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
+import '../ayah_audio.dart';
 import '../app_state.dart';
 import '../fx.dart';
+import '../links.dart';
 import '../notify.dart';
 import '../theme.dart';
 import '../update_service.dart';
 import '../widgets.dart';
+import 'album_screens.dart';
+import 'board_screens.dart';
+import 'card_screens.dart';
 import 'event_detail_screen.dart';
 import 'find_members_screen.dart';
 import 'home_screen.dart';
@@ -50,6 +55,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) UpdateService.check(context);
+      Links.openPending();
     });
     Notify.start('${AppState.i.me['user'] ?? ''}');
   }
@@ -207,6 +213,20 @@ Future<void> showCreateSheet(BuildContext context) => showModalBottomSheet<void>
               () => newNotePost(context),
             ),
             row(
+              Icons.qr_code_scanner,
+              const [Color(0xFF1E8E3E), Color(0xFF1A62A8)],
+              'Check in at a programme',
+              'Scan the QR the organisers show',
+              () => scanToCheckIn(context),
+            ),
+            row(
+              Icons.push_pin,
+              const [Color(0xFF1E8E3E), Color(0xFF0E7490)],
+              'Post on the student board',
+              'Notes, study circle or a blood request',
+              () => push(context, const PostBoardScreen(lead: false)),
+            ),
+            row(
               Icons.workspace_premium,
               const [Color(0xFFE0A100), Color(0xFFF26B1D)],
               'Share an achievement',
@@ -245,10 +265,21 @@ class SocialHome extends StatelessWidget {
       Api.call('${Api.m}feed').catchError((_) => []),
       Api.call('${Api.m}suggest_people').catchError((_) => []),
       Api.call('${Api.m}events').catchError((_) => []),
+      Api.call('${Api.m}albums').catchError((_) => null),
+      Api.call('${Api.m}opportunities').catchError((_) => null),
     ]);
     final h = _m(r[0]);
     AppState.i.me = _m(h['me']);
-    return {'home': h, 'journey': r[1], 'friends': r[2], 'feed': r[3], 'suggest': r[4], 'events': r[5]};
+    return {
+      'home': h,
+      'journey': r[1],
+      'friends': r[2],
+      'feed': r[3],
+      'suggest': r[4],
+      'events': r[5],
+      'albums': r[6],
+      'board': r[7],
+    };
   }
 
   @override
@@ -384,6 +415,25 @@ class SocialHome extends StatelessWidget {
                 onTap: () => push(context, QuizScreen(name: '${_m(j['quiz'])['name']}')),
               ),
             ),
+          if (_l(_m(d['albums'])['albums']).isNotEmpty) ...[
+            _Header('Albums', action: 'See all', onAction: () => push(context, const AlbumsScreen())),
+            AlbumStrip(albums: _l(_m(d['albums'])['albums']).take(8).toList()),
+          ],
+          if (_l(_m(d['board'])['items']).isNotEmpty) ...[
+            _Header('Student board', action: 'See all', onAction: () => push(context, const BoardScreen())),
+            for (final x in _l(_m(d['board'])['items']).take(3))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _Pill(
+                  icon: kindLook('${x['kind']}').$1,
+                  color: kindLook('${x['kind']}').$2,
+                  text: x['kind'] == 'Blood Request'
+                      ? '🩸 ${x['blood_group'] ?? ''} needed: ${x['title']}'
+                      : '${kindLook('${x['kind']}').$3}: ${x['title']}',
+                  onTap: () => push(context, const BoardScreen()),
+                ),
+              ),
+          ],
           if (suggest.isNotEmpty) ...[
             _Header('Suggested for you', action: 'Find members', onAction: () => push(context, const FindMembersScreen())),
             SizedBox(
@@ -722,6 +772,8 @@ class _AyahHero extends StatefulWidget {
 
 class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixin {
   bool _busy = false;
+  bool _full = false;
+  static bool _long(Map r) => '${r['text_ar'] ?? ''}'.length > 220;
   final _btn = GlobalKey();
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
     ..repeat(reverse: true);
@@ -758,6 +810,10 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 style: const TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w800),
               ),
               const Spacer(),
+              if ((r['audio'] as List? ?? []).isNotEmpty) ...[
+                AyahAudioButton(urls: [for (final u in r['audio'] as List) '$u']),
+                const SizedBox(width: 8),
+              ],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
@@ -769,26 +825,43 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
             ],
           ),
           const SizedBox(height: 12),
-          if ('${r['text_ar'] ?? ''}'.isNotEmpty) ...[
+          if ('${r['text_ar'] ?? ''}'.isNotEmpty && !_long(r))
             SizedBox(
               width: double.infinity,
               child: Text(
                 '${r['text_ar']}',
                 textAlign: TextAlign.right,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(color: Colors.white, fontSize: 21, height: 1.7),
+                style: const TextStyle(color: Colors.white, fontSize: 21, height: 1.8),
               ),
             ),
-            const SizedBox(height: 8),
-          ],
+          if ('${r['text_ar'] ?? ''}'.isNotEmpty && !_long(r)) const SizedBox(height: 8),
           Text(
             '“${r['text_en']}”',
             style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.4, fontWeight: FontWeight.w700),
           ),
-          if ('${r['text_ml'] ?? ''}'.isNotEmpty) ...[
+          if ('${r['text_ml'] ?? ''}'.isNotEmpty && (!_long(r) || _full)) ...[
             const SizedBox(height: 8),
+            if (_long(r) && '${r['text_ar'] ?? ''}'.isNotEmpty) ...[
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  '${r['text_ar']}',
+                  textAlign: TextAlign.right,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(color: Colors.white, fontSize: 19, height: 1.8),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             Text('${r['text_ml']}', style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.5)),
           ],
+          if (_long(r) && '${r['text_ml'] ?? ''}'.isNotEmpty)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.white, padding: EdgeInsets.zero),
+              onPressed: () => setState(() => _full = !_full),
+              child: Text(_full ? 'Hide full ayah' : 'Full ayah in Arabic & Malayalam ▾'),
+            ),
           const SizedBox(height: 6),
           Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Colors.white70)),
           if ('${r['lesson_en'] ?? ''}'.isNotEmpty) ...[
@@ -1073,6 +1146,9 @@ class ExploreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppState.i;
     final tiles = <(IconData, List<Color>, String, Widget)>[
+      (Icons.photo_library, const [Color(0xFFF26B1D), Color(0xFFC8202A)], 'Albums', const AlbumsScreen()),
+      (Icons.push_pin, const [Color(0xFF1E8E3E), Color(0xFF0E7490)], 'Student board', const BoardScreen()),
+      (Icons.badge, const [Color(0xFF0E3F70), Color(0xFF1A62A8)], 'My SIO card', const MemberCardScreen()),
       (Icons.travel_explore, const [Color(0xFF1A62A8), Color(0xFFC8202A)], 'Find members', const FindMembersScreen()),
       (Icons.people_alt, const [Color(0xFF7C3AED), Color(0xFF1A62A8)], 'Friends', const FriendsScreen()),
       (Icons.quiz, const [Color(0xFF7C3AED), Color(0xFFC8202A)], 'Weekly quiz', const JourneyScreen()),

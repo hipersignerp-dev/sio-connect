@@ -7,7 +7,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
+import '../ayah_audio.dart';
 import '../fx.dart';
+import '../links.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -261,6 +263,10 @@ class _ReadingCard extends StatelessWidget {
           children: [
             StatusChip(reading['kind'] == 'Hadith' ? 'Hadith of the day' : 'Ayah of the day', tone: Tone.blue),
             const Spacer(),
+            if ((reading['audio'] as List? ?? []).isNotEmpty) ...[
+              AyahAudioButton(urls: [for (final u in reading['audio'] as List) '$u'], light: false),
+              const SizedBox(width: 8),
+            ],
             if (done) const Icon(Icons.check_circle, color: SioColors.green),
           ],
         ),
@@ -755,6 +761,23 @@ class _QuizScreenState extends State<QuizScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
+                if ('${q['prize'] ?? ''}'.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: SioPanel(
+                      color: const Color(0xFFFFF4DC),
+                      child: Row(
+                        children: [
+                          const Text('🎁', style: TextStyle(fontSize: 26)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('Prize: ${q['prize']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (q['done'] == true) _Leaderboard(q: q),
                 for (final (i, x) in _list(q['questions']).indexed) _question(i, x, q['done'] == true, q),
                 if (q['done'] != true) ...[
                   const SizedBox(height: 12),
@@ -1071,8 +1094,9 @@ Future<bool> _confirm(BuildContext context, String q) async =>
 // ---------------------------------------------------------------- a person's page
 
 class PersonPage extends StatelessWidget {
-  const PersonPage({super.key, this.member, this.asTab = false});
-  final String? member; // null = my page
+  const PersonPage({super.key, this.member, this.asTab = false, this.username});
+  final String? member; // null (and no username) = my page
+  final String? username; // from a shared link
   final bool asTab; // the Profile tab of the associate app (no back button, a menu instead)
 
   @override
@@ -1082,14 +1106,14 @@ class PersonPage extends StatelessWidget {
       title: ListenableBuilder(
         listenable: AppState.i,
         builder: (context, _) => Text(
-          member == null && '${AppState.i.me['username'] ?? ''}'.isNotEmpty
+          member == null && username == null && '${AppState.i.me['username'] ?? ''}'.isNotEmpty
               ? '@${AppState.i.me['username']}'
-              : (member == null ? 'My page' : 'Profile'),
+              : (member == null && username == null ? 'My page' : 'Profile'),
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
       actions: [
-        if (member == null)
+        if (member == null && username == null)
           IconButton(tooltip: 'New post', icon: const Icon(Icons.add_box_outlined), onPressed: () => newNotePost(context)),
         if (asTab)
           IconButton(
@@ -1101,7 +1125,7 @@ class PersonPage extends StatelessWidget {
     ),
     body: Loader<Map<String, dynamic>>(
       padding: const EdgeInsets.fromLTRB(0, 4, 0, 110),
-      load: () async => _map(await Api.call('${Api.m}profile', {'member': ?member})),
+      load: () async => _map(await Api.call('${Api.m}profile', {'member': ?member, 'username': ?username})),
       builder: (context, p) => [_ProfileBody(p: p)],
     ),
   );
@@ -1951,6 +1975,7 @@ class QuizFormScreen extends StatefulWidget {
 
 class _QuizFormScreenState extends State<QuizFormScreen> {
   final _title = TextEditingController();
+  final _prize = TextEditingController();
   late DateTime _start = DateTime.now();
   late DateTime _end = DateTime.now().add(const Duration(days: 6));
   final List<_Q> _qs = [_Q()];
@@ -1969,6 +1994,7 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
     try {
       final q = _map(await Api.call('${Api.m}quiz', {'name': widget.name, 'edit': 1}));
       _title.text = '${q['title']}';
+      _prize.text = '${q['prize'] ?? ''}';
       _start = parseDate(q['starts_on']) ?? _start;
       _end = parseDate(q['ends_on']) ?? _end;
       _qs.clear();
@@ -2041,6 +2067,14 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
               TextField(
                 controller: _title,
                 decoration: const InputDecoration(labelText: 'Title', hintText: 'e.g. Week 2: Seerah'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _prize,
+                decoration: const InputDecoration(
+                  labelText: 'Prize (optional)',
+                  hintText: 'e.g. Book prize for the top 3, given at the unit meeting',
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -2239,3 +2273,85 @@ String? friendlyRole(dynamic role) => switch ('${role ?? ''}') {
   'Area Admin' => 'Area Team',
   final r => r,
 };
+
+/// After the quiz: me and my friends ranked, and the top of the area.
+class _Leaderboard extends StatelessWidget {
+  const _Leaderboard({required this.q});
+  final Map<String, dynamic> q;
+
+  @override
+  Widget build(BuildContext context) {
+    final friends = _list(q['friends_board']);
+    final top = _list(q['top']);
+    Widget row(int i, Map<String, dynamic> x, {bool me = false}) => Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: me ? const Color(0xFFE8F0FA) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: SioColors.border),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 28,
+            child: Text(
+              i < 3 ? ['🥇', '🥈', '🥉'][i] : '${i + 1}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+          ),
+          Avatar('${x['full_name'] ?? ''}', radius: 16, photo: x['photo'], light: true),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              me ? 'You' : '${x['full_name'] ?? ''}',
+              style: TextStyle(fontWeight: me ? FontWeight.w800 : FontWeight.w600),
+            ),
+          ),
+          Text(
+            '${x['score']}/${x['total']}',
+            style: const TextStyle(fontWeight: FontWeight.w900, color: SioColors.blue),
+          ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: SioPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('🏆 You and your friends', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 8),
+            if (friends.length <= 1)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'None of your friends has taken it yet. Challenge them!',
+                  style: TextStyle(color: SioColors.textSecondary),
+                ),
+              ),
+            for (final (i, x) in friends.indexed) row(i, x, me: x['me'] == true),
+            if (top.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text('Top in the area · ${q['takers'] ?? top.length} took it', style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              for (final (i, x) in top.indexed) row(i, x, me: x['member'] == AppState.i.me['member']),
+            ],
+            const SizedBox(height: 4),
+            TextButton.icon(
+              onPressed: () => SharePlus.instance.share(
+                ShareParams(
+                  text:
+                      'I scored ${q['score']}/${q['total']} in this week’s SIO quiz “${q['title']}”. Can you beat me? 🏆\n${Links.share({'q': '${q['name']}'})}',
+                ),
+              ),
+              icon: const Icon(Icons.share),
+              label: const Text('Challenge friends on WhatsApp'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

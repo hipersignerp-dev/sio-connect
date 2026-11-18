@@ -19,6 +19,7 @@ import 'units_screen.dart';
 import 'events_screen.dart';
 import 'expense_screens.dart';
 import 'social_screens.dart';
+import 'card_screens.dart';
 import 'collection_screens.dart';
 import 'home_shell.dart';
 import 'meeting_screens.dart';
@@ -82,6 +83,13 @@ class MoreScreen extends StatelessWidget {
                   title: 'My profile',
                   subtitle: 'College, course, unit',
                   onTap: () => push(context, const ProfileScreen()),
+                ),
+              if (me['member'] != null && !dashboardOpen)
+                SioTile(
+                  icon: Icons.badge_outlined,
+                  title: 'My SIO card',
+                  subtitle: 'Membership card with QR for check-in',
+                  onTap: () => push(context, const MemberCardScreen()),
                 ),
               if (me['member'] != null && !dashboardOpen)
                 SioTile(
