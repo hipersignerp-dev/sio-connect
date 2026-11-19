@@ -24,7 +24,7 @@ def streak_from_days(days, freeze=False):
     while True:
         if str(jday(d)) in have:
             cur = cur + 1
-        elif freeze and cur > 0 and week_key(d) not in used and str(jday(frappe.utils.add_days(jday(d), -1))) in have:
+        elif freeze and week_key(d) not in used and str(jday(frappe.utils.add_days(jday(d), -1))) in have:
             used.add(week_key(d))
             frozen.append(str(jday(d)))
         else:
