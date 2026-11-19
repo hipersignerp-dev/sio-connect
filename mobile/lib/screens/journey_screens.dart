@@ -2466,7 +2466,9 @@ class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
-                      _int(me['rank']) == 1
+                      _int(me['total']) == 0
+                          ? 'Read today’s ayah to get on the board 🌱'
+                          : _int(me['rank']) == 1
                           ? 'You’re on top! Keep reading every day to stay there 👑'
                           : ahead != null
                           ? 'Read ${(_int(ahead['streak']) - _int(me['streak']) + 1).clamp(1, 999)} more day(s) in a row to pass '
