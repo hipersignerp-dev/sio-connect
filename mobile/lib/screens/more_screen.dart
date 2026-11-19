@@ -215,7 +215,7 @@ class MoreScreen extends StatelessWidget {
                   subtitle: 'Feed, friends and my journey',
                   onTap: () => Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst),
                 ),
-              if (!dashboardOpen)
+              if (!dashboardOpen && !UpdateService.playStore)
                 SioTile(
                   icon: Icons.system_update_outlined,
                   title: 'Check for updates',
@@ -230,6 +230,13 @@ class MoreScreen extends StatelessWidget {
                   onTap: () {},
                 ),
               const SizedBox(height: 8),
+              if (!dashboardOpen && s.me['member'] != null)
+                SioTile(
+                  icon: Icons.person_remove_outlined,
+                  title: 'Delete my account',
+                  subtitle: 'Remove your profile and data from SIO Connect',
+                  onTap: () => deleteMyAccount(context),
+                ),
               if (!dashboardOpen)
                 SioTile(
                   icon: Icons.logout,
@@ -457,5 +464,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+}
+
+Future<void> deleteMyAccount(BuildContext context) async {
+  final c = TextEditingController();
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Delete my account?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Your profile, photo, contact details, location, username, friends, posts, photo tags, streaks and quiz '
+            'answers will be removed, and you will be signed out. This cannot be undone.\n\n'
+            'Records SIO must keep (money paid or collected, attendance) stay without your contact details.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: c,
+            decoration: const InputDecoration(labelText: 'Type DELETE to confirm'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: SioColors.danger),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return;
+  final done = await run(context, () => Api.call('${Api.m}delete_my_account', {'confirm': c.text.trim()}));
+  if (done && context.mounted) {
+    Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
+    await AppState.i.signOut();
   }
 }

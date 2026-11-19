@@ -693,3 +693,111 @@ class AlbumStrip extends StatelessWidget {
     ),
   );
 }
+
+/// A programme photo in the home feed: which programme, the photo, who is in it, and quick actions.
+class PhotoFeedCard extends StatelessWidget {
+  const PhotoFeedCard({super.key, required this.photos, required this.index});
+  final List<Map<String, dynamic>> photos;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = photos[index];
+    final tags = _l(p['tags']);
+    final me = AppState.i.me['member'];
+    final names = [
+      if (p['me'] == true) 'You',
+      for (final t in tags)
+        if (t['member'] != me) '${t['full_name'] ?? ''}'.split(' ').first,
+    ];
+    final who = names.isEmpty
+        ? ''
+        : names.length <= 3
+        ? names.join(', ')
+        : '${names.take(2).join(', ')} and ${names.length - 2} more';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            dense: true,
+            leading: Container(
+              width: 38,
+              height: 38,
+              decoration: const BoxDecoration(gradient: sioGradient, shape: BoxShape.circle),
+              child: const Icon(Icons.photo_camera, color: Colors.white, size: 20),
+            ),
+            title: Text('${p['album_title'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+            subtitle: Text(p['album_date'] != null ? fmtDate(p['album_date'], 'd MMM yyyy') : ''),
+            trailing: TextButton(
+              onPressed: () => push(context, AlbumScreen(name: '${p['album']}')),
+              child: const Text('Album'),
+            ),
+            onTap: () => push(context, AlbumScreen(name: '${p['album']}')),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => PhotoViewer(photos: photos, start: index),
+              ),
+            ),
+            child: Hero(
+              tag: 'ph-${p['name']}',
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Image.network(
+                  _url(p['file_url']),
+                  fit: BoxFit.cover,
+                  cacheWidth: 1080,
+                  errorBuilder: (_, _, _) => Container(color: SioColors.card),
+                ),
+              ),
+            ),
+          ),
+          if (who.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 22.0 + 16 * (tags.take(3).length - 1).clamp(0, 2),
+                    height: 26,
+                    child: Stack(
+                      children: [
+                        for (final (i, t) in tags.take(3).indexed)
+                          Positioned(
+                            left: i * 16.0,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: Avatar('${t['full_name'] ?? ''}', radius: 11, photo: t['photo'], light: true),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: who,
+                            style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                          ),
+                          TextSpan(text: names.length == 1 && names.first != 'You' ? ' is in this photo' : ' are in this photo'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

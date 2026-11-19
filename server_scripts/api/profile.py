@@ -25,6 +25,15 @@ out["quiz"] = b["quiz"]
 out["friends"] = b["friends"]
 out["posts"] = []
 out["posts_count"] = frappe.db.count("SIO Post", {"member": p.name})
+# programme photos this person is tagged in (albums are open to the area, so anyone who can open the page sees them)
+ph = []
+for t in frappe.get_all("SIO Photo Tag", filters={"member": p.name}, fields=["photo", "album"], order_by="creation desc",
+                        limit=60):
+    url = frappe.db.get_value("File", t.photo, "file_url")
+    if url:
+        ph.append({"name": t.photo, "file_url": url, "album": t.album,
+                   "album_title": frappe.db.get_value("SIO Album", t.album, "title")})
+out["photos"] = ph
 if st["state"] in ("self", "friends"):
     out["posts"] = frappe.get_all("SIO Post", filters={"member": p.name},
                                   fields=["name", "kind", "badge", "title", "body", "cheers", "creation"],

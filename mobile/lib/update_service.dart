@@ -16,6 +16,9 @@ import 'package:material_ui/material_ui.dart';
 class UpdateService {
   static const String repo = String.fromEnvironment('UPDATE_REPO', defaultValue: 'hipersignerp-dev/sio-connect');
   static const int buildNumber = int.fromEnvironment('BUILD_NUMBER', defaultValue: 0);
+
+  /// The Google Play build updates through the Play Store, never by itself.
+  static const bool playStore = bool.fromEnvironment('PLAY_STORE');
   static const String apkName = 'SIO-Connect.apk';
   static const _channel = MethodChannel('com.hipersign.sio_connect/updater');
   static const _checkEvery = Duration(hours: 3);
@@ -28,7 +31,7 @@ class UpdateService {
 
   /// Safe to call often (app start, app resume): only checks every few hours unless [force].
   static Future<void> check(BuildContext context, {bool force = false}) async {
-    if (!Platform.isAndroid || _busy) return;
+    if (!Platform.isAndroid || _busy || playStore) return;
     if (buildNumber == 0) {
       if (force) _toast(context, 'This is a development build; updates come with the released app.');
       return;

@@ -206,13 +206,6 @@ Future<void> showCreateSheet(BuildContext context) => showModalBottomSheet<void>
             const Text('Create', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             row(
-              Icons.edit_note,
-              const [Color(0xFF1A62A8), Color(0xFF0E3F70)],
-              'Post',
-              'Share a thought or goal with friends',
-              () => newNotePost(context),
-            ),
-            row(
               Icons.qr_code_scanner,
               const [Color(0xFF1E8E3E), Color(0xFF1A62A8)],
               'Check in at a programme',
@@ -262,7 +255,7 @@ class SocialHome extends StatelessWidget {
       Api.call('${Api.m}home'),
       Api.call('${Api.m}journey').catchError((_) => null),
       Api.call('${Api.m}friends').catchError((_) => null),
-      Api.call('${Api.m}feed').catchError((_) => []),
+      Api.call('${Api.m}photo_feed').catchError((_) => []),
       Api.call('${Api.m}suggest_people').catchError((_) => []),
       Api.call('${Api.m}events').catchError((_) => []),
       Api.call('${Api.m}albums').catchError((_) => null),
@@ -447,7 +440,7 @@ class SocialHome extends StatelessWidget {
               ),
             ),
           ],
-          _Header('Friends’ posts'),
+          _Header('Friends in photos', action: 'All albums', onAction: () => push(context, const AlbumsScreen())),
           if (feed.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -456,12 +449,12 @@ class SocialHome extends StatelessWidget {
                 decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(18)),
                 child: Column(
                   children: [
-                    const Icon(Icons.dynamic_feed, size: 40, color: SioColors.blue),
+                    const Icon(Icons.photo_library_outlined, size: 40, color: SioColors.blue),
                     const SizedBox(height: 8),
-                    const Text('Your feed is empty', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    const Text('No photos yet', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                     const SizedBox(height: 4),
                     const Text(
-                      'Add friends and post your badges and streaks. Their achievements show up here.',
+                      'After a programme, find yourself in the album and tap “That’s me!”. Photos of you and your friends show up here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: SioColors.textSecondary),
                     ),
@@ -475,10 +468,10 @@ class SocialHome extends StatelessWidget {
                 ),
               ),
             ),
-          for (final (i, p) in feed.indexed)
+          for (final (i, _) in feed.indexed)
             Enter(
               index: i,
-              child: PostCard(post: p),
+              child: PhotoFeedCard(photos: feed, index: i),
             ),
         ];
       },

@@ -13,6 +13,7 @@ import '../links.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'album_screens.dart';
 import 'find_members_screen.dart';
 import 'more_screen.dart';
 
@@ -170,12 +171,6 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 ? Badge(label: Text('${j['friend_requests']}'), child: const Icon(Icons.chevron_right))
                 : null,
             onTap: () => push(context, const FriendsScreen()),
-          ),
-          SioTile(
-            icon: Icons.dynamic_feed_outlined,
-            title: 'Friends’ posts',
-            subtitle: 'What you and your friends shared',
-            onTap: () => push(context, const FeedScreen()),
           ),
 
           SioTile(
@@ -1121,8 +1116,6 @@ class PersonPage extends StatelessWidget {
         ),
       ),
       actions: [
-        if (member == null && username == null)
-          IconButton(tooltip: 'New post', icon: const Icon(Icons.add_box_outlined), onPressed: () => newNotePost(context)),
         if (asTab)
           IconButton(
             tooltip: 'Settings and more',
@@ -1154,11 +1147,10 @@ class _ProfileBodyState extends State<_ProfileBody> {
   Widget build(BuildContext context) {
     final p = widget.p;
     final st = '${_map(p['friend'])['state']}';
-    final posts = _list(p['posts']);
+    final photos = _list(p['photos']);
     final badges = _list(p['badges']);
     final self = st == 'self';
     final reading = _map(p['reading']);
-    final canSee = self || st == 'friends';
     Widget count(String n, String label, [VoidCallback? onTap]) => Expanded(
       child: InkWell(
         onTap: onTap,
@@ -1191,7 +1183,7 @@ class _ProfileBodyState extends State<_ProfileBody> {
                 child: Avatar('${p['full_name']}', radius: 40, photo: p['photo']),
               ),
               const SizedBox(width: 8),
-              count('${p['posts_count'] ?? posts.length}', 'posts'),
+              count('${photos.length}', 'photos'),
               count('${p['friends'] ?? 0}', 'friends', self ? () => push(context, const FriendsScreen()) : null),
               count('${_int(reading['current'])}🔥', 'streak'),
               count('${badges.length}', 'badges'),
@@ -1350,29 +1342,18 @@ class _ProfileBodyState extends State<_ProfileBody> {
           ],
         ),
         if (_grid) ...[
-          if (!canSee)
-            const Padding(
-              padding: EdgeInsets.all(32),
-              child: Column(
-                children: [
-                  Icon(Icons.lock_outline, size: 40, color: SioColors.textSecondary),
-                  SizedBox(height: 8),
-                  Text('Become friends to see their posts', style: TextStyle(fontWeight: FontWeight.w700)),
-                ],
-              ),
-            )
-          else if (posts.isEmpty)
+          if (photos.isEmpty)
             Padding(
               padding: const EdgeInsets.all(32),
               child: Column(
                 children: [
                   const Icon(Icons.photo_camera_outlined, size: 40, color: SioColors.textSecondary),
                   const SizedBox(height: 8),
-                  const Text('No posts yet', style: TextStyle(fontWeight: FontWeight.w700)),
+                  Text(self ? 'No photos of you yet' : 'No photos yet', style: const TextStyle(fontWeight: FontWeight.w700)),
                   if (self) ...[
                     const SizedBox(height: 6),
                     const Text(
-                      'Earn a badge or keep your streak, then post it here.',
+                      'Open a programme album, find yourself and tap “That’s me!”. Your SIO moments collect here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: SioColors.textSecondary),
                     ),
@@ -1388,20 +1369,19 @@ class _ProfileBodyState extends State<_ProfileBody> {
               mainAxisSpacing: 2,
               crossAxisSpacing: 2,
               children: [
-                for (final x in posts)
-                  InkWell(
-                    onTap: () => push(
-                      context,
-                      Scaffold(
-                        appBar: AppBar(title: const Text('Post')),
-                        body: ListView(
-                          children: [
-                            PostCard(post: {...x, 'by': p}),
+                for (final (i, x) in photos.indexed)
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => PhotoViewer(
+                          photos: [
+                            for (final y in photos) {...y, 'me': self, 'tags': const []},
                           ],
+                          start: i,
                         ),
                       ),
                     ),
-                    child: PostArt(post: x, small: true),
+                    child: Image.network('${Api.baseUrl}${x['file_url']}', fit: BoxFit.cover, cacheWidth: 400),
                   ),
               ],
             ),
