@@ -404,9 +404,7 @@ class SocialHome extends StatelessWidget {
               child: _Pill(
                 icon: Icons.emoji_events_outlined,
                 color: SioColors.warning,
-                text: friends.length < 3
-                    ? 'This week’s readers in your unit. Add friends to race them 🏁'
-                    : 'Weekly reading race with your friends 🏁',
+                text: 'Reading leaderboard: see your rank among all SIO students 🏆',
                 onTap: () => push(context, const ReadingBoardScreen()),
               ),
             ),

@@ -116,8 +116,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
           const SizedBox(height: 8),
           SioTile(
             icon: Icons.emoji_events_outlined,
-            title: 'This week’s reading race',
-            subtitle: '${_int(rs['week_days'])} of 7 days so far · friends and your unit',
+            title: 'Reading leaderboard',
+            subtitle: 'See your rank among all SIO students',
             onTap: () => push(context, const ReadingBoardScreen()),
           ),
           const SizedBox(height: 12),
@@ -2360,7 +2360,7 @@ class _Leaderboard extends StatelessWidget {
   }
 }
 
-/// Weekly reading race: days read this week (out of 7) for me and my friends, and the top readers of my unit.
+/// Reading leaderboard: everyone ranked by reading streak (no weekly reset), with my unit and my friends.
 class ReadingBoardScreen extends StatefulWidget {
   const ReadingBoardScreen({super.key});
 
@@ -2371,102 +2371,126 @@ class ReadingBoardScreen extends StatefulWidget {
 class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
   int _view = 0;
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('This week’s readers')),
-    body: Loader<Map<String, dynamic>>(
-      load: () async => _map(await Api.call('${Api.m}reading_board')),
-      builder: (context, b) {
-        final friends = _list(b['friends']);
-        final unit = _list(b['unit']);
-        final dow = _int(b['day_of_week']);
-        final rows = _view == 0 ? friends : unit;
-        Widget row(int i, Map<String, dynamic> p) {
-          final d = _int(p['days']);
-          final me = p['me'] == true;
-          final medal = i == 0 && d > 0
-              ? '🥇'
-              : i == 1 && d > 0
-              ? '🥈'
-              : i == 2 && d > 0
-              ? '🥉'
-              : '${i + 1}';
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: me ? SioColors.blue.withValues(alpha: 0.08) : SioColors.card,
-              borderRadius: BorderRadius.circular(14),
-              border: me ? Border.all(color: SioColors.blue.withValues(alpha: 0.4)) : null,
+  Widget _row(BuildContext context, Map<String, dynamic> p, {bool pinned = false}) {
+    final rank = _int(p['rank']);
+    final me = p['me'] == true;
+    final medal = rank == 1
+        ? '🥇'
+        : rank == 2
+        ? '🥈'
+        : rank == 3
+        ? '🥉'
+        : '#$rank';
+    return Container(
+      margin: EdgeInsets.only(bottom: pinned ? 0 : 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: me ? SioColors.blue.withValues(alpha: 0.10) : SioColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: me ? Border.all(color: SioColors.blue.withValues(alpha: 0.5)) : null,
+      ),
+      child: InkWell(
+        onTap: me ? null : () => push(context, PersonPage(member: '${p['member']}')),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 44,
+              child: Text(
+                medal,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: rank <= 3 ? 20 : 14, fontWeight: FontWeight.w800, color: SioColors.ink),
+              ),
             ),
-            child: InkWell(
-              onTap: me ? null : () => push(context, PersonPage(member: '${p['member']}')),
-              child: Row(
+            const SizedBox(width: 6),
+            Avatar('${p['full_name'] ?? ''}', radius: 18, light: true, photo: p['photo']),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 30,
-                    child: Text(
-                      medal,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                    ),
+                  Text(
+                    me ? 'You' : '${p['full_name'] ?? ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  const SizedBox(width: 8),
-                  Avatar('${p['full_name'] ?? ''}', radius: 18, light: true, photo: p['photo']),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          me ? 'You' : '${p['full_name'] ?? ''}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            for (var k = 0; k < 7; k++)
-                              Container(
-                                width: 14,
-                                height: 6,
-                                margin: const EdgeInsets.only(right: 3),
-                                decoration: BoxDecoration(
-                                  color: k < d ? const Color(0xFFF26B1D) : SioColors.greyBg,
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  Text(
+                    '${p['unit'] ?? ''} · ${_int(p['total'])} days read${p['today'] == true ? ' · ✅ today' : ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
                   ),
-                  Text('$d/7', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  const SizedBox(width: 6),
-                  Text('🔥${_int(p['streak'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 12)),
                 ],
               ),
             ),
-          );
-        }
+            Text('🔥 ${_int(p['streak'])}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+  }
 
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Reading leaderboard')),
+    body: Loader<Map<String, dynamic>>(
+      load: () async => _map(await Api.call('${Api.m}reading_board')),
+      builder: (context, b) {
+        final key = ['everyone', 'unit', 'friends'][_view];
+        final board = _map(b[key]);
+        final top = _list(board['top']);
+        final me = board['me'] == null ? null : _map(board['me']);
+        final inTop = top.any((p) => p['me'] == true);
+        final ahead = me == null ? null : top.where((p) => _int(p['rank']) == _int(me['rank']) - 1).firstOrNull;
         return [
-          Text(
-            'Day $dow of 7 · resets every Monday',
-            style: const TextStyle(color: SioColors.textSecondary, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 10),
+          if (me != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF0E3F70), Color(0xFF1A62A8)]),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('YOUR RANK', style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.5)),
+                      Text(
+                        '#${_int(me['rank'])}',
+                        style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900),
+                      ),
+                      Text('of ${_int(board['out_of'])}', style: const TextStyle(color: Colors.white70)),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      _int(me['rank']) == 1
+                          ? 'You’re on top! Keep reading every day to stay there 👑'
+                          : ahead != null
+                          ? 'Read ${(_int(ahead['streak']) - _int(me['streak']) + 1).clamp(1, 999)} more day(s) in a row to pass '
+                                '${AppState.callName('${ahead['full_name'] ?? ''}')} 🚀'
+                          : 'Read every day to climb. Your streak decides your rank 🔥',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
           SegmentedButton<int>(
+            showSelectedIcon: false,
             segments: [
-              const ButtonSegment(value: 0, label: Text('Friends & me')),
-              ButtonSegment(value: 1, label: Text('Top 10 · ${b['unit_name'] ?? 'unit'}')),
+              const ButtonSegment(value: 0, label: Text('Everyone')),
+              ButtonSegment(value: 1, label: Text('${b['unit_name'] ?? 'Unit'}', overflow: TextOverflow.ellipsis)),
+              const ButtonSegment(value: 2, label: Text('Friends')),
             ],
             selected: {_view},
             onSelectionChanged: (v) => setState(() => _view = v.first),
           ),
           const SizedBox(height: 14),
-          if (_view == 0 && friends.length <= 1)
+          if (_view == 2 && top.length <= 1)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: SioTile(
@@ -2476,15 +2500,24 @@ class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
                 onTap: () => push(context, const FriendsScreen()),
               ),
             ),
-          if (rows.isEmpty)
+          if (top.isEmpty)
             const Padding(
               padding: EdgeInsets.all(24),
-              child: Text('Nobody has read yet this week. Be the first! 🌱', textAlign: TextAlign.center),
+              child: Text('Nobody is on the board yet. Read today’s ayah and be #1! 🌱', textAlign: TextAlign.center),
             ),
-          for (var i = 0; i < rows.length; i++) row(i, rows[i]),
-          const SizedBox(height: 8),
+          for (final p in top) _row(context, p),
+          if (me != null && !inTop) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Center(
+                child: Text('⋮', style: TextStyle(fontSize: 20, color: SioColors.textSecondary)),
+              ),
+            ),
+            _row(context, me, pinned: true),
+          ],
+          const SizedBox(height: 12),
           const Text(
-            'Only the top readers are shown. One missed day a week is forgiven by your streak freeze 🧊',
+            'Ranked by your current reading streak, then total days read. One missed day a week is saved by your streak freeze 🧊',
             style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
           ),
         ];
