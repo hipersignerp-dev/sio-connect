@@ -27,7 +27,45 @@ class AppState extends ChangeNotifier {
   bool can(String capability) => (me['capabilities'] as Map?)?[capability] == true;
   String get status => (me['status'] ?? '').toString();
   bool get pending => status == 'Pending Approval';
-  String get firstName => (me['full_name'] ?? '').toString().trim().split(' ').first;
+  String get firstName => callName('${me['full_name'] ?? ''}');
+
+  /// The name friends actually use: skips Mohammed / Muhammed / Md and initials ("Mohammed Faheem T S" → Faheem).
+  static String callName(String full) {
+    final words = full.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return '';
+    const skip = {
+      'mohammed',
+      'mohammad',
+      'muhammed',
+      'muhammad',
+      'mohamed',
+      'muhamed',
+      'mohd',
+      'mohd.',
+      'md',
+      'md.',
+      'mhd',
+      'mhd.',
+      'muhamad',
+      'mohamad',
+      'mohammedh',
+      'muhammadh',
+      'sayyid',
+      'syed',
+      'sheikh',
+      'shaikh',
+    };
+    var i = 0;
+    while (i < words.length - 1 && skip.contains(words[i].toLowerCase())) {
+      i++;
+    }
+    final rest = words.sublist(i).where((w) => w.replaceAll('.', '').length > 1).toList();
+    if (rest.isEmpty) return words.first;
+    final w = rest.first;
+    if ((w.toLowerCase() == 'abdul' || w.toLowerCase() == 'abdu') && rest.length > 1) return '$w ${rest[1]}';
+    return w;
+  }
+
   String get role => (me['member_role'] ?? '').toString();
 
   /// Leaders (anyone with management tools) get an "Admin dashboard" button in the app.

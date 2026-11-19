@@ -9,6 +9,7 @@ import '../app_state.dart';
 import '../fx.dart';
 import '../links.dart';
 import '../notify.dart';
+import '../prayer.dart';
 import '../theme.dart';
 import '../update_service.dart';
 import '../widgets.dart';
@@ -103,14 +104,16 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
                 Pop(
                   trigger: _tab == i,
                   scale: 1.25,
-                  child: Icon(_tab == i ? on : off, size: 27, color: _tab == i ? SioColors.blue : SioColors.ink),
+                  child: Icon(_tab == i ? on : off, size: 25, color: _tab == i ? SioColors.blue : SioColors.ink),
                 ),
-                const SizedBox(height: 3),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: _tab == i ? 5 : 0,
-                  height: 5,
-                  decoration: const BoxDecoration(color: SioColors.red, shape: BoxShape.circle),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: _tab == i ? FontWeight.w800 : FontWeight.w500,
+                    color: _tab == i ? SioColors.blue : SioColors.ink,
+                  ),
                 ),
               ],
             ),
@@ -145,24 +148,36 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
                     ),
                   ),
                 ),
-                item(2, Icons.local_fire_department_outlined, Icons.local_fire_department, 'My journey'),
+                item(2, Icons.local_fire_department_outlined, Icons.local_fire_department, 'Journey'),
                 Expanded(
                   child: InkResponse(
                     onTap: () => _go(3),
                     child: SizedBox(
                       height: 56,
-                      child: Center(
-                        child: ListenableBuilder(
-                          listenable: AppState.i,
-                          builder: (context, _) => Container(
-                            padding: const EdgeInsets.all(1.5),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: _tab == 3 ? SioColors.ink : Colors.transparent, width: 1.6),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ListenableBuilder(
+                            listenable: AppState.i,
+                            builder: (context, _) => Container(
+                              padding: const EdgeInsets.all(1.5),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: _tab == 3 ? SioColors.ink : Colors.transparent, width: 1.6),
+                              ),
+                              child: Avatar(AppState.i.firstName, radius: 11, light: true, photo: AppState.i.me['photo']),
                             ),
-                            child: Avatar(AppState.i.firstName, radius: 13, light: true, photo: AppState.i.me['photo']),
                           ),
-                        ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Profile',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: _tab == 3 ? FontWeight.w800 : FontWeight.w500,
+                              color: _tab == 3 ? SioColors.blue : SioColors.ink,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -342,8 +357,10 @@ class SocialHome extends StatelessWidget {
         final pending = AppState.i.pending;
         if (j != null) checkNewBadges(context, j);
         return [
-          _Stories(me: AppState.i.me, journey: j, friends: friends, openJourney: () => openTab(2)),
-          const Divider(height: 1, color: SioColors.border),
+          if (friends.length >= 3) ...[
+            _Stories(me: AppState.i.me, journey: j, friends: friends, openJourney: () => openTab(2)),
+            const Divider(height: 1, color: SioColors.border),
+          ],
           if (pending)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -366,7 +383,7 @@ class SocialHome extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Text(
-              '${_greeting()}, ${AppState.i.firstName} 👋',
+              'Assalamu Alaikum, ${AppState.i.firstName} 👋',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink),
             ),
           ),
@@ -379,6 +396,29 @@ class SocialHome extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: _AyahHero(journey: j),
+            ),
+          const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 0), child: PrayerCard()),
+          if (j != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _Pill(
+                icon: Icons.emoji_events_outlined,
+                color: SioColors.warning,
+                text: friends.length < 3
+                    ? 'This week’s readers in your unit. Add friends to race them 🏁'
+                    : 'Weekly reading race with your friends 🏁',
+                onTap: () => push(context, const ReadingBoardScreen()),
+              ),
+            ),
+          if (friends.length < 3)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _Pill(
+                icon: Icons.group_add_outlined,
+                color: SioColors.purple,
+                text: 'Find friends from your unit. Reading together keeps the streak going',
+                onTap: () => push(context, const FriendsScreen()),
+              ),
             ),
           if (h['next_meeting'] != null)
             Padding(
@@ -477,13 +517,6 @@ class SocialHome extends StatelessWidget {
       },
     ),
   );
-
-  static String _greeting() {
-    final hr = DateTime.now().hour;
-    if (hr < 12) return 'Good morning';
-    if (hr < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
 }
 
 class _Header extends StatelessWidget {
@@ -611,40 +644,55 @@ class _Stories extends StatelessWidget {
         ),
       ),
     );
-    return SizedBox(
-      height: 118,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
-        children: [
-          story(
-            avatar: Avatar('${me['full_name'] ?? ''}', radius: 30, light: true, photo: me['photo']),
-            lit: rs['today'] == true,
-            plus: rs['today'] != true,
-            flame: rs['today'] == true ? _i(rs['current']) : null,
-            label: 'Your streak',
-            onTap: openJourney,
+    final readCount = friends.where((f) => _m(f['reading'])['today'] == true).length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Text(
+            'Read today · $readCount of ${friends.length} friends   (tap a grey ring to nudge)',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SioColors.textSecondary),
           ),
-          for (final f in sorted)
-            story(
-              avatar: Avatar('${f['full_name'] ?? ''}', radius: 30, light: true, photo: f['photo']),
-              lit: _m(f['reading'])['today'] == true,
-              flame: _i(_m(f['together'])['current']) > 0 ? _i(_m(f['together'])['current']) : _i(_m(f['reading'])['current']),
-              label: '${f['username'] ?? '${f['full_name']}'.split(' ').first}',
-              onTap: () => _friendSheet(context, f),
-            ),
-          story(
-            avatar: const CircleAvatar(
-              radius: 30,
-              backgroundColor: SioColors.card,
-              child: Icon(Icons.person_add_alt_1, color: SioColors.blue),
-            ),
-            lit: false,
-            label: 'Add friends',
-            onTap: () => push(context, const FriendsScreen()),
+        ),
+        SizedBox(
+          height: 118,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+            children: [
+              story(
+                avatar: Avatar('${me['full_name'] ?? ''}', radius: 30, light: true, photo: me['photo']),
+                lit: rs['today'] == true,
+                plus: rs['today'] != true,
+                flame: rs['today'] == true ? _i(rs['current']) : null,
+                label: 'Your streak',
+                onTap: openJourney,
+              ),
+              for (final f in sorted)
+                story(
+                  avatar: Avatar('${f['full_name'] ?? ''}', radius: 30, light: true, photo: f['photo']),
+                  lit: _m(f['reading'])['today'] == true,
+                  flame: _i(_m(f['together'])['current']) > 0
+                      ? _i(_m(f['together'])['current'])
+                      : _i(_m(f['reading'])['current']),
+                  label: '${f['username'] ?? AppState.callName('${f['full_name']}')}',
+                  onTap: () => _friendSheet(context, f),
+                ),
+              story(
+                avatar: const CircleAvatar(
+                  radius: 30,
+                  backgroundColor: SioColors.card,
+                  child: Icon(Icons.person_add_alt_1, color: SioColors.blue),
+                ),
+                lit: false,
+                label: 'Add friends',
+                onTap: () => push(context, const FriendsScreen()),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -685,7 +733,7 @@ void _friendSheet(BuildContext context, Map<String, dynamic> f) {
             ),
             const SizedBox(height: 14),
             Text(
-              read ? '${'${f['full_name']}'.split(' ').first} has read today ✅' : 'Hasn’t read today yet',
+              read ? '${AppState.callName('${f['full_name']}')} has read today ✅' : 'Hasn’t read today yet',
               style: TextStyle(color: read ? SioColors.green : SioColors.warning, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
@@ -765,8 +813,9 @@ class _AyahHero extends StatefulWidget {
 
 class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixin {
   bool _busy = false;
-  bool _full = false;
-  static bool _long(Map r) => '${r['text_ar'] ?? ''}'.length > 220;
+  bool _readNow = false; // marked read in this session
+  int? _streakNow;
+  bool _open = false; // re-opened after reading
   final _btn = GlobalKey();
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
     ..repeat(reverse: true);
@@ -777,11 +826,63 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
     super.dispose();
   }
 
+  bool get _done => _readNow || _m(widget.journey['reading_streak'])['today'] == true;
+
+  /// Listening to the whole recitation (or the Malayalam reading) counts as reading today.
+  void _finishedListening() {
+    if (!_done && !_busy) _read();
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = _m(widget.journey['reading']);
     final rs = _m(widget.journey['reading_streak']);
-    final done = rs['today'] == true;
+    final streak = _streakNow ?? _i(rs['current']);
+    final audio = [for (final u in (r['audio'] as List? ?? [])) '$u'];
+    final ml = '${r['text_ml'] ?? ''}';
+    final ar = '${r['text_ar'] ?? ''}';
+    if (_done && !_open) {
+      // read today: a slim strip, so programmes and photos move up
+      return Squish(
+        onTap: () => setState(() => _open = true),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF0E3F70), Color(0xFF1A62A8)]),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Color(0xFF7CE0A0)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      r['kind'] == 'Hadith' ? 'Today’s hadith read' : 'Today’s ayah read',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                    ),
+                    Text(
+                      '${r['reference'] ?? ''} · tap to read again',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
+                child: Text(
+                  '🔥 $streak',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       decoration: BoxDecoration(
@@ -803,68 +904,72 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 style: const TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w800),
               ),
               const Spacer(),
+              if (_done)
+                InkWell(
+                  onTap: () => setState(() => _open = false),
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.expand_less, color: Colors.white70),
+                  ),
+                ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
                 child: Text(
-                  '🔥 ${_i(rs['current'])}',
+                  '🔥 $streak',
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          if ('${r['text_ar'] ?? ''}'.isNotEmpty && !_long(r))
+          const SizedBox(height: 14),
+          if (ar.isNotEmpty) ...[
             SizedBox(
               width: double.infinity,
               child: Text(
-                '${r['text_ar']}',
+                ar,
                 textAlign: TextAlign.right,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(color: Colors.white, fontSize: 21, height: 1.8),
+                style: const TextStyle(color: Colors.white, fontSize: 22, height: 1.9),
               ),
             ),
-          if ('${r['text_ar'] ?? ''}'.isNotEmpty && !_long(r)) const SizedBox(height: 8),
-          Text(
-            '“${r['text_en']}”',
-            style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.4, fontWeight: FontWeight.w700),
-          ),
-          if ('${r['text_ml'] ?? ''}'.isNotEmpty && (!_long(r) || _full)) ...[
-            const SizedBox(height: 8),
-            if (_long(r) && '${r['text_ar'] ?? ''}'.isNotEmpty) ...[
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  '${r['text_ar']}',
-                  textAlign: TextAlign.right,
-                  textDirection: TextDirection.rtl,
-                  style: const TextStyle(color: Colors.white, fontSize: 19, height: 1.8),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            Text('${r['text_ml']}', style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.5)),
+            const SizedBox(height: 10),
           ],
-          if (_long(r) && '${r['text_ml'] ?? ''}'.isNotEmpty)
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: Colors.white, padding: EdgeInsets.zero),
-              onPressed: () => setState(() => _full = !_full),
-              child: Text(_full ? 'Hide full ayah' : 'Full ayah in Arabic & Malayalam ▾'),
+          // Malayalam meaning first; the English line under it, smaller
+          if (ml.isNotEmpty) ...[
+            Text(
+              ml,
+              style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.6, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Text('“${r['text_en']}”', style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4)),
+          ] else
+            Text(
+              '“${r['text_en']}”',
+              style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.4, fontWeight: FontWeight.w700),
             ),
           const SizedBox(height: 6),
           Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Colors.white70)),
-          if ((r['audio'] as List? ?? []).isNotEmpty || malayalamToRead(r).isNotEmpty) ...[
-            const SizedBox(height: 10),
+          if (audio.isNotEmpty || malayalamToRead(r).isNotEmpty) ...[
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                if ((r['audio'] as List? ?? []).isNotEmpty) AyahAudioButton(urls: [for (final u in r['audio'] as List) '$u']),
-                if (malayalamToRead(r).isNotEmpty) MalayalamSpeakButton(text: malayalamToRead(r)),
+                if (audio.isNotEmpty) AyahAudioButton(urls: audio, onComplete: _finishedListening),
+                if (malayalamToRead(r).isNotEmpty) MalayalamSpeakButton(text: malayalamToRead(r), onComplete: _finishedListening),
               ],
             ),
+            if (!_done)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Listen till the end and it counts as read today.',
+                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                ),
+              ),
           ],
-          if ('${r['lesson_en'] ?? ''}'.isNotEmpty) ...[
+          if ('${r['lesson_en'] ?? ''}'.isNotEmpty || '${r['lesson_ml'] ?? ''}'.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -874,25 +979,26 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '💡 TODAY’S LESSON',
-                    style: TextStyle(color: Color(0xFFFFD2B3), fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w800),
+                    '💡 ഇന്നത്തെ പാഠം · TODAY’S LESSON',
+                    style: TextStyle(color: Color(0xFFFFD2B3), fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 4),
-                  Text('${r['lesson_en']}', style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4)),
-                  if ('${r['lesson_ml'] ?? ''}'.isNotEmpty) ...[
+                  if ('${r['lesson_ml'] ?? ''}'.isNotEmpty)
+                    Text('${r['lesson_ml']}', style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.5)),
+                  if ('${r['lesson_en'] ?? ''}'.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text('${r['lesson_ml']}', style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5)),
+                    Text('${r['lesson_en']}', style: const TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.4)),
                   ],
                 ],
               ),
             ),
           ],
-          if (!done && _i(rs['current']) > 0 && DateTime.now().hour >= 17) ...[
+          if (!_done && streak > 0 && DateTime.now().hour >= 17) ...[
             const SizedBox(height: 10),
             FadeTransition(
               opacity: Tween(begin: 0.6, end: 1.0).animate(_pulse),
               child: Text(
-                '⏳ ${24 - DateTime.now().hour}h left to keep your ${_i(rs['current'])}-day streak',
+                '⏳ ${24 - DateTime.now().hour}h left to keep your $streak-day streak',
                 style: const TextStyle(color: Color(0xFFFFD2B3), fontWeight: FontWeight.w700),
               ),
             ),
@@ -901,7 +1007,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
           Row(
             children: [
               Expanded(
-                child: done
+                child: _done
                     ? Container(
                         padding: const EdgeInsets.symmetric(vertical: 11),
                         decoration: BoxDecoration(
@@ -936,7 +1042,16 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 tooltip: 'Share',
                 icon: const Icon(Icons.send_outlined, color: Colors.white),
                 onPressed: () => SharePlus.instance.share(
-                  ShareParams(text: '“${r['text_en']}”\n— ${r['reference'] ?? ''}\n\nvia SIO Connect'),
+                  ShareParams(
+                    text: [
+                      if (ar.isNotEmpty) ar,
+                      if (ml.isNotEmpty) ml,
+                      '“${r['text_en']}”',
+                      '— ${r['reference'] ?? ''}',
+                      if ('${r['lesson_ml'] ?? ''}'.isNotEmpty) '\n💡 ${r['lesson_ml']}',
+                      '\nvia SIO Connect ${Links.share({'q': 'ayah'})}',
+                    ].join('\n'),
+                  ),
                 ),
               ),
             ],
@@ -952,11 +1067,20 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
       HapticFeedback.mediumImpact();
       final r = _m(await Api.call('${Api.m}read_today'));
       if (!mounted) return;
+      setState(() {
+        _streakNow = _i(r['current']);
+      });
       final b = _btn.currentContext;
       if (b != null && b.mounted) burst(b, emojis: const ['🔥', '✨', '⭐', '💙'], count: 20);
       await Future.delayed(const Duration(milliseconds: 350));
       if (!mounted) return;
       await celebrateRead(context, r);
+      if (mounted) {
+        setState(() {
+          _readNow = true;
+          _open = false;
+        });
+      }
       AppState.i.refreshAll();
     } on ApiException catch (e) {
       if (mounted) toast(context, e.message);

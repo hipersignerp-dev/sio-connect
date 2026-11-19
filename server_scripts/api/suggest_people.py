@@ -17,7 +17,7 @@ if m:
         if r.name in taken:
             continue
         c = card(r)
-        c["reading"] = streak_from_days(member_days(r.name, "Reading"))["current"]
+        c["reading"] = streak_from_days(member_days(r.name, "Reading"), True)["current"]
         c["same_unit"] = r.unit == m.unit
         out.append(c)
         if len(out) >= 20:

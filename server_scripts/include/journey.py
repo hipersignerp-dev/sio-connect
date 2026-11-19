@@ -3,17 +3,32 @@ def jday(d):
     return frappe.utils.getdate(d)
 
 
-def streak_from_days(days):
+def week_key(d):
+    # Monday of the week a date falls in
+    d = jday(d)
+    return str(frappe.utils.add_days(d, -d.weekday()))
+
+
+def streak_from_days(days, freeze=False):
     # days: dates something was done. current = run ending today (or yesterday, so it isn't lost before
-    # today's turn); best = longest run ever
+    # today's turn); best = longest run ever. With freeze, one missed single day per week is forgiven
+    # (a "streak freeze") so one busy day doesn't wipe out weeks of reading.
     have = set([str(jday(d)) for d in days])
     today = jday(frappe.utils.nowdate())
     d = today
     if str(d) not in have:
         d = frappe.utils.add_days(d, -1)
     cur = 0
-    while str(jday(d)) in have:
-        cur = cur + 1
+    frozen = []
+    used = set()
+    while True:
+        if str(jday(d)) in have:
+            cur = cur + 1
+        elif freeze and cur > 0 and week_key(d) not in used and str(jday(frappe.utils.add_days(jday(d), -1))) in have:
+            used.add(week_key(d))
+            frozen.append(str(jday(d)))
+        else:
+            break
         d = frappe.utils.add_days(jday(d), -1)
     best = 0
     run = 0
@@ -26,7 +41,12 @@ def streak_from_days(days):
         if run > best:
             best = run
         prev = x
-    return {"current": cur, "best": best, "today": str(today) in have}
+    if cur > best:
+        best = cur
+    this_week = week_key(today)
+    return {"current": cur, "best": best, "today": str(today) in have, "frozen": frozen,
+            "freeze_left": 0 if (this_week in used) else 1,
+            "week_days": len([x for x in have if week_key(x) == this_week])}
 
 
 def member_days(member, activity):
@@ -110,7 +130,7 @@ BADGES = [
 
 def badges_for(m):
     name = m.name
-    reading = streak_from_days(member_days(name, "Reading"))
+    reading = streak_from_days(member_days(name, "Reading"), True)
     att = attendance_streak(name)
     qs = quiz_streak(name, m.get("area"))
     full = frappe.db.sql("select count(*) from `tabSIO Quiz Attempt` where member = %s and score = total and total > 0",

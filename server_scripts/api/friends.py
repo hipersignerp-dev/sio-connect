@@ -10,7 +10,7 @@ for fid in friend_ids(m.name):
     if not f:
         continue
     c = card(f)
-    c["reading"] = streak_from_days(member_days(fid, "Reading"))
+    c["reading"] = streak_from_days(member_days(fid, "Reading"), True)
     c["together"] = duo_streak(m.name, fid)
     friends.append(c)
 friends = sorted(friends, key=lambda x: -x["together"]["current"])

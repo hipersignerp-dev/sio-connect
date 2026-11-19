@@ -4,8 +4,9 @@ import 'package:material_ui/material_ui.dart';
 
 /// Play / stop the recitation of today's ayah (one or more files, played one after another).
 class AyahAudioButton extends StatefulWidget {
-  const AyahAudioButton({super.key, required this.urls, this.light = true});
+  const AyahAudioButton({super.key, required this.urls, this.light = true, this.onComplete});
   final List<String> urls;
+  final VoidCallback? onComplete; // played to the end
   final bool light; // white on a dark card
 
   @override
@@ -34,6 +35,7 @@ class _AyahAudioButtonState extends State<AyahAudioButton> {
       _p ??= AudioPlayer()
         ..playerStateStream.listen((s) {
           if (s.processingState == ProcessingState.completed && mounted) {
+            if (_playing) widget.onComplete?.call();
             setState(() => _playing = false);
             _p?.stop();
             _p?.seek(Duration.zero, index: 0);
@@ -89,8 +91,9 @@ class _AyahAudioButtonState extends State<AyahAudioButton> {
 
 /// Reads the Malayalam meaning (and today's lesson) aloud with the phone's Malayalam voice.
 class MalayalamSpeakButton extends StatefulWidget {
-  const MalayalamSpeakButton({super.key, required this.text, this.light = true});
+  const MalayalamSpeakButton({super.key, required this.text, this.light = true, this.onComplete});
   final String text;
+  final VoidCallback? onComplete; // read to the end
   final bool light;
 
   @override
@@ -131,7 +134,10 @@ class _MalayalamSpeakButtonState extends State<MalayalamSpeakButton> {
     await _tts.setLanguage('ml-IN');
     await _tts.setSpeechRate(0.45);
     _tts.setCompletionHandler(() {
-      if (mounted) setState(() => _speaking = false);
+      if (mounted) {
+        if (_speaking) widget.onComplete?.call();
+        setState(() => _speaking = false);
+      }
     });
     setState(() => _speaking = true);
     await _tts.speak(widget.text);

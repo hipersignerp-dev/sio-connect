@@ -708,7 +708,7 @@ class PhotoFeedCard extends StatelessWidget {
     final names = [
       if (p['me'] == true) 'You',
       for (final t in tags)
-        if (t['member'] != me) '${t['full_name'] ?? ''}'.split(' ').first,
+        if (t['member'] != me) AppState.callName('${t['full_name'] ?? ''}'),
     ];
     final who = names.isEmpty
         ? ''
