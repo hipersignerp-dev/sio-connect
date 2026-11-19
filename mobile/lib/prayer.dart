@@ -109,7 +109,8 @@ String _hm(DateTime t) {
 
 /// Home card: next prayer with a live countdown, and all five times underneath.
 class PrayerCard extends StatefulWidget {
-  const PrayerCard({super.key});
+  const PrayerCard({super.key, this.onQibla});
+  final VoidCallback? onQibla;
 
   @override
   State<PrayerCard> createState() => _PrayerCardState();
@@ -174,10 +175,22 @@ class _PrayerCardState extends State<PrayerCard> {
                   ],
                 ),
               ),
-              Row(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Icon(Icons.place_outlined, size: 14, color: cs.outline),
-                  Text(p.place, style: TextStyle(color: cs.outline, fontSize: 12)),
+                  if (widget.onQibla != null)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: widget.onQibla,
+                      icon: const Icon(Icons.explore_outlined, size: 18),
+                      label: const Text('Qibla'),
+                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.place_outlined, size: 14, color: cs.outline),
+                      Text(p.place, style: TextStyle(color: cs.outline, fontSize: 12)),
+                    ],
+                  ),
                 ],
               ),
             ],

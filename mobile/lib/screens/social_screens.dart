@@ -25,6 +25,7 @@ import 'meeting_screens.dart';
 import 'more_screen.dart';
 import 'notice_screens.dart';
 import 'public_screens.dart';
+import 'qibla_screen.dart';
 import 'task_screens.dart';
 
 // The associates' app: a friendly, Instagram-like app in SIO colours. Home feed with friends' rings,
@@ -397,7 +398,10 @@ class SocialHome extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: _AyahHero(journey: j),
             ),
-          const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 0), child: PrayerCard()),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: PrayerCard(onQibla: () => push(context, const QiblaScreen())),
+          ),
           if (j != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -450,9 +454,9 @@ class SocialHome extends StatelessWidget {
             _Header('Albums', action: 'See all', onAction: () => push(context, const AlbumsScreen())),
             AlbumStrip(albums: _l(_m(d['albums'])['albums']).take(8).toList()),
           ],
-          if (_l(_m(d['board'])['items']).isNotEmpty) ...[
-            _Header('Student board', action: 'See all', onAction: () => push(context, const BoardScreen())),
-            for (final x in _l(_m(d['board'])['items']).take(3))
+          if (_l(_m(d['board'])['items']).any((x) => x['kind'] == 'Blood Request')) ...[
+            _Header('Blood needed', action: 'Board', onAction: () => push(context, const BoardScreen())),
+            for (final x in _l(_m(d['board'])['items']).where((x) => x['kind'] == 'Blood Request').take(2))
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: _Pill(
@@ -1268,20 +1272,18 @@ class ExploreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppState.i;
     final tiles = <(IconData, List<Color>, String, Widget)>[
-      (Icons.photo_library, const [Color(0xFFF26B1D), Color(0xFFC8202A)], 'Albums', const AlbumsScreen()),
+      (Icons.explore, const [Color(0xFF0B3D2A), Color(0xFF1E8E3E)], 'Qibla', const QiblaScreen()),
+      (Icons.emoji_events, const [Color(0xFFF26B1D), Color(0xFFC8202A)], 'Leaderboard', const ReadingBoardScreen()),
+      (Icons.quiz, const [Color(0xFF7C3AED), Color(0xFFC8202A)], 'Weekly quiz', const JourneyScreen()),
+      (Icons.photo_library, const [Color(0xFFF26B1D), Color(0xFF7C3AED)], 'Albums', const AlbumsScreen()),
       (Icons.push_pin, const [Color(0xFF1E8E3E), Color(0xFF0E7490)], 'Student board', const BoardScreen()),
       (Icons.badge, const [Color(0xFF0E3F70), Color(0xFF1A62A8)], 'My SIO card', const MemberCardScreen()),
-      (Icons.travel_explore, const [Color(0xFF1A62A8), Color(0xFFC8202A)], 'Find members', const FindMembersScreen()),
-      (Icons.people_alt, const [Color(0xFF7C3AED), Color(0xFF1A62A8)], 'Friends', const FriendsScreen()),
-      (Icons.quiz, const [Color(0xFF7C3AED), Color(0xFFC8202A)], 'Weekly quiz', const JourneyScreen()),
-
-      if (s.can('rsvp'))
-        (Icons.event_note, const [Color(0xFF1A62A8), Color(0xFF0E3F70)], 'Meetings', const MeetingsScreen(standalone: true)),
-
-      (Icons.campaign, const [Color(0xFF1E8E3E), Color(0xFF1A62A8)], 'Updates', const NoticesScreen()),
-      if (s.me['member'] != null)
-        (Icons.task_alt, const [Color(0xFF1A62A8), Color(0xFF1E8E3E)], 'My tasks', const MyTasksScreen()),
-      (Icons.info_outline, const [Color(0xFF0E3F70), Color(0xFF7C3AED)], 'About SIO', const PublicScreen()),
+    ];
+    // less used: a short list under the grid, only what applies to this person
+    final more = <(IconData, String, Widget)>[
+      if (s.can('rsvp')) (Icons.event_note, 'Meetings', const MeetingsScreen(standalone: true)),
+      if (s.me['member'] != null) (Icons.task_alt, 'My tasks', const MyTasksScreen()),
+      (Icons.info_outline, 'About SIO', const PublicScreen()),
     ];
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1311,12 +1313,12 @@ class ExploreScreen extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           GridView.count(
-            crossAxisCount: 4,
+            crossAxisCount: 3,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
+            mainAxisSpacing: 14,
             crossAxisSpacing: 8,
-            childAspectRatio: 0.82,
+            childAspectRatio: 1.0,
             children: [
               for (final t in tiles)
                 InkWell(
@@ -1325,8 +1327,8 @@ class ExploreScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Container(
-                        width: 58,
-                        height: 58,
+                        width: 64,
+                        height: 64,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(colors: t.$2, begin: Alignment.topLeft, end: Alignment.bottomRight),
                           borderRadius: BorderRadius.circular(18),
@@ -1345,7 +1347,17 @@ class ExploreScreen extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          for (final m in more)
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(m.$1, color: SioColors.blue),
+              title: Text(m.$2, style: const TextStyle(fontWeight: FontWeight.w600)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => push(context, m.$3),
+            ),
+          const SizedBox(height: 12),
           const Text(
             'Programmes',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
