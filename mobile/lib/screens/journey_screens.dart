@@ -263,10 +263,6 @@ class _ReadingCard extends StatelessWidget {
           children: [
             StatusChip(reading['kind'] == 'Hadith' ? 'Hadith of the day' : 'Ayah of the day', tone: Tone.blue),
             const Spacer(),
-            if ((reading['audio'] as List? ?? []).isNotEmpty) ...[
-              AyahAudioButton(urls: [for (final u in reading['audio'] as List) '$u'], light: false),
-              const SizedBox(width: 8),
-            ],
             if (done) const Icon(Icons.check_circle, color: SioColors.green),
           ],
         ),
@@ -290,6 +286,18 @@ class _ReadingCard extends StatelessWidget {
         ],
         const SizedBox(height: 8),
         Text('— ${reading['reference'] ?? ''}', style: const TextStyle(color: SioColors.textSecondary)),
+        if ((reading['audio'] as List? ?? []).isNotEmpty || malayalamToRead(reading).isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if ((reading['audio'] as List? ?? []).isNotEmpty)
+                AyahAudioButton(urls: [for (final u in reading['audio'] as List) '$u'], light: false),
+              if (malayalamToRead(reading).isNotEmpty) MalayalamSpeakButton(text: malayalamToRead(reading), light: false),
+            ],
+          ),
+        ],
         if ('${reading['lesson_en'] ?? ''}'.isNotEmpty) ...[
           const SizedBox(height: 12),
           Container(

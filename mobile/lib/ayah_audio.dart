@@ -1,3 +1,4 @@
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -85,3 +86,87 @@ class _AyahAudioButtonState extends State<AyahAudioButton> {
     );
   }
 }
+
+/// Reads the Malayalam meaning (and today's lesson) aloud with the phone's Malayalam voice.
+class MalayalamSpeakButton extends StatefulWidget {
+  const MalayalamSpeakButton({super.key, required this.text, this.light = true});
+  final String text;
+  final bool light;
+
+  @override
+  State<MalayalamSpeakButton> createState() => _MalayalamSpeakButtonState();
+}
+
+class _MalayalamSpeakButtonState extends State<MalayalamSpeakButton> {
+  static final FlutterTts _tts = FlutterTts();
+  bool _speaking = false;
+
+  @override
+  void dispose() {
+    if (_speaking) _tts.stop();
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (_speaking) {
+      await _tts.stop();
+      if (mounted) setState(() => _speaking = false);
+      return;
+    }
+    final ok = await _tts.isLanguageAvailable('ml-IN');
+    if (ok != true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 6),
+            content: Text(
+              'Your phone has no Malayalam voice yet. Open Settings → Text-to-speech (Speech services by Google) '
+              '→ Install voice data → Malayalam.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    await _tts.setLanguage('ml-IN');
+    await _tts.setSpeechRate(0.45);
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _speaking = false);
+    });
+    setState(() => _speaking = true);
+    await _tts.speak(widget.text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = widget.light ? Colors.white : const Color(0xFF1A62A8);
+    return Material(
+      color: widget.light ? Colors.white.withValues(alpha: 0.16) : const Color(0xFFE8F0FA),
+      borderRadius: BorderRadius.circular(30),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(30),
+        onTap: _toggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_speaking ? Icons.stop_rounded : Icons.record_voice_over_outlined, color: fg, size: 18),
+              const SizedBox(width: 4),
+              Text(
+                _speaking ? 'Stop' : 'മലയാളം',
+                style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// What the Malayalam button reads: the meaning, then today's lesson.
+String malayalamToRead(Map r) => [
+  if ('${r['text_ml'] ?? ''}'.isNotEmpty) '${r['text_ml']}',
+  if ('${r['lesson_ml'] ?? ''}'.isNotEmpty) 'ഇന്നത്തെ പാഠം. ${r['lesson_ml']}',
+].join('\n');

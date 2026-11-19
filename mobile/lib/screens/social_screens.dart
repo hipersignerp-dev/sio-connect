@@ -810,10 +810,6 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 style: const TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w800),
               ),
               const Spacer(),
-              if ((r['audio'] as List? ?? []).isNotEmpty) ...[
-                AyahAudioButton(urls: [for (final u in r['audio'] as List) '$u']),
-                const SizedBox(width: 8),
-              ],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
@@ -864,6 +860,17 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
             ),
           const SizedBox(height: 6),
           Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Colors.white70)),
+          if ((r['audio'] as List? ?? []).isNotEmpty || malayalamToRead(r).isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if ((r['audio'] as List? ?? []).isNotEmpty) AyahAudioButton(urls: [for (final u in r['audio'] as List) '$u']),
+                if (malayalamToRead(r).isNotEmpty) MalayalamSpeakButton(text: malayalamToRead(r)),
+              ],
+            ),
+          ],
           if ('${r['lesson_en'] ?? ''}'.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
