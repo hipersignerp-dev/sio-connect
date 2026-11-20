@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -35,33 +37,73 @@ Future<bool> run(BuildContext context, Future<void> Function() action, {String? 
     AppState.i.refreshAll();
     return true;
   } on ApiException catch (e) {
-    if (context.mounted) toast(context, e.message);
+    if (context.mounted) toast(context, friendlyError(e));
   } catch (e) {
-    if (context.mounted) toast(context, e.toString());
+    if (context.mounted) toast(context, friendlyError(e));
   }
   return false;
 }
 
 /// Loads data, shows a spinner / error with retry, pull to refresh, and reloads after app-wide changes.
 class Loader<T> extends StatefulWidget {
-  const Loader({super.key, required this.load, required this.builder, this.padding, this.skeleton});
+  const Loader({super.key, required this.load, required this.builder, this.padding, this.skeleton, this.cacheKey});
   final Future<T> Function() load;
   final Widget? skeleton; // shown (shimmering) instead of the spinner on first load
   final List<Widget> Function(BuildContext context, T data) builder;
   final EdgeInsets? padding;
 
+  /// When set, the last good data is kept on the phone: shown instantly on open (then refreshed quietly),
+  /// and still shown when there's no internet.
+  final String? cacheKey;
+
   @override
   State<Loader<T>> createState() => _LoaderState<T>();
+}
+
+/// The phone-side copy of screens (see [Loader.cacheKey]); per signed-in person, cleared on sign out.
+class ScreenCache {
+  static String _k(String key) => 'lc_${AppState.i.me['email'] ?? ''}_$key';
+
+  static T? read<T>(String key) {
+    final raw = Api.prefs.getString(_k(key));
+    if (raw == null) return null;
+    try {
+      final d = jsonDecode(raw);
+      if (d is T) return d;
+      if (d is List) {
+        final maps = List<Map<String, dynamic>>.from(d.map((e) => Map<String, dynamic>.from(e as Map)));
+        if (maps is T) return maps as T;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<void> write(String key, Object? data) async {
+    try {
+      await Api.prefs.setString(_k(key), jsonEncode(data));
+    } catch (_) {}
+  }
+
+  static Future<void> clear() async {
+    for (final k in Api.prefs.getKeys().where((k) => k.startsWith('lc_')).toList()) {
+      await Api.prefs.remove(k);
+    }
+  }
 }
 
 class _LoaderState<T> extends State<Loader<T>> {
   T? _data;
   String? _error;
   bool _busy = false;
+  bool _stale = false; // showing the saved copy
 
   @override
   void initState() {
     super.initState();
+    if (widget.cacheKey != null) {
+      _data = ScreenCache.read<T>(widget.cacheKey!);
+      _stale = _data != null;
+    }
     AppState.i.changes.addListener(_reload);
     _reload();
   }
@@ -77,14 +119,16 @@ class _LoaderState<T> extends State<Loader<T>> {
     _busy = true;
     try {
       final d = await widget.load();
+      if (widget.cacheKey != null) ScreenCache.write(widget.cacheKey!, d);
       if (mounted) {
         setState(() {
           _data = d;
           _error = null;
+          _stale = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = friendlyError(e));
     } finally {
       _busy = false;
     }
@@ -92,11 +136,45 @@ class _LoaderState<T> extends State<Loader<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final offline = _error != null && _data != null;
     final children = <Widget>[
-      if (_error != null) ...[
-        SioBanner(text: _error!, error: true),
-        const SizedBox(height: 8),
-        OutlinedButton(onPressed: _reload, child: const Text('Try again')),
+      if (offline)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: InkWell(
+            onTap: _reload,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _stale ? 'You’re offline. Showing what was saved on your phone.' : _error!,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const Text('Retry', style: TextStyle(fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ),
+        )
+      else if (_error != null) ...[
+        const SizedBox(height: 40),
+        Icon(Icons.wifi_off_rounded, size: 48, color: SioColors.textSecondary),
+        const SizedBox(height: 12),
+        Text(_error!, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, height: 1.4)),
+        const SizedBox(height: 12),
+        Center(
+          child: FilledButton.icon(onPressed: _reload, icon: const Icon(Icons.refresh), label: const Text('Try again')),
+        ),
         const SizedBox(height: 12),
       ],
       if (_data == null && _error == null && widget.skeleton != null)
@@ -119,6 +197,23 @@ class _LoaderState<T> extends State<Loader<T>> {
   }
 }
 
+/// Turns errors into words a student understands.
+String friendlyError(Object e) {
+  if (e is ApiException) {
+    if (e.status == null) return 'You’re offline or the internet is slow. Pull down to try again.';
+    if (e.status == 401) return 'Please sign in again.';
+    if ((e.status ?? 0) >= 500 && e.message.startsWith('Something went wrong')) {
+      return 'Our server had a hiccup. Please try again in a minute.';
+    }
+    return e.message;
+  }
+  final t = e.toString();
+  if (t.contains('SocketException') || t.contains('TimeoutException') || t.contains('ClientException')) {
+    return 'You’re offline or the internet is slow. Pull down to try again.';
+  }
+  return 'Something didn’t work. Please try again.';
+}
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.text, {super.key, this.action});
   final String text;
@@ -132,7 +227,7 @@ class SectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: SioColors.ink),
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: SioColors.ink),
           ),
         ),
         ?action,
@@ -142,10 +237,11 @@ class SectionTitle extends StatelessWidget {
 }
 
 class Stat extends StatelessWidget {
-  const Stat(this.value, this.label, {super.key, this.color = SioColors.blue});
+  const Stat(this.value, this.label, {super.key, this._color});
   final String value;
   final String label;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? SioColors.blue;
 
   @override
   Widget build(BuildContext context) => Expanded(
@@ -161,7 +257,7 @@ class Stat extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: SioColors.textSecondary, fontSize: 12)),
+        Text(label, style: TextStyle(color: SioColors.textSecondary, fontSize: 12)),
       ],
     ),
   );
@@ -197,7 +293,7 @@ class EmptyNote extends StatelessWidget {
     child: Text(
       text,
       textAlign: TextAlign.center,
-      style: const TextStyle(color: SioColors.textSecondary),
+      style: TextStyle(color: SioColors.textSecondary),
     ),
   );
 }

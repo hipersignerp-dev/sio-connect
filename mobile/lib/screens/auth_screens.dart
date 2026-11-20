@@ -27,13 +27,13 @@ class WelcomeScreen extends StatelessWidget {
               const Spacer(),
               const Center(child: _logo),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'SIO Connect',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: SioColors.ink),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Meetings, events, collections and updates for every SIO member',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: SioColors.textSecondary, fontSize: 15),
@@ -47,7 +47,7 @@ class WelcomeScreen extends StatelessWidget {
                 child: const Text('New here? Join SIO Connect'),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Powered by Hipersign ERP',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
@@ -92,9 +92,9 @@ class _GoogleButtonState extends State<GoogleButton> {
   Widget build(BuildContext context) => OutlinedButton(
     style: OutlinedButton.styleFrom(
       minimumSize: const Size.fromHeight(54),
-      backgroundColor: Colors.white,
+      backgroundColor: SioColors.background,
       foregroundColor: SioColors.ink,
-      side: const BorderSide(color: SioColors.border, width: 1.4),
+      side: BorderSide(color: SioColors.border, width: 1.4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     onPressed: _busy
@@ -124,7 +124,7 @@ class _OrDivider extends StatelessWidget {
   const _OrDivider();
 
   @override
-  Widget build(BuildContext context) => const Padding(
+  Widget build(BuildContext context) => Padding(
     padding: EdgeInsets.symmetric(vertical: 18),
     child: Row(
       children: [
@@ -147,7 +147,7 @@ Future<void> finishSignIn(BuildContext context) async {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.fingerprint, size: 40, color: SioColors.blue),
+        icon: Icon(Icons.fingerprint, size: 40, color: SioColors.blue),
         title: const Text('Sign in with fingerprint?'),
         content: const Text('Next time, open the app with your fingerprint or face instead of typing your password.'),
         actions: [
@@ -271,7 +271,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 24),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            title: const Text('Server', style: TextStyle(color: SioColors.textSecondary)),
+            title: Text('Server', style: TextStyle(color: SioColors.textSecondary)),
             children: [
               TextField(
                 controller: _server,
@@ -423,7 +423,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               decoration: BoxDecoration(color: SioColors.greenBg, borderRadius: BorderRadius.circular(14)),
               child: Row(
                 children: [
-                  const Icon(Icons.verified, color: SioColors.green),
+                  Icon(Icons.verified, color: SioColors.green),
                   const SizedBox(width: 10),
                   Expanded(child: Text('Signing up with Google as ${_email.text}. No password needed.')),
                 ],
@@ -599,7 +599,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
               const Spacer(),
               const Center(child: _logo),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'SIO Connect',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: SioColors.ink),
@@ -608,7 +608,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
                 Text(
                   who,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: SioColors.textSecondary),
+                  style: TextStyle(color: SioColors.textSecondary),
                 ),
               const Spacer(),
               if (_error != null) ...[SioBanner(text: _error!, error: true), const SizedBox(height: 16)],
@@ -619,20 +619,15 @@ class _UnlockScreenState extends State<UnlockScreen> {
                   child: Container(
                     width: 96,
                     height: 96,
-                    decoration: const BoxDecoration(color: SioColors.cardHigh, shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: SioColors.cardHigh, shape: BoxShape.circle),
                     child: _busy
                         ? const Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator())
-                        : const Icon(
-                            Icons.fingerprint,
-                            size: 56,
-                            color: SioColors.blue,
-                            semanticLabel: 'Unlock with fingerprint',
-                          ),
+                        : Icon(Icons.fingerprint, size: 56, color: SioColors.blue, semanticLabel: 'Unlock with fingerprint'),
                   ),
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Touch to unlock',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: SioColors.textSecondary),

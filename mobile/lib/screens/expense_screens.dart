@@ -106,7 +106,7 @@ class ClaimCard extends StatelessWidget {
                     if (c['paid_from'] != null) 'from ${c['paid_from']}',
                     if (c['fund_request'] != null) 'programme fund',
                   ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                  style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+                  style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
                 ),
               ),
               StatusChip(status, tone: StatusChip.toneFor(status)),
@@ -299,7 +299,7 @@ class _NewClaimScreenState extends State<NewClaimScreen> {
             SioPanel(
               child: Row(
                 children: [
-                  const Icon(Icons.image_outlined, color: SioColors.blue),
+                  Icon(Icons.image_outlined, color: SioColors.blue),
                   const SizedBox(width: 10),
                   Expanded(child: Text(_bill!.name, overflow: TextOverflow.ellipsis)),
                   IconButton(tooltip: 'Remove', icon: const Icon(Icons.close), onPressed: () => setState(() => _bill = null)),

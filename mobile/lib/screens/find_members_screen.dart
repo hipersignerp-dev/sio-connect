@@ -109,10 +109,10 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
+    backgroundColor: SioColors.background,
     appBar: AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
+      backgroundColor: SioColors.background,
+      surfaceTintColor: SioColors.background,
       title: const Text('Find SIO members', style: TextStyle(fontWeight: FontWeight.w800)),
     ),
     body: ListView(
@@ -170,7 +170,7 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
                     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
                     child: Text(
                       '${_km.round()} km ▾',
-                      style: const TextStyle(color: SioColors.blue, fontWeight: FontWeight.w800),
+                      style: TextStyle(color: const Color(0xFF1A62A8), fontWeight: FontWeight.w800),
                     ),
                   ),
                 ),
@@ -191,10 +191,10 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
           Expanded(
             child: Text(
               _title!,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
             ),
           ),
-          if (_people != null && !_busy) Text('${_people!.length} found', style: const TextStyle(color: SioColors.textSecondary)),
+          if (_people != null && !_busy) Text('${_people!.length} found', style: TextStyle(color: SioColors.textSecondary)),
         ],
       ),
     ),
@@ -216,7 +216,7 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
                   ? 'No members with a saved location this close. Try a bigger distance.'
                   : 'No SIO members found. Try another name or place.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: SioColors.textSecondary),
+              style: TextStyle(color: SioColors.textSecondary),
             ),
           ],
         ),
@@ -238,13 +238,13 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
         padding: const EdgeInsets.fromLTRB(4, 22, 4, 4),
         child: Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'Browse by place',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
               ),
             ),
-            if (_places != null) Text('${_places!['total']} members', style: const TextStyle(color: SioColors.textSecondary)),
+            if (_places != null) Text('${_places!['total']} members', style: TextStyle(color: SioColors.textSecondary)),
           ],
         ),
       ),
@@ -337,7 +337,7 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
       Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: SioColors.warningBg, borderRadius: BorderRadius.circular(14)),
-        child: const Text(
+        child: Text(
           'Others find you by your unit, college and home town. “Near me” shows only people who chose to add a location '
           'in My profile. Phone numbers and exact locations are never shown.',
           style: TextStyle(color: SioColors.text, fontSize: 13),
@@ -401,21 +401,21 @@ class _MemberCardState extends State<_MemberCard> {
                   children: [
                     Text(
                       '${p['full_name'] ?? ''}',
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: SioColors.ink),
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: SioColors.ink),
                     ),
                     Text(
                       [
                         if ('${p['username'] ?? ''}'.isNotEmpty) '@${p['username']}',
                         if (friendlyRole(p['member_role']) != null) friendlyRole(p['member_role'])!,
                       ].join(' · '),
-                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+                      style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
                     ),
                     if (where.isNotEmpty)
                       Text(
                         where.join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: SioColors.text, fontSize: 13),
+                        style: TextStyle(color: SioColors.text, fontSize: 13),
                       ),
                     if (p['distance'] != null)
                       Padding(
@@ -425,7 +425,7 @@ class _MemberCardState extends State<_MemberCard> {
                           decoration: BoxDecoration(color: SioColors.greenBg, borderRadius: BorderRadius.circular(10)),
                           child: Text(
                             numOf(p['distance']) < 1 ? '📍 under 1 km away' : '📍 about ${p['distance']} km away',
-                            style: const TextStyle(color: SioColors.green, fontSize: 12, fontWeight: FontWeight.w700),
+                            style: TextStyle(color: SioColors.green, fontSize: 12, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
@@ -439,8 +439,8 @@ class _MemberCardState extends State<_MemberCard> {
                   duration: const Duration(milliseconds: 220),
                   transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
                   child: switch (_state) {
-                    'friends' => const Icon(Icons.how_to_reg, color: SioColors.green, key: ValueKey('f')),
-                    'sent' => const Text(
+                    'friends' => Icon(Icons.how_to_reg, color: SioColors.green, key: ValueKey('f')),
+                    'sent' => Text(
                       'Requested',
                       key: ValueKey('s'),
                       style: TextStyle(color: SioColors.textSecondary),

@@ -175,7 +175,7 @@ class _DonorsScreenState extends State<DonorsScreen> {
                     child: Text(
                       '${d['count']} people · ${d['with_mobile']} with mobile'
                       '${s.can('view_collection_totals') ? '' : ' · people you collected from'}',
-                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                      style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                     ),
                   ),
                   if (list.isEmpty)
@@ -226,11 +226,11 @@ class _DonorRow extends StatelessWidget {
         children: [
           Text(inr(d['given']), style: const TextStyle(fontWeight: FontWeight.w700)),
           if (numOf(d['balance']) > 0)
-            Text('${inr(d['balance'])} to pay', style: const TextStyle(color: SioColors.danger, fontSize: 11.5))
+            Text('${inr(d['balance'])} to pay', style: TextStyle(color: SioColors.danger, fontSize: 11.5))
           else
             Text(
               numOf(d['times']) > 0 ? '${d['times']}× given' : 'Not given yet',
-              style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5),
+              style: TextStyle(color: SioColors.textSecondary, fontSize: 11.5),
             ),
         ],
       ),
@@ -257,7 +257,7 @@ class _DonorRow extends StatelessWidget {
               Text('${d['name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               Text(
                 [d['type'], d['mobile'], d['place'], d['unit']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                style: const TextStyle(color: SioColors.textSecondary),
+                style: TextStyle(color: SioColors.textSecondary),
               ),
               const SizedBox(height: 14),
               Row(
@@ -279,7 +279,7 @@ class _DonorRow extends StatelessWidget {
                   ),
                 ),
               if (d['last_date'] != null)
-                Text('Last: ${fmtDate(d['last_date'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+                Text('Last: ${fmtDate(d['last_date'])}', style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
               if ((d['notes'] ?? '').toString().isNotEmpty) ...[const SizedBox(height: 8), SioBanner(text: '${d['notes']}')],
               const SizedBox(height: 16),
               if (hasMobile)

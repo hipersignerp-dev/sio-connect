@@ -108,7 +108,7 @@ class _LocationFieldState extends State<LocationField> {
                   Text(widget.label, style: const TextStyle(fontWeight: FontWeight.w700)),
                   Text(
                     _v == null ? (widget.hint ?? 'Not added yet') : 'Saved point: ${_v!.text}',
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+                    style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
                   ),
                 ],
               ),
@@ -116,7 +116,7 @@ class _LocationFieldState extends State<LocationField> {
             if (_v != null)
               IconButton(
                 tooltip: 'Open in Maps',
-                icon: const Icon(Icons.map_outlined, color: SioColors.blue),
+                icon: Icon(Icons.map_outlined, color: SioColors.blue),
                 onPressed: () => openInMaps(context, _v!),
               ),
             if (_v != null)
@@ -139,7 +139,7 @@ class _LocationFieldState extends State<LocationField> {
           label: Text(_busy ? 'Finding you…' : (_v == null ? 'Use my current location' : 'Update to where I am now')),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           'Stand at the house (or near it) and tap the button.',
           style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
         ),
@@ -160,7 +160,7 @@ class MapButton extends StatelessWidget {
     if (g == null) return const SizedBox.shrink();
     return IconButton(
       tooltip: 'Directions',
-      icon: const Icon(Icons.directions, color: SioColors.blue),
+      icon: Icon(Icons.directions, color: SioColors.blue),
       onPressed: () => openInMaps(context, g),
     );
   }

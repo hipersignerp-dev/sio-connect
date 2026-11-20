@@ -64,8 +64,8 @@ class _PhotoPickerState extends State<PhotoPicker> {
             ),
             if (has)
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: SioColors.red),
-                title: const Text('Remove photo', style: TextStyle(color: SioColors.red)),
+                leading: Icon(Icons.delete_outline, color: SioColors.red),
+                title: Text('Remove photo', style: TextStyle(color: SioColors.red)),
                 onTap: () => Navigator.pop(s, 'remove'),
               ),
           ],

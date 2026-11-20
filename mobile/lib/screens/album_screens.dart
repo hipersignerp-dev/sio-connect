@@ -33,13 +33,14 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
+    backgroundColor: SioColors.background,
     appBar: AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
+      backgroundColor: SioColors.background,
+      surfaceTintColor: SioColors.background,
       title: const Text('Albums', style: TextStyle(fontWeight: FontWeight.w800)),
     ),
     body: Loader<Map<String, dynamic>>(
+      cacheKey: 'albums',
       key: ValueKey(_v),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
       load: () async => _m(await Api.call('${Api.m}albums')),
@@ -167,7 +168,7 @@ class _AlbumTile extends StatelessWidget {
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
               child: Text(
                 '📸 you ×${a['me_in']}',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: SioColors.ink),
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: const Color(0xFF1F1F23)),
               ),
             ),
           ),
@@ -284,10 +285,10 @@ class _AlbumScreenState extends State<AlbumScreen> {
     final photos = a == null ? <Map<String, dynamic>>[] : _l(a['photos']);
     final mine = photos.where((p) => p['me'] == true).length;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: SioColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: SioColors.background,
+        surfaceTintColor: SioColors.background,
         title: Text(a == null ? 'Album' : '${a['title']}', style: const TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           if (a?['can_manage'] == true)
@@ -342,7 +343,7 @@ class _AlbumScreenState extends State<AlbumScreen> {
                           if (a['album_date'] != null) fmtDate(a['album_date']),
                           if (mine > 0) 'you’re in $mine',
                         ].join(' · '),
-                        style: const TextStyle(color: SioColors.textSecondary),
+                        style: TextStyle(color: SioColors.textSecondary),
                       ),
                     ),
                   ),
@@ -377,12 +378,12 @@ class _AlbumScreenState extends State<AlbumScreen> {
                               children: [
                                 Image.network(_url(p['file_url']), fit: BoxFit.cover, cacheWidth: 400),
                                 if (p['me'] == true)
-                                  const Positioned(
+                                  Positioned(
                                     right: 4,
                                     bottom: 4,
                                     child: CircleAvatar(
                                       radius: 11,
-                                      backgroundColor: Colors.white,
+                                      backgroundColor: SioColors.background,
                                       child: Text('🙋', style: TextStyle(fontSize: 12)),
                                     ),
                                   ),
@@ -786,7 +787,7 @@ class PhotoFeedCard extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: who,
-                            style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                            style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
                           ),
                           TextSpan(text: names.length == 1 && names.first != 'You' ? ' is in this photo' : ' are in this photo'),
                         ],

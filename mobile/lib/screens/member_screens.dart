@@ -47,7 +47,7 @@ class _MembersScreenState extends State<MembersScreen> {
                 children: [
                   Expanded(child: Text('${o['value']}')),
                   const SizedBox(width: 16),
-                  Text('${o['count']}', style: const TextStyle(color: SioColors.textSecondary)),
+                  Text('${o['count']}', style: TextStyle(color: SioColors.textSecondary)),
                 ],
               ),
             ),
@@ -178,11 +178,11 @@ class _MembersScreenState extends State<MembersScreen> {
                       children: [
                         Text(
                           '${data['total']} ${data['total'] == 1 ? 'person' : 'people'}',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SioColors.ink),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SioColors.ink),
                         ),
                         if (filtered) ...[
                           const SizedBox(width: 6),
-                          Text('of ${data['all']}', style: const TextStyle(color: SioColors.textSecondary)),
+                          Text('of ${data['all']}', style: TextStyle(color: SioColors.textSecondary)),
                         ],
                       ],
                     ),
@@ -216,7 +216,7 @@ class _MembersScreenState extends State<MembersScreen> {
                                 if ('${m['mobile'] ?? ''}'.isNotEmpty)
                                   IconButton(
                                     tooltip: 'Call ${m['full_name']}',
-                                    icon: const Icon(Icons.call, color: SioColors.green),
+                                    icon: Icon(Icons.call, color: SioColors.green),
                                     onPressed: () => launchUrl(Uri.parse('tel:${m['mobile']}')),
                                   )
                                 else
@@ -273,7 +273,7 @@ class _MembersScreenState extends State<MembersScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(m['full_name'].toString(), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                          Text('${m['name']} · ${m['status']}', style: const TextStyle(color: SioColors.textSecondary)),
+                          Text('${m['name']} · ${m['status']}', style: TextStyle(color: SioColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -299,7 +299,7 @@ class _MembersScreenState extends State<MembersScreen> {
                         children: [
                           SizedBox(
                             width: 80,
-                            child: Text(line[0].toString(), style: const TextStyle(color: SioColors.textSecondary)),
+                            child: Text(line[0].toString(), style: TextStyle(color: SioColors.textSecondary)),
                           ),
                           Expanded(child: Text(line[1].toString())),
                         ],
@@ -312,7 +312,7 @@ class _MembersScreenState extends State<MembersScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
+                        Text(
                           'Path to membership',
                           style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
                         ),
@@ -349,10 +349,10 @@ class _MembersScreenState extends State<MembersScreen> {
                         ),
                         if ('${m['membership_note'] ?? ''}'.isNotEmpty) ...[
                           const SizedBox(height: 6),
-                          Text('${m['membership_note']}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+                          Text('${m['membership_note']}', style: TextStyle(color: SioColors.textSecondary, fontSize: 13)),
                         ],
                         if (!AppState.i.givableRoles.contains('Member') && m['member_role'] == 'Worker')
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 8),
                             child: Text(
                               'When it is complete, the area leaders make them an official Member.',

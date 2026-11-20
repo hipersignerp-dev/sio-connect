@@ -109,7 +109,7 @@ class UnitsScreen extends StatelessWidget {
                     if (a['secretary_name'] != null) 'Secretary: ${a['secretary_name']}',
                     if (a['active'] != 1) 'inactive',
                   ].join(' · '),
-                  style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                  style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                 ),
               ),
               if ((a['units'] as List).isEmpty)
@@ -246,7 +246,7 @@ class _AreaFormScreenState extends State<AreaFormScreen> {
           const SizedBox(height: 14),
           _picker('Area secretary', _secretary, (v) => _secretary = v),
           const SectionTitle('Units in this area'),
-          if (_allUnits.isEmpty) const Text('No units yet.', style: TextStyle(color: SioColors.textSecondary)),
+          if (_allUnits.isEmpty) Text('No units yet.', style: TextStyle(color: SioColors.textSecondary)),
           SioPanel(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
@@ -415,7 +415,7 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
           if (_u != null) ...[
             const SectionTitle('Office bearers'),
             if (_members.isEmpty)
-              const Text(
+              Text(
                 'Add members to this unit first, then pick its president and secretary.',
                 style: TextStyle(color: SioColors.textSecondary),
               )
@@ -425,7 +425,7 @@ class _UnitFormScreenState extends State<UnitFormScreen> {
               _picker('Secretary', _secretary, (v) => _secretary = v),
               const SizedBox(height: 14),
               _picker('Expense approver', _approver, (v) => _approver = v),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
                   'Approves and pays this unit\'s expense claims. Finance and area admins can too.',

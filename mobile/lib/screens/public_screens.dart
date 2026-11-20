@@ -1155,7 +1155,7 @@ class _DonateScreenState extends State<DonateScreen> {
         children: [
           if (_done) ...[
             const SizedBox(height: 40),
-            const Icon(Icons.check_circle, size: 72, color: SioColors.green),
+            Icon(Icons.check_circle, size: 72, color: SioColors.green),
             const SizedBox(height: 16),
             const Text(
               'Jazakallah khair!',
@@ -1166,7 +1166,7 @@ class _DonateScreenState extends State<DonateScreen> {
             Text(
               'SIO will confirm your donation of ${inr(d!['amount'])} once the payment is matched. Reference ${d['ref']}.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: SioColors.textSecondary),
+              style: TextStyle(color: SioColors.textSecondary),
             ),
             const SizedBox(height: 24),
             FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
@@ -1180,13 +1180,13 @@ class _DonateScreenState extends State<DonateScreen> {
                     Text(
                       '"${widget.hadith!['text']}"',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${widget.hadith!['source'] ?? ''}',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: SioColors.warning, fontSize: 12.5),
+                      style: TextStyle(color: SioColors.warning, fontSize: 12.5),
                     ),
                   ],
                 ),
@@ -1231,7 +1231,7 @@ class _DonateScreenState extends State<DonateScreen> {
               label: const Text('Pay with UPI'),
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Opens GPay, PhonePe, Paytm or any UPI app with the amount filled in.',
               textAlign: TextAlign.center,
               style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
@@ -1241,7 +1241,7 @@ class _DonateScreenState extends State<DonateScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Pay ${inr(d['amount'])} to', style: const TextStyle(color: SioColors.textSecondary)),
+                  Text('Pay ${inr(d['amount'])} to', style: TextStyle(color: SioColors.textSecondary)),
                   const SizedBox(height: 4),
                   SelectableText('${d['upi_id']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 10),

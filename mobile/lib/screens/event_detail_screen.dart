@@ -50,7 +50,7 @@ class EventDetailScreen extends StatelessWidget {
                       Expanded(
                         child: Text(
                           e['title'].toString(),
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
                         ),
                       ),
                       StatusChip(e['status'].toString(), tone: StatusChip.toneFor(e['status'].toString())),
@@ -63,7 +63,7 @@ class EventDetailScreen extends StatelessWidget {
                       e['venue'],
                       e['unit'],
                     ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                   ),
                   if (s.can('manage_events') && (s.can('all_units') || (e['unit'] != null && e['unit'] == s.me['unit'])))
                     Align(
@@ -176,7 +176,7 @@ class EventDetailScreen extends StatelessWidget {
                         if (numOf(sum['pending']) > 0) '${inr(sum['pending'])} waiting approval',
                         if (sum['scope'] == 'my unit') 'your unit only',
                       ].join(' · '),
-                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+                      style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
                     ),
                   ],
                 ),
@@ -242,7 +242,7 @@ class _RegisterButtonState extends State<_RegisterButton> {
       ? OutlinedButton.icon(
           style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
           onPressed: _busy ? null : _go,
-          icon: const Icon(Icons.check_circle, color: SioColors.green),
+          icon: Icon(Icons.check_circle, color: SioColors.green),
           label: const Text('Registered · tap to cancel'),
         )
       : FilledButton.icon(

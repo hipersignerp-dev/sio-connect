@@ -44,6 +44,54 @@ class Notify {
     }
   }
 
+  // ---- daily reading reminder (local: works without a push server, checked with the 15-minute job)
+
+  /// "HH:MM", or null when the person turned reminders off. Default 8 PM.
+  static String? get reminderTime {
+    final v = Api.prefs.getString('remind_at');
+    if (v == 'off') return null;
+    return v ?? '20:00';
+  }
+
+  static Future<void> setReminder(String? hm) => Api.prefs.setString('remind_at', hm ?? 'off');
+
+  static String _today() => DateTime.now().toIso8601String().substring(0, 10);
+
+  /// Remember that today's ayah is done (and the streak), so the reminder stays quiet.
+  static void markReadToday(int streak) {
+    Api.prefs.setString('read_day', _today());
+    Api.prefs.setInt('streak_now', streak);
+  }
+
+  static Future<void> _dailyReminder() async {
+    try {
+      final at = reminderTime;
+      if (at == null) return;
+      final today = _today();
+      if (Api.prefs.getString('read_day') == today || Api.prefs.getString('reminded_day') == today) return;
+      final p = at.split(':');
+      final now = DateTime.now();
+      final due = DateTime(now.year, now.month, now.day, int.parse(p[0]), int.parse(p[1]));
+      if (now.isBefore(due) || now.difference(due).inHours >= 3) return;
+      await Api.prefs.setString('reminded_day', today);
+      final streak = Api.prefs.getInt('streak_now') ?? 0;
+      await _plugin.show(
+        7001,
+        streak > 0 ? '🔥 Keep your $streak-day streak' : '📖 Today’s ayah is waiting',
+        'Take a minute to read or listen to today’s ayah in SIO Connect.',
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'sio_reading',
+            'Daily ayah reminder',
+            channelDescription: 'One reminder a day if you haven’t read yet',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+        ),
+      );
+    } catch (_) {}
+  }
+
   /// Signing out: stop checking.
   static Future<void> stop() async {
     try {
@@ -55,6 +103,7 @@ class Notify {
   /// there is just marked as seen.
   static Future<void> check() async {
     await _init();
+    await _dailyReminder();
     final list = (await Api.call('${Api.m}notices') as List?) ?? [];
     final raw = Api.prefs.getString(_seenKey);
     final seen = raw == null ? null : Set<String>.from(jsonDecode(raw) as List);

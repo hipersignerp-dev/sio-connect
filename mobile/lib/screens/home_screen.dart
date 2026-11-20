@@ -55,7 +55,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   Text(
                     DateFormat('EEEE, d MMMM').format(DateTime.now()),
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: SioColors.textSecondary),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: SioColors.textSecondary),
                   ),
                 ],
               ),
@@ -83,6 +83,7 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: Loader<Map<String, dynamic>>(
+        cacheKey: 'dashboard',
         load: () async {
           final h = Map<String, dynamic>.from(await Api.call('${Api.m}home') as Map);
           AppState.i.me = Map<String, dynamic>.from(h['me'] as Map);
@@ -218,14 +219,14 @@ class _Tile extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
             ),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
               child: Text(
                 value,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: SioColors.ink),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: SioColors.ink),
               ),
             ),
           ],
@@ -275,19 +276,19 @@ class MeetingCardState extends State<MeetingCard> {
               const Spacer(),
               Text(
                 when,
-                style: const TextStyle(color: SioColors.textSecondary, fontWeight: FontWeight.w600),
+                style: TextStyle(color: SioColors.textSecondary, fontWeight: FontWeight.w600),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             m['topic']?.toString() ?? 'Weekly meeting',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.ink),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.ink),
           ),
           const SizedBox(height: 2),
           Text(
             [m['meeting_type'], m['where'] ?? m['unit'], m['venue']].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary),
+            style: TextStyle(color: SioColors.textSecondary),
           ),
           if (canRsvp) ...[
             const SizedBox(height: 16),
@@ -340,7 +341,7 @@ class _EventPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Next event',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
@@ -360,9 +361,12 @@ class _EventPanel extends StatelessWidget {
                   children: [
                     Text(
                       d == null ? '' : DateFormat('MMM').format(d).toUpperCase(),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SioColors.red),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFC8202A)),
                     ),
-                    Text(d == null ? '' : '${d.day}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                    Text(
+                      d == null ? '' : '${d.day}',
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: Color(0xFF1F1F23)),
+                    ),
                   ],
                 ),
               ),
@@ -377,7 +381,7 @@ class _EventPanel extends StatelessWidget {
                         event['venue'],
                         if (d != null) DateFormat.jm().format(d),
                       ].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
-                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                      style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                     ),
                   ],
                 ),
@@ -402,7 +406,7 @@ class _NoticesPanel extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 'Latest updates',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
@@ -411,7 +415,7 @@ class _NoticesPanel extends StatelessWidget {
             TextButton(onPressed: () => push(context, const NoticesScreen()), child: const Text('See all')),
           ],
         ),
-        if (notices.isEmpty) const Text('No updates yet.', style: TextStyle(color: SioColors.textSecondary)),
+        if (notices.isEmpty) Text('No updates yet.', style: TextStyle(color: SioColors.textSecondary)),
         for (final n in notices)
           InkWell(
             onTap: journeyNotice(n) != null
@@ -429,7 +433,7 @@ class _NoticesPanel extends StatelessWidget {
                   Text(n['title'].toString(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                   Text(
                     '${n['audience'] == 'Unit' ? n['unit'] : n['audience']} · ${fmtDate(n['sent_on'], 'd MMM, h:mm a')}',
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                   ),
                 ],
               ),
@@ -477,7 +481,7 @@ class _LocationPromptState extends State<_LocationPrompt> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.home_work_outlined, color: SioColors.red),
               SizedBox(width: 10),
@@ -487,7 +491,7 @@ class _LocationPromptState extends State<_LocationPrompt> {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Are you at home now? Tap the button and your unit can find your house for visits and programmes.',
             style: TextStyle(color: SioColors.textSecondary),
           ),

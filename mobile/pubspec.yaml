@@ -78,6 +78,15 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+  fonts:
+    - family: AmiriQuran
+      fonts:
+        - asset: assets/fonts/AmiriQuran.ttf
+    - family: NotoSansMalayalam
+      fonts:
+        - asset: assets/fonts/NotoSansMalayalam-Regular.ttf
+        - asset: assets/fonts/NotoSansMalayalam-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

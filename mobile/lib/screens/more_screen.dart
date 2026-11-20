@@ -8,6 +8,7 @@ import '../biometric.dart';
 import '../theme.dart';
 import '../update_service.dart';
 import '../photo.dart';
+import 'settings_sheets.dart';
 import '../widgets.dart';
 import '../location.dart';
 import 'task_screens.dart';
@@ -63,13 +64,10 @@ class MoreScreen extends StatelessWidget {
                                   : (dashboardOpen ? me['member_role'] : friendlyRole(me['member_role'])),
                               me['unit'],
                             ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                            style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                            style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                           ),
                           if (me['member'] != null)
-                            Text(
-                              'Member ID ${me['member']}',
-                              style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
-                            ),
+                            Text('Member ID ${me['member']}', style: TextStyle(color: SioColors.textSecondary, fontSize: 13)),
                         ],
                       ),
                     ),
@@ -201,6 +199,29 @@ class MoreScreen extends StatelessWidget {
                 onTap: () => push(context, const NoticesScreen()),
               ),
               const _BiometricTile(),
+              if (!dashboardOpen) ...[
+                SioTile(
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Daily ayah reminder',
+                  subtitle: reminderLabel(),
+                  onTap: () async {
+                    await showReminderPicker(context);
+                    AppState.i.touch();
+                  },
+                ),
+                SioTile(
+                  icon: Icons.palette_outlined,
+                  title: 'Appearance',
+                  subtitle: 'Dark mode and text size',
+                  onTap: () => showAppearance(context),
+                ),
+                SioTile(
+                  icon: Icons.feedback_outlined,
+                  title: 'Send feedback',
+                  subtitle: 'Report a problem or share an idea',
+                  onTap: () => showFeedback(context),
+                ),
+              ],
               if (!dashboardOpen && s.isLeader)
                 SioTile(
                   icon: Icons.space_dashboard_outlined,
@@ -292,9 +313,9 @@ class _BiometricTileState extends State<_BiometricTile> {
       child: SwitchListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         tileColor: SioColors.card,
-        secondary: const Icon(Icons.fingerprint, color: SioColors.blue),
+        secondary: Icon(Icons.fingerprint, color: SioColors.blue),
         title: const Text('Fingerprint sign-in'),
-        subtitle: Text(on ? 'Open the app with your fingerprint' : 'Off', style: const TextStyle(color: SioColors.textSecondary)),
+        subtitle: Text(on ? 'Open the app with your fingerprint' : 'Off', style: TextStyle(color: SioColors.textSecondary)),
         value: on,
         onChanged: (v) async {
           if (v) {
@@ -394,7 +415,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Tap to add or change your photo',
               textAlign: TextAlign.center,
               style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
@@ -409,10 +430,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 4),
                 Text(
                   [me['mobile'], me['email']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                  style: const TextStyle(color: SioColors.textSecondary),
+                  style: TextStyle(color: SioColors.textSecondary),
                 ),
                 if (me['joined_on'] != null)
-                  Text('Member since ${fmtDate(me['joined_on'])}', style: const TextStyle(color: SioColors.textSecondary)),
+                  Text('Member since ${fmtDate(me['joined_on'])}', style: TextStyle(color: SioColors.textSecondary)),
               ],
             ),
           ),

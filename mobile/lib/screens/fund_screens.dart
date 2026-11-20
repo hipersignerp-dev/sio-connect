@@ -183,7 +183,7 @@ class _RequestCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   '${r['title']}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
                 ),
               ),
               StatusChip(status, tone: _tone(status)),
@@ -197,7 +197,7 @@ class _RequestCard extends StatelessWidget {
               if (r['needed_by'] != null) 'needed by ${fmtDate(r['needed_by'], 'd MMM')}',
               r['event'],
             ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+            style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 12),
           Row(
@@ -214,14 +214,14 @@ class _RequestCard extends StatelessWidget {
             Text(
               '${inr(released)} released · ${inr(r['spent_amount'])} spent'
               '${r['paid_from'] != null ? ' · from ${r['paid_from']}' : ''}',
-              style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+              style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
             ),
           ],
           const SizedBox(height: 10),
           Text('${r['purpose']}'),
           if ((r['breakdown'] ?? '').toString().isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text('${r['breakdown']}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+            Text('${r['breakdown']}', style: TextStyle(color: SioColors.textSecondary, fontSize: 13)),
           ],
           if ((r['remarks'] ?? '').toString().isNotEmpty) ...[
             const SizedBox(height: 8),

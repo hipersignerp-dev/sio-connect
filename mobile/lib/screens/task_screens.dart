@@ -193,7 +193,7 @@ Future<void> showTaskSheet(
             children: [
               Text(
                 '${t['title']}',
-                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: SioColors.ink),
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: SioColors.ink),
               ),
               const SizedBox(height: 4),
               Text(
@@ -203,7 +203,7 @@ Future<void> showTaskSheet(
                   t['responsibility'],
                   if (parseDate(t['due_on']) != null) 'Due ${DateFormat('EEE d MMM, h:mm a').format(parseDate(t['due_on'])!)}',
                 ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                style: const TextStyle(color: SioColors.textSecondary),
+                style: TextStyle(color: SioColors.textSecondary),
               ),
               const SizedBox(height: 14),
               if (mine || boss) ...[
@@ -620,7 +620,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             decoration: const InputDecoration(labelText: 'Notes (optional)', alignLabelWithHint: true),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'The person gets a notification now, and a reminder every morning when the task is due within 2 days or late.',
             style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
           ),
@@ -653,7 +653,7 @@ class MyTasksScreen extends StatelessWidget {
               children: [
                 for (final t in teams)
                   ListTile(
-                    leading: const Icon(Icons.groups_2_outlined, color: SioColors.blue),
+                    leading: Icon(Icons.groups_2_outlined, color: SioColors.blue),
                     title: Text('${t['event_title']}'),
                     subtitle: Text(
                       [t['responsibility'], fmtDate(t['event_starts'], 'EEE d MMM')].where((x) => x != null).join(' · '),

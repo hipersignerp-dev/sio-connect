@@ -2,49 +2,67 @@ import 'package:material_ui/material_ui.dart';
 
 /// SIO colours on the Hipersign mobile app layout (same shapes and spacing as the HiperTracker app).
 /// Blue and red come from the SIO logo. Change colours here only.
+/// App colours. Light by default; [dark] switches the whole palette (set before the app is built).
 class SioColors {
-  static const blue = Color(0xFF1A62A8); // primary, from the logo's blue
-  static const red = Color(0xFFC8202A); // the + button and highlights, from the logo's red
-  static const ink = Color(0xFF1F1F23); // headings, the logo's black
-  static const text = Color(0xFF333333);
-  static const textSecondary = Color(0xFF6B7785);
+  static bool dark = false;
+  static Color _p(int light, int night) => Color(dark ? night : light);
 
-  static const background = Color(0xFFFFFFFF);
-  static const card = Color(0xFFF2F6FA);
-  static const cardHigh = Color(0xFFE3ECF5);
-  static const border = Color(0xFFDDE6EF);
+  static Color get blue => _p(0xFF1A62A8, 0xFF4C8FD6); // primary, from the logo's blue
+  static Color get red => _p(0xFFC8202A, 0xFFE5484D); // the + button and highlights
+  static Color get ink => _p(0xFF1F1F23, 0xFFEEF1F5); // headings
+  static Color get text => _p(0xFF333333, 0xFFD9DEE4);
+  static Color get textSecondary => _p(0xFF6B7785, 0xFF9AA7B4);
 
-  static const green = Color(0xFF1E8E3E);
-  static const greenBg = Color(0xFFCDEED6);
-  static const danger = Color(0xFFC62828);
-  static const dangerBg = Color(0xFFFDECEC);
-  static const warning = Color(0xFF8A5200);
-  static const warningBg = Color(0xFFFFF4DC);
-  static const grey = Color(0xFF4F5965);
-  static const greyBg = Color(0xFFDADFE5);
-  static const purple = Color(0xFF7C3AED);
+  static Color get background => _p(0xFFFFFFFF, 0xFF0F1419);
+  static Color get card => _p(0xFFF2F6FA, 0xFF1A2129);
+  static Color get cardHigh => _p(0xFFE3ECF5, 0xFF243039);
+  static Color get border => _p(0xFFDDE6EF, 0xFF2C3844);
+
+  static Color get green => _p(0xFF1E8E3E, 0xFF4CC26E);
+  static Color get greenBg => _p(0xFFCDEED6, 0xFF173A24);
+  static Color get danger => _p(0xFFC62828, 0xFFEF5350);
+  static Color get dangerBg => _p(0xFFFDECEC, 0xFF3D1A1C);
+  static Color get warning => _p(0xFF8A5200, 0xFFF0A847);
+  static Color get warningBg => _p(0xFFFFF4DC, 0xFF3A2C12);
+  static Color get grey => _p(0xFF4F5965, 0xFFB5BEC8);
+  static Color get greyBg => _p(0xFFDADFE5, 0xFF2C343D);
+  static Color get purple => _p(0xFF7C3AED, 0xFFA78BFA);
 }
 
+/// Qur'an Arabic in a proper Qur'an font, the same on every phone.
+TextStyle arabicStyle({Color? color, double size = 22}) =>
+    TextStyle(fontFamily: 'AmiriQuran', fontSize: size, height: 2.0, color: color);
+
+/// Malayalam in a clear Malayalam font, the same on every phone.
+TextStyle malayalamStyle({Color? color, double size = 16, FontWeight? weight}) =>
+    TextStyle(fontFamily: 'NotoSansMalayalam', fontSize: size, height: 1.65, color: color, fontWeight: weight);
+
 ThemeData buildTheme() {
-  final scheme = ColorScheme.fromSeed(seedColor: SioColors.blue, brightness: Brightness.light).copyWith(
-    primary: SioColors.blue,
-    onPrimary: Colors.white,
-    secondary: SioColors.red,
-    onSecondary: Colors.white,
-    surface: SioColors.background,
-    onSurface: SioColors.text,
-    onSurfaceVariant: SioColors.textSecondary,
-    surfaceContainerHighest: SioColors.card,
-    outline: SioColors.border,
-    outlineVariant: SioColors.border,
-    error: SioColors.danger,
-    surfaceTint: Colors.transparent,
+  final scheme = ColorScheme.fromSeed(seedColor: SioColors.blue, brightness: SioColors.dark ? Brightness.dark : Brightness.light)
+      .copyWith(
+        primary: SioColors.blue,
+        onPrimary: Colors.white,
+        secondary: SioColors.red,
+        onSecondary: Colors.white,
+        surface: SioColors.background,
+        onSurface: SioColors.text,
+        onSurfaceVariant: SioColors.textSecondary,
+        surfaceContainerHighest: SioColors.card,
+        outline: SioColors.border,
+        outlineVariant: SioColors.border,
+        error: SioColors.danger,
+        surfaceTint: Colors.transparent,
+      );
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    brightness: SioColors.dark ? Brightness.dark : Brightness.light,
+    fontFamilyFallback: const ['NotoSansMalayalam'],
   );
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme, brightness: Brightness.light);
   return base.copyWith(
     scaffoldBackgroundColor: SioColors.background,
     textTheme: base.textTheme.apply(bodyColor: SioColors.text, displayColor: SioColors.text),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: SioColors.background,
       foregroundColor: SioColors.ink,
       surfaceTintColor: Colors.transparent,
@@ -54,18 +72,18 @@ ThemeData buildTheme() {
       centerTitle: false,
       titleTextStyle: TextStyle(color: SioColors.ink, fontSize: 20, fontWeight: FontWeight.w700),
     ),
-    dividerTheme: const DividerThemeData(color: SioColors.border, space: 1),
+    dividerTheme: DividerThemeData(color: SioColors.border, space: 1),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: SioColors.card,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: SioColors.border),
+        borderSide: BorderSide(color: SioColors.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: SioColors.blue, width: 1.6),
+        borderSide: BorderSide(color: SioColors.blue, width: 1.6),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
@@ -81,33 +99,33 @@ ThemeData buildTheme() {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: SioColors.blue,
-        side: const BorderSide(color: SioColors.border),
+        side: BorderSide(color: SioColors.border),
         minimumSize: const Size(48, 48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: SioColors.blue)),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: SioColors.blue, linearTrackColor: SioColors.cardHigh),
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: SioColors.blue, linearTrackColor: SioColors.cardHigh),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Colors.white : null),
       trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? SioColors.blue : null),
     ),
-    dialogTheme: const DialogThemeData(backgroundColor: SioColors.background, surfaceTintColor: Colors.transparent),
-    bottomSheetTheme: const BottomSheetThemeData(backgroundColor: SioColors.background, surfaceTintColor: Colors.transparent),
-    bottomAppBarTheme: const BottomAppBarThemeData(
+    dialogTheme: DialogThemeData(backgroundColor: SioColors.background, surfaceTintColor: Colors.transparent),
+    bottomSheetTheme: BottomSheetThemeData(backgroundColor: SioColors.background, surfaceTintColor: Colors.transparent),
+    bottomAppBarTheme: BottomAppBarThemeData(
       color: SioColors.background,
       surfaceTintColor: Colors.transparent,
       elevation: 8,
       shadowColor: Color(0x331A62A8),
     ),
-    snackBarTheme: const SnackBarThemeData(
+    snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: SioColors.text,
       contentTextStyle: TextStyle(color: Colors.white),
     ),
-    listTileTheme: const ListTileThemeData(iconColor: SioColors.blue, textColor: SioColors.text),
+    listTileTheme: ListTileThemeData(iconColor: SioColors.blue, textColor: SioColors.text),
     chipTheme: base.chipTheme.copyWith(
-      side: const BorderSide(color: SioColors.border),
+      side: BorderSide(color: SioColors.border),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
   );
@@ -177,7 +195,7 @@ class SioTile extends StatelessWidget {
       tileColor: SioColors.card,
       leading: Icon(icon, color: danger ? SioColors.danger : SioColors.blue),
       title: Text(title, style: TextStyle(color: danger ? SioColors.danger : null)),
-      subtitle: subtitle == null ? null : Text(subtitle!, style: const TextStyle(color: SioColors.textSecondary)),
+      subtitle: subtitle == null ? null : Text(subtitle!, style: TextStyle(color: SioColors.textSecondary)),
       trailing: trailing ?? (danger ? null : const Icon(Icons.chevron_right)),
       onTap: onTap,
     ),

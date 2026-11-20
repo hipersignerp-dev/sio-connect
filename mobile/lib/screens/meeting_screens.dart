@@ -19,6 +19,7 @@ class MeetingsScreen extends StatelessWidget {
           ? AddFab(tooltip: 'Schedule meeting', onPressed: () => push(context, const ScheduleMeetingScreen()))
           : null,
       body: Loader<Map<String, dynamic>>(
+        cacheKey: 'meetings',
         load: () async => Map<String, dynamic>.from(await Api.call('${Api.m}meetings') as Map),
         builder: (context, d) {
           final list = (d['meetings'] as List?) ?? [];
@@ -29,7 +30,7 @@ class MeetingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'This week',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
                   ),
@@ -66,7 +67,7 @@ class _AreaTag extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
     decoration: BoxDecoration(color: SioColors.purple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-    child: const Text(
+    child: Text(
       'AREA',
       style: TextStyle(color: SioColors.purple, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 0.6),
     ),
@@ -108,11 +109,11 @@ class _MeetingRow extends StatelessWidget {
           children: [
             Text(
               fmtDate(m['meeting_date'], 'EEE').toUpperCase(),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SioColors.red),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: SioColors.red),
             ),
             Text(
               fmtDate(m['meeting_date'], 'd'),
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: SioColors.ink),
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: SioColors.ink),
             ),
           ],
         ),
@@ -229,13 +230,13 @@ class _MeetingScreenState extends State<MeetingScreen> {
                             if (m['level'] == 'Area') ...[const _AreaTag(), const SizedBox(height: 4)],
                             Text(
                               m['topic'].toString(),
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
+                              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
                             ),
                             const SizedBox(height: 2),
                             if (m['level'] == 'Area')
                               Text(
                                 'Invited: ${m['invite'] ?? 'Unit leaders'}',
-                                style: const TextStyle(color: SioColors.purple, fontSize: 13),
+                                style: TextStyle(color: SioColors.purple, fontSize: 13),
                               ),
                             Text(
                               [
@@ -244,7 +245,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                                 fmtTime(m['meeting_time']),
                                 m['venue'],
                               ].where((e) => e != null && '$e'.isNotEmpty).join(' · '),
-                              style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                              style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                             ),
                           ],
                         ),
@@ -255,7 +256,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                           decoration: BoxDecoration(color: SioColors.greenBg, borderRadius: BorderRadius.circular(20)),
                           child: Text(
                             '${_present.length} / ${roster.length}',
-                            style: const TextStyle(color: SioColors.green, fontWeight: FontWeight.w700),
+                            style: TextStyle(color: SioColors.green, fontWeight: FontWeight.w700),
                           ),
                         )
                       else
@@ -392,7 +393,7 @@ class _MeetingScreenState extends State<MeetingScreen> {
                         child: Text(
                           'Your reply: ${m['my_rsvp']}',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: SioColors.textSecondary),
+                          style: TextStyle(color: SioColors.textSecondary),
                         ),
                       ),
                   ],

@@ -338,7 +338,7 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
                                     Text(u['unit'].toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
                                     Text(
                                       '${numOf(u['members']).toInt()} active members',
-                                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
+                                      style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
                                     ),
                                   ],
                                 ),
@@ -378,7 +378,7 @@ class _CollectionFormScreenState extends State<CollectionFormScreen> {
                             _split < _target$
                                 ? '${inr(_target$ - _split)} not given to any unit yet'
                                 : '${inr(_split - _target$)} more than the total',
-                            style: const TextStyle(color: SioColors.danger, fontSize: 12.5),
+                            style: TextStyle(color: SioColors.danger, fontSize: 12.5),
                           ),
                         ),
                     ],
@@ -762,7 +762,7 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
           Text(
             _m == null ? 'Add a photo (optional)' : 'Tap to change the photo',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+            style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
           ),
           const SizedBox(height: 14),
           TextField(

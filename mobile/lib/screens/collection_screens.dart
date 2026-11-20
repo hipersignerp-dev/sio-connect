@@ -113,11 +113,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
                       Expanded(
                         child: Text(
                           sel['name'].toString(),
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
                         ),
                       ),
                       if (target > 0)
-                        Text('Target ${inr(target)}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 13)),
+                        Text('Target ${inr(target)}', style: TextStyle(color: SioColors.textSecondary, fontSize: 13)),
                     ],
                   ),
                   if (sel['starts_on'] != null || sel['unit'] != null)
@@ -129,7 +129,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                             '${fmtDate(sel['starts_on'], 'd MMM')} – ${fmtDate(sel['ends_on'], 'd MMM yyyy')}',
                           if (sel['unit'] != null) '${sel['unit']} unit',
                         ].join(' · '),
-                        style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                        style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                       ),
                     ),
                   if (s.can('manage_collections'))
@@ -169,7 +169,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
                             : '${s.me['unit'] ?? 'Your unit'}',
                         if (numOf(totals['items']) > 0) 'items worth ${inr(totals['items'])}',
                       ].join(' · '),
-                      style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                      style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                     ),
                   ],
                 ],
@@ -332,7 +332,7 @@ class _EntryRow extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 'Still to receive ${inr(e['balance_amount'])} of ${inr(e['offered_amount'])} offered',
-                style: const TextStyle(color: SioColors.textSecondary),
+                style: TextStyle(color: SioColors.textSecondary),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -580,7 +580,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
               padding: const EdgeInsets.only(bottom: 14),
               child: Text(
                 _collection!,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
               ),
             ),
           if (_pledge) ...[
@@ -624,7 +624,7 @@ class _NewEntryScreenState extends State<NewEntryScreen> {
                   ),
                   Text(
                     inr(_monthly),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.green),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.green),
                   ),
                 ],
               ),
@@ -837,7 +837,7 @@ class UnitProgressRow extends StatelessWidget {
               if (target > 0) left > 0 ? '${inr(left)} still to target' : 'Target reached',
               if (numOf(u['balance']) > 0) '${inr(u['balance'])} offered, not yet paid',
             ].join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+            style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
           ),
         ],
       ),
@@ -860,7 +860,7 @@ class _PledgeCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'My Baithul Mal',
                   style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
@@ -883,7 +883,7 @@ class _PledgeCard extends StatelessWidget {
               'month ${p['months_so_far']} of ${p['months']}',
               if (due > 0) 'pay your unit collector' else 'all paid up, Jazakallah khair',
             ].join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+            style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
           ),
         ],
       ),

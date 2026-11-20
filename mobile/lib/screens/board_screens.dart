@@ -42,10 +42,10 @@ class _BoardScreenState extends State<BoardScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
+    backgroundColor: SioColors.background,
     appBar: AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
+      backgroundColor: SioColors.background,
+      surfaceTintColor: SioColors.background,
       title: const Text('Student board', style: TextStyle(fontWeight: FontWeight.w800)),
     ),
     floatingActionButton: FloatingActionButton.extended(
@@ -129,9 +129,9 @@ class _BoardCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: blood ? const Color(0xFFFFF0F0) : Colors.white,
+          color: blood ? SioColors.dangerBg : SioColors.background,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: blood ? const Color(0xFFF5C2C2) : SioColors.border),
+          border: Border.all(color: blood ? SioColors.danger.withValues(alpha: 0.35) : SioColors.border),
         ),
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -166,7 +166,7 @@ class _BoardCard extends StatelessWidget {
                     decoration: BoxDecoration(color: SioColors.warningBg, borderRadius: BorderRadius.circular(10)),
                     child: Text(
                       daysLeft == 0 ? 'Last day!' : '$daysLeft days left',
-                      style: const TextStyle(color: SioColors.warning, fontSize: 11, fontWeight: FontWeight.w800),
+                      style: TextStyle(color: SioColors.warning, fontSize: 11, fontWeight: FontWeight.w800),
                     ),
                   ),
                 if (x['can_delete'] == true)
@@ -190,11 +190,11 @@ class _BoardCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               '${x['title']}',
-              style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: SioColors.ink),
+              style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800, color: SioColors.ink),
             ),
             if ('${x['details'] ?? ''}'.isNotEmpty) ...[
               const SizedBox(height: 4),
-              Text('${x['details']}', style: const TextStyle(color: SioColors.text, height: 1.4)),
+              Text('${x['details']}', style: TextStyle(color: SioColors.text, height: 1.4)),
             ],
             const SizedBox(height: 8),
             Wrap(
@@ -276,7 +276,7 @@ class _Meta extends StatelessWidget {
     children: [
       Icon(icon, size: 15, color: SioColors.textSecondary),
       const SizedBox(width: 4),
-      Text(text, style: const TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
+      Text(text, style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5)),
     ],
   );
 }
@@ -405,7 +405,7 @@ class _PostBoardScreenState extends State<PostBoardScreen> {
             ],
           ),
           if (!widget.lead)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
                 'Scholarships, exams and careers are posted by your unit and area leaders. Send them anything useful you find.',

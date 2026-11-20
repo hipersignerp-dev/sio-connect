@@ -20,6 +20,7 @@ class NoticesScreen extends StatelessWidget {
           ? AddFab(tooltip: 'Send update', onPressed: () => push(context, const SendNoticeScreen()))
           : null,
       body: Loader<List<dynamic>>(
+        cacheKey: 'notices',
         load: () async => (await Api.call('${Api.m}notices') as List?) ?? [],
         builder: (context, list) => [
           if (list.isEmpty) const EmptyNote('No updates yet.'),
@@ -37,7 +38,7 @@ class NoticesScreen extends StatelessWidget {
                 children: [
                   Text(
                     n['title'].toString(),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -49,12 +50,12 @@ class NoticesScreen extends StatelessWidget {
                           : n['audience'],
                       fmtDate(n['sent_on'], 'd MMM, h:mm a'),
                     ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 8),
                   Text(n['message'].toString(), style: const TextStyle(fontSize: 15, height: 1.4)),
                   if ((n['event'] ?? '').toString().isNotEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 6),
                       child: Text(
                         'Open the programme →',

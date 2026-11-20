@@ -234,14 +234,14 @@ class _MeetingSummaryScreenState extends State<MeetingSummaryScreen> {
         children: [
           Text(
             '${m['topic']}',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: SioColors.ink),
           ),
           Text(
             [
               m['where'] ?? m['unit'],
               fmtDate(m['meeting_date'], 'EEE d MMM'),
             ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary),
+            style: TextStyle(color: SioColors.textSecondary),
           ),
           const SizedBox(height: 18),
           // 1. speak

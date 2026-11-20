@@ -20,6 +20,7 @@ class EventsScreen extends StatelessWidget {
           ? AddFab(tooltip: 'New event', onPressed: () => push(context, const EventFormScreen()))
           : null,
       body: Loader<List<dynamic>>(
+        cacheKey: 'events',
         load: () async => (await Api.call('${Api.m}events') as List?) ?? [],
         builder: (context, list) => [
           if (list.isEmpty) const EmptyNote('No events right now.'),
@@ -61,7 +62,7 @@ class _EventCardState extends State<_EventCard> {
               Expanded(
                 child: Text(
                   e['title'].toString(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SioColors.ink),
                 ),
               ),
               const SizedBox(width: 8),
@@ -77,13 +78,13 @@ class _EventCardState extends State<_EventCard> {
               if (d != null) DateFormat('EEE d MMM, h:mm a').format(d),
               e['venue'],
             ].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
-            style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+            style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
           ),
           if (cap > 0) ...[
             const SizedBox(height: 10),
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text('Registered', style: TextStyle(color: SioColors.textSecondary, fontSize: 13)),
                 ),
                 Text('${reg.toInt()} / ${cap.toInt()}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
@@ -96,7 +97,7 @@ class _EventCardState extends State<_EventCard> {
             const SizedBox(height: 8),
             Text(
               'Budget ${inr(e['budget'])} · spent ${inr(e['spent'])}',
-              style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
             ),
           ],
           if (canRegister && (open || registered)) ...[

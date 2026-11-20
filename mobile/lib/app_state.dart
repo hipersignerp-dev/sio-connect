@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:material_ui/material_ui.dart';
 
 import 'package:google_sign_in/google_sign_in.dart';
@@ -5,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'api.dart';
 import 'biometric.dart';
 import 'notify.dart';
+import 'widgets.dart';
 
 enum Stage { loading, signedOut, locked, signedIn }
 
@@ -139,6 +142,16 @@ class AppState extends ChangeNotifier {
     final g = await Biometric.readGoogleToken();
     if (g != null && g.isNotEmpty) Api.token = g;
     if (Api.hasSession) {
+      // open straight away with the saved profile; refresh it quietly (works offline too)
+      final saved = Api.prefs.getString('me_cache');
+      if (saved != null) {
+        try {
+          me = Map<String, dynamic>.from(jsonDecode(saved) as Map);
+          _set(Stage.signedIn);
+          loadMe().catchError((_) {});
+          return;
+        } catch (_) {}
+      }
       try {
         await loadMe();
         _set(Stage.signedIn);
@@ -150,6 +163,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadMe() async {
     me = Map<String, dynamic>.from(await Api.call('${Api.m}me') as Map);
+    await Api.prefs.setString('me_cache', jsonEncode(me));
     notifyListeners();
   }
 
@@ -278,6 +292,8 @@ class AppState extends ChangeNotifier {
       await GoogleSignIn.instance.signOut();
     } catch (_) {}
     await disableBiometric();
+    await ScreenCache.clear();
+    await Api.prefs.remove('me_cache');
     await Api.logout();
     me = {};
     _set(Stage.signedOut);

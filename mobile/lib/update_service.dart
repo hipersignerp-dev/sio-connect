@@ -78,9 +78,17 @@ class UpdateService {
       final build = int.tryParse(RegExp(r'(\d+)$').firstMatch(tag)?.group(1) ?? '');
       if (build == null) return null;
       final assets = (json['assets'] as List?) ?? const [];
-      final apk = assets.cast<Map<String, dynamic>>().firstWhere(
-        (a) => (a['name'] ?? '').toString().toLowerCase().endsWith('.apk'),
-        orElse: () => const {},
+      // the small APK made for this phone's processor when there is one, else the universal one
+      final v = Platform.version;
+      final want = v.contains('android_arm64')
+          ? 'sio-connect-arm64.apk'
+          : v.contains('android_arm')
+          ? 'sio-connect-arm32.apk'
+          : 'sio-connect.apk';
+      final list = assets.cast<Map<String, dynamic>>();
+      final apk = list.firstWhere(
+        (a) => (a['name'] ?? '').toString().toLowerCase() == want,
+        orElse: () => list.firstWhere((a) => (a['name'] ?? '').toString().toLowerCase().endsWith('.apk'), orElse: () => const {}),
       );
       final url = apk['browser_download_url']?.toString();
       if (url == null || url.isEmpty) return null;

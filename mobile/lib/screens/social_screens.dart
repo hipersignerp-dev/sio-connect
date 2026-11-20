@@ -26,6 +26,8 @@ import 'more_screen.dart';
 import 'notice_screens.dart';
 import 'public_screens.dart';
 import 'qibla_screen.dart';
+import '../ayah_share.dart';
+import 'onboarding_screen.dart';
 import 'task_screens.dart';
 
 // The associates' app: a friendly, Instagram-like app in SIO colours. Home feed with friends' rings,
@@ -58,6 +60,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) UpdateService.check(context);
       Links.openPending();
+      if (mounted) Onboarding.maybeShow(context);
     });
     Notify.start('${AppState.i.me['user'] ?? ''}');
   }
@@ -125,8 +128,8 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
     return Scaffold(
       body: IndexedStack(index: _tab, children: pages),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: SioColors.background,
           border: Border(top: BorderSide(color: SioColors.border, width: 0.6)),
         ),
         child: SafeArea(
@@ -293,10 +296,10 @@ class SocialHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
+    backgroundColor: SioColors.background,
     appBar: AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
+      backgroundColor: SioColors.background,
+      surfaceTintColor: SioColors.background,
       titleSpacing: 16,
       title: Row(
         children: [
@@ -342,6 +345,7 @@ class SocialHome extends StatelessWidget {
       ],
     ),
     body: Loader<Map<String, dynamic>>(
+      cacheKey: 'home',
       padding: const EdgeInsets.only(bottom: 24),
       skeleton: const _HomeSkeleton(),
       load: _load,
@@ -356,11 +360,15 @@ class SocialHome extends StatelessWidget {
             .where((e) => e['status'] != 'Completed' && (parseDate(e['starts_on'])?.isAfter(DateTime.now()) ?? false))
             .toList();
         final pending = AppState.i.pending;
-        if (j != null) checkNewBadges(context, j);
+        if (j != null) {
+          checkNewBadges(context, j);
+          final rs = _m(j['reading_streak']);
+          if (rs['today'] == true) Notify.markReadToday(_i(rs['current']));
+        }
         return [
           if (friends.length >= 3) ...[
             _Stories(me: AppState.i.me, journey: j, friends: friends, openJourney: () => openTab(2)),
-            const Divider(height: 1, color: SioColors.border),
+            Divider(height: 1, color: SioColors.border),
           ],
           if (pending)
             const Padding(
@@ -385,7 +393,7 @@ class SocialHome extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: Text(
               'Assalamu Alaikum, ${AppState.i.firstName} 👋',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink),
             ),
           ),
           if (AppState.i.isLeader)
@@ -491,11 +499,11 @@ class SocialHome extends StatelessWidget {
                 decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(18)),
                 child: Column(
                   children: [
-                    const Icon(Icons.photo_library_outlined, size: 40, color: SioColors.blue),
+                    Icon(Icons.photo_library_outlined, size: 40, color: SioColors.blue),
                     const SizedBox(height: 8),
                     const Text('No photos yet', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'After a programme, find yourself in the album and tap “That’s me!”. Photos of you and your friends show up here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: SioColors.textSecondary),
@@ -535,7 +543,7 @@ class _Header extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
           ),
         ),
         if (action != null) TextButton(onPressed: onAction, child: Text(action!)),
@@ -654,7 +662,7 @@ class _Stories extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
           child: Text(
             'Read today · $readCount of ${friends.length} friends   (tap a grey ring to nudge)',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SioColors.textSecondary),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SioColors.textSecondary),
           ),
         ),
         SizedBox(
@@ -682,7 +690,7 @@ class _Stories extends StatelessWidget {
                   onTap: () => _friendSheet(context, f),
                 ),
               story(
-                avatar: const CircleAvatar(
+                avatar: CircleAvatar(
                   radius: 30,
                   backgroundColor: SioColors.card,
                   child: Icon(Icons.person_add_alt_1, color: SioColors.blue),
@@ -722,8 +730,7 @@ void _friendSheet(BuildContext context, Map<String, dynamic> f) {
             ),
             const SizedBox(height: 10),
             Text('${f['full_name']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            if ('${f['username'] ?? ''}'.isNotEmpty)
-              Text('@${f['username']}', style: const TextStyle(color: SioColors.textSecondary)),
+            if ('${f['username'] ?? ''}'.isNotEmpty) Text('@${f['username']}', style: TextStyle(color: SioColors.textSecondary)),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -799,7 +806,7 @@ class _MiniStat extends StatelessWidget {
     child: Column(
       children: [
         Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-        Text(label, style: const TextStyle(fontSize: 12, color: SioColors.textSecondary)),
+        Text(label, style: TextStyle(fontSize: 12, color: SioColors.textSecondary)),
       ],
     ),
   );
@@ -932,7 +939,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 ar,
                 textAlign: TextAlign.right,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(color: Colors.white, fontSize: 22, height: 1.9),
+                style: arabicStyle(color: Colors.white, size: 24),
               ),
             ),
             const SizedBox(height: 10),
@@ -941,7 +948,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
           if (ml.isNotEmpty) ...[
             Text(
               ml,
-              style: const TextStyle(color: Colors.white, fontSize: 17, height: 1.6, fontWeight: FontWeight.w600),
+              style: malayalamStyle(color: Colors.white, size: 17, weight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             Text('“${r['text_en']}”', style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4)),
@@ -986,7 +993,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                   ),
                   const SizedBox(height: 4),
                   if ('${r['lesson_ml'] ?? ''}'.isNotEmpty)
-                    Text('${r['lesson_ml']}', style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.5)),
+                    Text('${r['lesson_ml']}', style: malayalamStyle(color: Colors.white, size: 15)),
                   if ('${r['lesson_en'] ?? ''}'.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text('${r['lesson_en']}', style: const TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.4)),
@@ -1043,18 +1050,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.16)),
                 tooltip: 'Share',
                 icon: const Icon(Icons.send_outlined, color: Colors.white),
-                onPressed: () => SharePlus.instance.share(
-                  ShareParams(
-                    text: [
-                      if (ar.isNotEmpty) ar,
-                      if (ml.isNotEmpty) ml,
-                      '“${r['text_en']}”',
-                      '— ${r['reference'] ?? ''}',
-                      if ('${r['lesson_ml'] ?? ''}'.isNotEmpty) '\n💡 ${r['lesson_ml']}',
-                      '\nvia SIO Connect ${Links.share({'q': 'ayah'})}',
-                    ].join('\n'),
-                  ),
-                ),
+                onPressed: () => shareAyahImage(context, r),
               ),
             ],
           ),
@@ -1072,6 +1068,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
       setState(() {
         _streakNow = _i(r['current']);
       });
+      Notify.markReadToday(_i(r['current']));
       final b = _btn.currentContext;
       if (b != null && b.mounted) burst(b, emojis: const ['🔥', '✨', '⭐', '💙'], count: 20);
       await Future.delayed(const Duration(milliseconds: 350));
@@ -1130,7 +1127,7 @@ class _SuggestCardState extends State<_SuggestCard> {
           Text(
             p['same_unit'] == true ? 'In your unit' : 'SIO ${p['unit'] ?? ''}',
             maxLines: 1,
-            style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
+            style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
           ),
           const Spacer(),
           SizedBox(
@@ -1201,16 +1198,16 @@ class EventTile extends StatelessWidget {
                                 children: [
                                   Text(
                                     DateFormat('d').format(d),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w900,
-                                      color: SioColors.ink,
+                                      color: const Color(0xFF1F1F23),
                                       height: 1,
                                     ),
                                   ),
                                   Text(
                                     DateFormat('MMM').format(d).toUpperCase(),
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: SioColors.red),
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: const Color(0xFFC8202A)),
                                   ),
                                 ],
                               ),
@@ -1220,9 +1217,9 @@ class EventTile extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                              child: const Text(
+                              child: Text(
                                 '✓ Going',
-                                style: TextStyle(color: SioColors.green, fontWeight: FontWeight.w800, fontSize: 12),
+                                style: TextStyle(color: const Color(0xFF1E8E3E), fontWeight: FontWeight.w800, fontSize: 12),
                               ),
                             ),
                         ],
@@ -1286,13 +1283,14 @@ class ExploreScreen extends StatelessWidget {
       (Icons.info_outline, 'About SIO', const PublicScreen()),
     ];
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: SioColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: SioColors.background,
+        surfaceTintColor: SioColors.background,
         title: const Text('Explore', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
       ),
       body: Loader<List<Map<String, dynamic>>>(
+        cacheKey: 'explore',
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         load: () async => _l(await Api.call('${Api.m}events')),
         builder: (context, events) => [
@@ -1302,7 +1300,7 @@ class ExploreScreen extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(14)),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.search, color: SioColors.textSecondary),
                   SizedBox(width: 10),
@@ -1358,7 +1356,7 @@ class ExploreScreen extends StatelessWidget {
               onTap: () => push(context, m.$3),
             ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Programmes',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
           ),

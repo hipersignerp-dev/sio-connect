@@ -186,7 +186,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           : '${fmtDate(apiDate(r.start), 'd MMM')} – ${fmtDate(apiDate(r.end), 'd MMM yyyy')}',
                       a['unit'] ?? 'All units',
                     ].join(' · '),
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 13),
+                    style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -323,7 +323,7 @@ class _TxRow extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w700, color: isIn ? SioColors.green : SioColors.danger),
           ),
           const SizedBox(height: 2),
-          Text('bal ${inr(t['balance'])}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 11.5)),
+          Text('bal ${inr(t['balance'])}', style: TextStyle(color: SioColors.textSecondary, fontSize: 11.5)),
         ],
       ),
     );

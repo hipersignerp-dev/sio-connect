@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
+import '../notify.dart';
 import '../ayah_audio.dart';
 import '../fx.dart';
 import '../links.dart';
@@ -63,6 +64,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     setState(() => _reading = true);
     try {
       final r = _map(await Api.call('${Api.m}read_today'));
+      Notify.markReadToday(_int(r['current']));
       AppState.i.refreshAll();
       if (!mounted) return;
       await celebrateRead(context, r);
@@ -88,6 +90,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
       ],
     ),
     body: Loader<Map<String, dynamic>>(
+      cacheKey: 'journey',
       load: _load,
       builder: (context, j) {
         final me = _map(j['me']);
@@ -101,7 +104,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
             SioPanel(
               color: SioColors.warningBg,
               onTap: () => pickUsername(context),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.alternate_email, color: SioColors.warning),
                   SizedBox(width: 12),
@@ -136,7 +139,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
               onTap: () => push(context, QuizScreen(name: '${quiz['name']}')),
               child: Row(
                 children: [
-                  const CircleAvatar(backgroundColor: SioColors.purple, foregroundColor: Colors.white, child: Icon(Icons.quiz)),
+                  CircleAvatar(backgroundColor: SioColors.purple, foregroundColor: Colors.white, child: Icon(Icons.quiz)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -147,13 +150,13 @@ class _JourneyScreenState extends State<JourneyScreen> {
                           quiz['my_score'] != null
                               ? 'You scored ${quiz['my_score']} / ${quiz['my_total']}'
                               : '${quiz['questions']} questions · open till ${fmtDate(quiz['ends_on'], 'd MMM')}',
-                          style: const TextStyle(color: SioColors.textSecondary),
+                          style: TextStyle(color: SioColors.textSecondary),
                         ),
                       ],
                     ),
                   ),
                   quiz['my_score'] != null
-                      ? const Icon(Icons.check_circle, color: SioColors.green)
+                      ? Icon(Icons.check_circle, color: SioColors.green)
                       : FilledButton(
                           onPressed: () => push(context, QuizScreen(name: '${quiz['name']}')),
                           child: const Text('Start'),
@@ -164,7 +167,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
           ],
           SectionTitle(
             'Badges',
-            action: Text('$earned earned', style: const TextStyle(color: SioColors.textSecondary)),
+            action: Text('$earned earned', style: TextStyle(color: SioColors.textSecondary)),
           ),
           _BadgeGrid(badges: badges, person: me),
           const SectionTitle('Together'),
@@ -274,7 +277,7 @@ class _ReadingCard extends StatelessWidget {
           children: [
             StatusChip(reading['kind'] == 'Hadith' ? 'Hadith of the day' : 'Ayah of the day', tone: Tone.blue),
             const Spacer(),
-            if (done) const Icon(Icons.check_circle, color: SioColors.green),
+            if (done) Icon(Icons.check_circle, color: SioColors.green),
           ],
         ),
         const SizedBox(height: 14),
@@ -283,20 +286,20 @@ class _ReadingCard extends StatelessWidget {
             '${reading['text_ar']}',
             textAlign: TextAlign.right,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(fontSize: 22, height: 1.7, color: SioColors.ink),
+            style: arabicStyle(color: SioColors.ink, size: 24),
           ),
           const SizedBox(height: 10),
         ],
         Text(
           '“${reading['text_en']}”',
-          style: const TextStyle(fontSize: 18, height: 1.45, fontWeight: FontWeight.w600, color: SioColors.ink),
+          style: TextStyle(fontSize: 18, height: 1.45, fontWeight: FontWeight.w600, color: SioColors.ink),
         ),
         if ('${reading['text_ml'] ?? ''}'.isNotEmpty) ...[
           const SizedBox(height: 10),
-          Text('${reading['text_ml']}', style: const TextStyle(fontSize: 16, height: 1.5)),
+          Text('${reading['text_ml']}', style: malayalamStyle(size: 16, color: SioColors.ink)),
         ],
         const SizedBox(height: 8),
-        Text('— ${reading['reference'] ?? ''}', style: const TextStyle(color: SioColors.textSecondary)),
+        Text('— ${reading['reference'] ?? ''}', style: TextStyle(color: SioColors.textSecondary)),
         if ((reading['audio'] as List? ?? []).isNotEmpty || malayalamToRead(reading).isNotEmpty) ...[
           const SizedBox(height: 10),
           Wrap(
@@ -314,7 +317,7 @@ class _ReadingCard extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xFFFFF4DC), borderRadius: BorderRadius.circular(14)),
+            decoration: BoxDecoration(color: SioColors.warningBg, borderRadius: BorderRadius.circular(14)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -323,7 +326,7 @@ class _ReadingCard extends StatelessWidget {
                   style: TextStyle(color: Color(0xFFB07800), fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 4),
-                Text('${reading['lesson_en']}', style: const TextStyle(fontSize: 15, height: 1.4, color: SioColors.ink)),
+                Text('${reading['lesson_en']}', style: TextStyle(fontSize: 15, height: 1.4, color: SioColors.ink)),
                 if ('${reading['lesson_ml'] ?? ''}'.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text('${reading['lesson_ml']}', style: const TextStyle(fontSize: 14, height: 1.5)),
@@ -380,12 +383,12 @@ class _Stat extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SioColors.ink),
         ),
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: SioColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: SioColors.textSecondary),
         ),
       ],
     ),
@@ -410,7 +413,7 @@ class _BadgeGrid extends StatelessWidget {
       for (final b in badges)
         SioPanel(
           padding: const EdgeInsets.all(8),
-          color: b['earned'] == true ? const Color(0xFFFFF4DC) : SioColors.card,
+          color: b['earned'] == true ? SioColors.warningBg : SioColors.card,
           onTap: () => _open(context, b),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -477,7 +480,7 @@ class _BadgeGrid extends StatelessWidget {
               const SizedBox(height: 12),
               ProgressBar(_int(b['progress']) / _int(b['goal'])),
               const SizedBox(height: 4),
-              Text('${b['progress']} of ${b['goal']}', style: const TextStyle(color: SioColors.textSecondary)),
+              Text('${b['progress']} of ${b['goal']}', style: TextStyle(color: SioColors.textSecondary)),
             ],
           ],
         ),
@@ -503,7 +506,7 @@ Future<void> pickUsername(BuildContext context, [String? current]) async {
             decoration: const InputDecoration(prefixText: '@', hintText: 'e.g. faheem_ts'),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Letters, numbers, dot or underscore. Friends find you with it, and it is your invite code.',
             style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
           ),
@@ -784,7 +787,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
                     child: SioPanel(
-                      color: const Color(0xFFFFF4DC),
+                      color: SioColors.warningBg,
                       child: Row(
                         children: [
                           const Text('🎁', style: TextStyle(fontSize: 26)),
@@ -852,7 +855,7 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
             if (done && '${x['explanation'] ?? ''}'.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text('${x['explanation']}', style: const TextStyle(color: SioColors.textSecondary)),
+              Text('${x['explanation']}', style: TextStyle(color: SioColors.textSecondary)),
             ],
           ],
         ),
@@ -891,6 +894,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Friends')),
     body: Loader<Map<String, dynamic>>(
+      cacheKey: 'friends',
       load: () async => _map(await Api.call('${Api.m}friends')),
       builder: (context, f) {
         final incoming = _list(f['incoming']);
@@ -947,7 +951,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       children: [
                         IconButton(
                           tooltip: 'Decline',
-                          icon: const Icon(Icons.close, color: SioColors.danger),
+                          icon: Icon(Icons.close, color: SioColors.danger),
                           onPressed: () =>
                               run(context, () => Api.call('${Api.m}friend_request', {'request': p['request'], 'accept': 0})),
                         ),
@@ -1055,7 +1059,7 @@ class _PersonRow extends StatelessWidget {
     title: Text('${p['full_name'] ?? ''}'),
     subtitle: Text(
       subtitle ?? [if (handle(p).isNotEmpty) handle(p), if (p['unit'] != null) '${p['unit']}'].join(' · '),
-      style: const TextStyle(color: SioColors.textSecondary),
+      style: TextStyle(color: SioColors.textSecondary),
     ),
     trailing: trailing,
     onTap: () => push(context, PersonPage(member: '${p['member']}')),
@@ -1141,6 +1145,7 @@ class PersonPage extends StatelessWidget {
       ],
     ),
     body: Loader<Map<String, dynamic>>(
+      cacheKey: 'profile_${member ?? username ?? 'me'}',
       padding: const EdgeInsets.fromLTRB(0, 4, 0, 110),
       load: () async => _map(await Api.call('${Api.m}profile', {'member': ?member, 'username': ?username})),
       builder: (context, p) => [_ProfileBody(p: p)],
@@ -1177,9 +1182,9 @@ class _ProfileBodyState extends State<_ProfileBody> {
             children: [
               Text(
                 n,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: SioColors.ink),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: SioColors.ink),
               ),
-              Text(label, style: const TextStyle(fontSize: 12.5, color: SioColors.text)),
+              Text(label, style: TextStyle(fontSize: 12.5, color: SioColors.text)),
             ],
           ),
         ),
@@ -1213,7 +1218,7 @@ class _ProfileBodyState extends State<_ProfileBody> {
             children: [
               Text(
                 '${p['full_name']}',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: SioColors.ink),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: SioColors.ink),
               ),
               const SizedBox(height: 2),
               Text(
@@ -1221,7 +1226,7 @@ class _ProfileBodyState extends State<_ProfileBody> {
                   if (friendlyRole(p['member_role']) != null) friendlyRole(p['member_role'])!,
                   if (p['unit'] != null) 'SIO ${p['unit']}',
                 ].join(' · '),
-                style: const TextStyle(color: SioColors.textSecondary),
+                style: TextStyle(color: SioColors.textSecondary),
               ),
             ],
           ),
@@ -1313,7 +1318,7 @@ class _ProfileBodyState extends State<_ProfileBody> {
                               decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
                               padding: const EdgeInsets.all(2.5),
                               child: CircleAvatar(
-                                backgroundColor: const Color(0xFFFFF4DC),
+                                backgroundColor: SioColors.warningBg,
                                 foregroundColor: _gold,
                                 child: Icon(badgeIcon('${b['icon']}')),
                               ),
@@ -1363,12 +1368,12 @@ class _ProfileBodyState extends State<_ProfileBody> {
               padding: const EdgeInsets.all(32),
               child: Column(
                 children: [
-                  const Icon(Icons.photo_camera_outlined, size: 40, color: SioColors.textSecondary),
+                  Icon(Icons.photo_camera_outlined, size: 40, color: SioColors.textSecondary),
                   const SizedBox(height: 8),
                   Text(self ? 'No photos of you yet' : 'No photos yet', style: const TextStyle(fontWeight: FontWeight.w700)),
                   if (self) ...[
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Open a programme album, find yourself and tap “That’s me!”. Your SIO moments collect here.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: SioColors.textSecondary),
@@ -1439,7 +1444,7 @@ class _SoftButton extends StatelessWidget {
             : Text(
                 label!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
+                style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
               ),
       ),
     ),
@@ -1648,11 +1653,11 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                       children: [
                         Text(
                           handle(by).isNotEmpty ? '${by['username']}' : '${by['full_name'] ?? ''}',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
+                          style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
                         ),
                         Text(
                           [if (by['unit'] != null) 'SIO ${by['unit']}', timeAgo(p['creation'])].join(' · '),
-                          style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
+                          style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
                         ),
                       ],
                     ),
@@ -1730,7 +1735,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                           '${handle(by).isNotEmpty ? ' (${handle(by)})' : ''} on SIO Connect',
                     ),
                   ),
-                  icon: const Icon(Icons.send_outlined, size: 26, color: SioColors.ink),
+                  icon: Icon(Icons.send_outlined, size: 26, color: SioColors.ink),
                 ),
               ],
             ),
@@ -1753,7 +1758,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                           child: Text(
                             '$_cheers cheer${_cheers == 1 ? '' : 's'}',
                             key: ValueKey(_cheers),
-                            style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                            style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
                           ),
                         )
                       : const SizedBox(width: double.infinity),
@@ -1765,7 +1770,7 @@ class _PostCardState extends State<PostCard> with SingleTickerProviderStateMixin
                       children: [
                         TextSpan(
                           text: '${handle(by).isNotEmpty ? by['username'] : by['full_name']}  ',
-                          style: const TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                          style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
                         ),
                         TextSpan(text: body),
                       ],
@@ -1860,7 +1865,7 @@ class UnitBoardScreen extends StatelessWidget {
           Text(
             'Score = average of meeting attendance (last 30 days), members reading daily (last 7 days) and quiz marks '
             '(last 30 days)${b['area'] != null ? ' · ${b['area']} area' : ''}.',
-            style: const TextStyle(color: SioColors.textSecondary),
+            style: TextStyle(color: SioColors.textSecondary),
           ),
           const SizedBox(height: 12),
           for (final (i, u) in units.indexed)
@@ -1894,7 +1899,7 @@ class UnitBoardScreen extends StatelessWidget {
                         ),
                         Text(
                           '${u['score']}',
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.blue),
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: SioColors.blue),
                         ),
                       ],
                     ),
@@ -1917,7 +1922,7 @@ class UnitBoardScreen extends StatelessWidget {
       children: [
         SizedBox(
           width: 150,
-          child: Text(label, style: const TextStyle(fontSize: 12, color: SioColors.textSecondary)),
+          child: Text(label, style: TextStyle(fontSize: 12, color: SioColors.textSecondary)),
         ),
         Expanded(child: ProgressBar(pct / 100)),
         SizedBox(
@@ -2161,10 +2166,7 @@ class _QuizFormScreenState extends State<QuizFormScreen> {
                 label: const Text('Add question'),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Tap the circle next to the right answer.',
-                style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
-              ),
+              Text('Tap the circle next to the right answer.', style: TextStyle(color: SioColors.textSecondary, fontSize: 12)),
               const SizedBox(height: 16),
               FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Saving…' : 'Save quiz')),
             ],
@@ -2214,7 +2216,7 @@ class JourneyHomeCard extends StatelessWidget {
                         if (quiz != null && quiz['my_score'] == null) 'quiz open',
                         if (requests > 0) '$requests friend request${requests > 1 ? 's' : ''}',
                       ].join(' · '),
-                      style: const TextStyle(color: SioColors.textSecondary),
+                      style: TextStyle(color: SioColors.textSecondary),
                     ),
                   ],
                 ),
@@ -2314,7 +2316,7 @@ class _Leaderboard extends StatelessWidget {
           ),
           Text(
             '${x['score']}/${x['total']}',
-            style: const TextStyle(fontWeight: FontWeight.w900, color: SioColors.blue),
+            style: TextStyle(fontWeight: FontWeight.w900, color: SioColors.blue),
           ),
         ],
       ),
@@ -2328,7 +2330,7 @@ class _Leaderboard extends StatelessWidget {
             const Text('🏆 You and your friends', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 8),
             if (friends.length <= 1)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 8),
                 child: Text(
                   'None of your friends has taken it yet. Challenge them!',
@@ -2418,7 +2420,7 @@ class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
                     '${p['unit'] ?? ''} · ${_int(p['total'])} days read${p['today'] == true ? ' · ✅ today' : ''}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: SioColors.textSecondary, fontSize: 12),
+                    style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
                   ),
                 ],
               ),
@@ -2434,6 +2436,7 @@ class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Reading leaderboard')),
     body: Loader<Map<String, dynamic>>(
+      cacheKey: 'reading_board',
       load: () async => _map(await Api.call('${Api.m}reading_board')),
       builder: (context, b) {
         final key = ['everyone', 'unit', 'friends'][_view];
@@ -2509,7 +2512,7 @@ class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
             ),
           for (final p in top) _row(context, p),
           if (me != null && !inTop) ...[
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 6),
               child: Center(
                 child: Text('⋮', style: TextStyle(fontSize: 20, color: SioColors.textSecondary)),
@@ -2518,7 +2521,7 @@ class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
             _row(context, me, pinned: true),
           ],
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Ranked by your current reading streak, then total days read. One missed day a week is saved by your streak freeze 🧊',
             style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
           ),

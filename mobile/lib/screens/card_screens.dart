@@ -269,12 +269,12 @@ class _Back extends StatelessWidget {
               children: [
                 Text(
                   '${c['full_name']}',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: SioColors.ink),
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: SioColors.ink),
                 ),
                 const SizedBox(height: 4),
-                Text('${c['member']}', style: const TextStyle(color: SioColors.textSecondary, fontSize: 12)),
+                Text('${c['member']}', style: TextStyle(color: SioColors.textSecondary, fontSize: 12)),
                 const SizedBox(height: 10),
-                const Text('Organisers scan this to check you in.', style: TextStyle(fontSize: 12, color: SioColors.text)),
+                Text('Organisers scan this to check you in.', style: TextStyle(fontSize: 12, color: SioColors.text)),
               ],
             ),
           ),
@@ -436,7 +436,7 @@ class _CheckinHostScreenState extends State<CheckinHostScreen> {
   Widget build(BuildContext context) {
     final d = _d;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: SioColors.background,
       appBar: AppBar(
         title: Text(d == null ? 'Check-in' : '${d['title']}'),
         actions: [
@@ -452,7 +452,7 @@ class _CheckinHostScreenState extends State<CheckinHostScreen> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                const Text(
+                Text(
                   'Students open SIO Connect → Check in, and scan this',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: SioColors.textSecondary),
@@ -474,12 +474,12 @@ class _CheckinHostScreenState extends State<CheckinHostScreen> {
                     trigger: d['present'],
                     child: Text(
                       '${d['present']} checked in',
-                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: SioColors.green),
+                      style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: SioColors.green),
                     ),
                   ),
                 ),
                 Center(
-                  child: Text('${d['registered']} registered', style: const TextStyle(color: SioColors.textSecondary)),
+                  child: Text('${d['registered']} registered', style: TextStyle(color: SioColors.textSecondary)),
                 ),
                 const SizedBox(height: 18),
                 FilledButton.icon(
@@ -493,7 +493,7 @@ class _CheckinHostScreenState extends State<CheckinHostScreen> {
                     leading: Avatar('${r['full_name']}', photo: r['photo'], light: true),
                     title: Text('${r['full_name']}'),
                     subtitle: Text(r['already'] == true ? 'Already checked in' : 'Checked in now'),
-                    trailing: const Icon(Icons.check_circle, color: SioColors.green),
+                    trailing: Icon(Icons.check_circle, color: SioColors.green),
                   ),
               ],
             ),
