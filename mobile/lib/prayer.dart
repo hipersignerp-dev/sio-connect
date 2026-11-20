@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'home_widget_sync.dart';
+
 /// Today's five prayer times for where the phone is (falls back to Ottapalam). Fetched from aladhan.com once a
 /// day and kept on the phone, so the card works offline after the first load.
 class PrayerTimes {
@@ -124,6 +126,7 @@ class _PrayerCardState extends State<PrayerCard> {
   void initState() {
     super.initState();
     PrayerTimes.load().then((p) {
+      if (p != null) HomeWidgetSync.prayers(p.times);
       if (mounted) setState(() => _p = p);
     });
     _tick = Timer.periodic(const Duration(seconds: 30), (_) {

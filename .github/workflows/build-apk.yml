@@ -71,7 +71,7 @@ jobs:
             --build-number=${{ steps.version.outputs.build }} \
             --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }} \
             --dart-define=UPDATE_REPO=${{ github.repository }}
-                    cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/SIO-Connect.apk
+          cp build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/SIO-Connect.apk
       - name: Build small per-phone APKs (about a third of the size)
         run: |
           flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 \
@@ -104,7 +104,7 @@ jobs:
           body: ${{ steps.version.outputs.notes }}
           make_latest: true
           files: |
-                        mobile/build/app/outputs/flutter-apk/SIO-Connect.apk
+            mobile/build/app/outputs/flutter-apk/SIO-Connect.apk
             mobile/build/app/outputs/flutter-apk/SIO-Connect-arm64.apk
             mobile/build/app/outputs/flutter-apk/SIO-Connect-arm32.apk
             mobile/build/app/outputs/flutter-apk/SIO-Connect-play.aab

@@ -5,6 +5,7 @@ import 'app_state.dart';
 import 'screens/auth_screens.dart';
 import 'screens/public_screens.dart';
 import 'screens/social_screens.dart';
+import 'error_report.dart';
 import 'links.dart';
 import 'look.dart';
 import 'theme.dart';
@@ -12,6 +13,7 @@ import 'theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Api.init();
+  ErrorReport.install();
   Look.apply();
   runApp(const SioApp());
   AppState.i.start();

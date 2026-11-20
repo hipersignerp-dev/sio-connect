@@ -27,6 +27,7 @@ import 'notice_screens.dart';
 import 'public_screens.dart';
 import 'qibla_screen.dart';
 import '../ayah_share.dart';
+import '../home_widget_sync.dart';
 import 'onboarding_screen.dart';
 import 'task_screens.dart';
 
@@ -364,6 +365,11 @@ class SocialHome extends StatelessWidget {
           checkNewBadges(context, j);
           final rs = _m(j['reading_streak']);
           if (rs['today'] == true) Notify.markReadToday(_i(rs['current']));
+          HomeWidgetSync.reading(
+            j['reading'] == null ? null : _m(j['reading']),
+            streak: _i(rs['current']),
+            readToday: rs['today'] == true,
+          );
         }
         return [
           if (friends.length >= 3) ...[
@@ -1069,6 +1075,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
         _streakNow = _i(r['current']);
       });
       Notify.markReadToday(_i(r['current']));
+      HomeWidgetSync.reading(null, streak: _i(r['current']), readToday: true);
       final b = _btn.currentContext;
       if (b != null && b.mounted) burst(b, emojis: const ['🔥', '✨', '⭐', '💙'], count: 20);
       await Future.delayed(const Duration(milliseconds: 350));
