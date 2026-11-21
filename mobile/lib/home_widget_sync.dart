@@ -5,8 +5,19 @@ import 'package:home_widget/home_widget.dart';
 class HomeWidgetSync {
   static String _today() => DateTime.now().toIso8601String().substring(0, 10);
 
-  static Future<void> reading(Map<String, dynamic>? r, {required int streak, required bool readToday}) async {
+  static Future<void> reading(
+    Map<String, dynamic>? r, {
+    required int streak,
+    required bool readToday,
+    bool missed = false,
+    String name = '',
+    bool games = true,
+  }) async {
     try {
+      await HomeWidget.saveWidgetData<String>('w_name', name);
+      await HomeWidget.saveWidgetData<bool>('w_hide_games', !games);
+      await HomeWidget.saveWidgetData<bool>('w_missed', missed);
+      if (readToday) await HomeWidget.saveWidgetData<String>('w_read_day', _today());
       if (r != null) {
         final ml = '${r['text_ml'] ?? ''}';
         await HomeWidget.saveWidgetData<String>('w_text', ml.isNotEmpty ? ml : '“${r['text_en'] ?? ''}”');

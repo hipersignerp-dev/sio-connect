@@ -10,7 +10,11 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-/** Home-screen widget: today's ayah (Malayalam), the streak, and the next prayer time. Data comes from the app. */
+/**
+ * Home-screen widget with Noor, SIO Connect's lantern. Noor's face and words follow the day: happy once today's
+ * ayah is read; hello in the morning, waiting in the afternoon, worried in the evening, nearly out late at night;
+ * light out after a missed day. Also shows the ayah, the streak and the next prayer. Data comes from the app.
+ */
 class AyahWidgetProvider : HomeWidgetProvider() {
     override fun onUpdate(
         context: Context,
@@ -18,29 +22,75 @@ class AyahWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences,
     ) {
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Calendar.getInstance().time)
+        val cal = Calendar.getInstance()
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
         val fresh = widgetData.getString("w_day", "") == today
-        val streak = widgetData.getInt("w_streak", 0)
-        val readToday = fresh && widgetData.getBoolean("w_read", false)
+        val readToday = widgetData.getString("w_read_day", "") == today
+        val streak = if (readToday || fresh) widgetData.getInt("w_streak", 0) else 0
+        val games = !widgetData.getBoolean("w_hide_games", false)
+        val missed = widgetData.getBoolean("w_missed", false) && !readToday
+        val name = widgetData.getString("w_name", "") ?: ""
+        val h = cal.get(Calendar.HOUR_OF_DAY)
+        val mood = when {
+            readToday -> "happy"
+            missed && streak == 0 -> "out"
+            h < 12 -> "hello"
+            h < 17 -> "waiting"
+            h < 21 -> "worried"
+            else -> "urgent"
+        }
+        val pick = cal.get(Calendar.YEAR) * 400 + (cal.get(Calendar.MONTH) + 1) * 31 + cal.get(Calendar.DAY_OF_MONTH)
+        val says = line(mood, if (games) streak else 0, name, pick)
+        val img = when (mood) {
+            "happy" -> R.drawable.noor_happy
+            "out" -> R.drawable.noor_out
+            "waiting" -> R.drawable.noor_waiting
+            "worried" -> R.drawable.noor_worried
+            "urgent" -> R.drawable.noor_urgent
+            else -> R.drawable.noor_hello
+        }
         for (id in appWidgetIds) {
             val v = RemoteViews(context.packageName, R.layout.ayah_widget)
+            v.setImageViewResource(R.id.w_noor, img)
+            v.setTextViewText(R.id.w_says, says)
             v.setTextViewText(
-                R.id.w_header,
-                (if (widgetData.getString("w_kind", "") == "Hadith") "HADITH OF THE DAY" else "AYAH OF THE DAY") +
-                    if (streak > 0) "  ·  🔥 $streak" else "",
+                R.id.w_text,
+                if (fresh) (widgetData.getString("w_text", "") ?: "") else "Tap to open today’s ayah",
             )
-            if (fresh) {
-                v.setTextViewText(R.id.w_text, widgetData.getString("w_text", "") ?: "")
-                v.setTextViewText(R.id.w_ref, "— " + (widgetData.getString("w_ref", "") ?: ""))
-            } else {
-                v.setTextViewText(R.id.w_text, "ഇന്നത്തെ ആയത്ത് വായിക്കാൻ തുറക്കുക · Tap to read today’s ayah")
-                v.setTextViewText(R.id.w_ref, "")
-            }
-            v.setTextViewText(R.id.w_status, if (readToday) "✅ Read today" else "📖 Not read yet today")
+            v.setTextViewText(R.id.w_header, if (games && streak > 0) "🔥 $streak" else if (readToday) "✅ Read" else "")
             v.setTextViewText(R.id.w_prayer, nextPrayer(widgetData.getString("w_times", "") ?: ""))
             v.setOnClickPendingIntent(R.id.w_root, HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java))
             appWidgetManager.updateAppWidget(id, v)
         }
+    }
+
+    private fun line(mood: String, streak: Int, name: String, pick: Int): String {
+        val n = if (name.isEmpty()) "" else ", $name"
+        val s = streak > 0
+        val lines = when (mood) {
+            "happy" -> listOfNotNull(
+                if (s) "$streak days of light$n! I’m glowing ✨" else null,
+                "Alhamdulillah! Today’s ayah is done.",
+                "You lit me up today$n. See you tomorrow!",
+            )
+            "hello" -> listOf("Assalamu Alaikum$n! Today’s ayah is ready ☀️", "One ayah, one minute. Shall we?")
+            "waiting" -> listOfNotNull(
+                "Still waiting for you$n 👀",
+                if (s) "Your $streak-day light is waiting." else null,
+                "I saved today’s ayah for you$n.",
+            )
+            "worried" -> listOfNotNull(
+                "My light is getting dim$n… 🥺",
+                if (s) "Don’t let your $streak-day streak go dark!" else null,
+                "I’m flickering… one ayah and I’ll glow again.",
+            )
+            "urgent" -> listOfNotNull(
+                "I’m almost out$n! One ayah before you sleep?",
+                if (s) "Only a few hours left for your $streak days 😟" else null,
+            )
+            else -> listOf("My light went out$n… light me up again 🕯️", "Every day is a new start. Read with me?")
+        }
+        return lines[pick % lines.size]
     }
 
     /** "Fajr|05:01,Dhuhr|12:21,..." → "🕌 Asr 3:42 PM" (the next one from now; tomorrow's Fajr after Isha). */
@@ -60,6 +110,6 @@ class AyahWidgetProvider : HomeWidgetProvider() {
         val h = next.second / 60
         val m = next.second % 60
         val h12 = if (h % 12 == 0) 12 else h % 12
-        return "🕌 Next: ${next.first} " + String.format(Locale.US, "%d:%02d %s", h12, m, if (h < 12) "AM" else "PM")
+        return "🕌 ${next.first} " + String.format(Locale.US, "%d:%02d %s", h12, m, if (h < 12) "AM" else "PM")
     }
 }

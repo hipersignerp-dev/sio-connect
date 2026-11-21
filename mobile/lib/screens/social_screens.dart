@@ -27,6 +27,7 @@ import 'notice_screens.dart';
 import 'public_screens.dart';
 import 'qibla_screen.dart';
 import 'programmes_screen.dart';
+import '../noor.dart';
 import '../ayah_share.dart';
 import '../home_widget_sync.dart';
 import 'onboarding_screen.dart';
@@ -344,10 +345,20 @@ class SocialHome extends StatelessWidget {
           checkNewBadges(context, j);
           final rs = _m(j['reading_streak']);
           if (rs['today'] == true) Notify.markReadToday(_i(rs['current']));
+          final missed = _i(rs['current']) == 0 && _i(rs['best']) > 0;
+          Notify.rememberStreak(
+            _i(rs['current']),
+            missed: missed,
+            name: AppState.i.firstName,
+            games: '${AppState.i.me['hide_games']}' != '1',
+          );
           HomeWidgetSync.reading(
             j['reading'] == null ? null : _m(j['reading']),
             streak: _i(rs['current']),
             readToday: rs['today'] == true,
+            missed: missed,
+            name: AppState.i.firstName,
+            games: '${AppState.i.me['hide_games']}' != '1',
           );
         }
         final games = '${AppState.i.me['hide_games']}' != '1';
@@ -849,6 +860,12 @@ class _AyahCompact extends StatelessWidget {
     final rs = _m(journey['reading_streak']);
     final done = rs['today'] == true;
     final ml = '${r['text_ml'] ?? ''}';
+    final mood = noorMood(
+      readToday: done,
+      streak: _i(rs['current']),
+      missedYesterday: _i(rs['current']) == 0 && _i(rs['best']) > 0,
+    );
+    final says = noorLine(mood, streak: _i(rs['current']), name: AppState.i.firstName, games: games);
     void open() => push(context, AyahReaderScreen(journey: journey, games: games));
     if (done) {
       return Squish(
@@ -858,12 +875,21 @@ class _AyahCompact extends StatelessWidget {
           decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(18)),
           child: Row(
             children: [
-              Icon(Icons.check_circle, color: SioColors.green),
-              const SizedBox(width: 10),
+              const Noor(mood: NoorMood.happy, size: 44),
+              const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  '${r['kind'] == 'Hadith' ? 'Today’s hadith' : 'Today’s ayah'} read · ${r['reference'] ?? ''}',
-                  style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      says,
+                      style: TextStyle(fontWeight: FontWeight.w700, color: SioColors.ink),
+                    ),
+                    Text(
+                      '${r['kind'] == 'Hadith' ? 'Today’s hadith' : 'Today’s ayah'} · ${r['reference'] ?? ''}',
+                      style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+                    ),
+                  ],
                 ),
               ),
               if (games)
@@ -889,9 +915,11 @@ class _AyahCompact extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Column(
+                child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            NoorSays(mood: mood, text: says, light: true, size: 60),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Text(
@@ -906,7 +934,7 @@ class _AyahCompact extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               ml.isNotEmpty ? ml : '“${r['text_en'] ?? ''}”',
               maxLines: 3,
@@ -932,13 +960,6 @@ class _AyahCompact extends StatelessWidget {
                   label: const Text('Read & listen', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(width: 10),
-                if (games && _i(rs['current']) > 0 && DateTime.now().hour >= 17)
-                  Expanded(
-                    child: Text(
-                      'Keep your streak alive today',
-                      style: TextStyle(color: const Color(0xFFFFD2B3), fontWeight: FontWeight.w700, fontSize: 12.5),
-                    ),
-                  ),
               ],
             ),
           ],
@@ -964,7 +985,28 @@ class AyahReaderScreen extends StatelessWidget {
     ),
     body: ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
-      children: [_AyahHero(journey: journey, games: games, alwaysOpen: true)],
+      children: [
+        Builder(
+          builder: (context) {
+            final rs = _m(journey['reading_streak']);
+            final mood = noorMood(
+              readToday: rs['today'] == true,
+              streak: _i(rs['current']),
+              missedYesterday: _i(rs['current']) == 0 && _i(rs['best']) > 0,
+            );
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: NoorSays(
+                mood: mood,
+                text: rs['today'] == true
+                    ? noorLine(mood, streak: _i(rs['current']), name: AppState.i.firstName, games: games)
+                    : 'Listen to the end, or tap “I read it”, and I’ll glow bright ✨',
+              ),
+            );
+          },
+        ),
+        _AyahHero(journey: journey, games: games, alwaysOpen: true),
+      ],
     ),
   );
 }
@@ -1229,7 +1271,13 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
         _streakNow = _i(r['current']);
       });
       Notify.markReadToday(_i(r['current']));
-      HomeWidgetSync.reading(null, streak: _i(r['current']), readToday: true);
+      HomeWidgetSync.reading(
+        null,
+        streak: _i(r['current']),
+        readToday: true,
+        name: AppState.i.firstName,
+        games: '${AppState.i.me['hide_games']}' != '1',
+      );
       final b = _btn.currentContext;
       if (b != null && b.mounted) burst(b, emojis: const ['🔥', '✨', '⭐', '💙'], count: 20);
       await Future.delayed(const Duration(milliseconds: 350));

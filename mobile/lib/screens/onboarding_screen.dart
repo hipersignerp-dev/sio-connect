@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import '../api.dart';
 import '../app_state.dart';
 import '../ayah_audio.dart';
+import '../noor.dart';
 import '../notify.dart';
 import '../photo.dart';
 import '../theme.dart';
@@ -163,9 +164,12 @@ class _FlowState extends State<_Flow> {
     final r = _m(_journey?['reading']);
     final audio = [for (final u in (r['audio'] as List? ?? [])) '$u'];
     return _Page(
-      emoji: '📖',
-      title: 'Start with today’s ayah',
-      text: 'Read or listen every day and your streak grows. Today is day 1.',
+      emoji: '',
+      hero: const Noor(mood: NoorMood.hello, size: 92),
+      title: 'Meet Noor, your little light',
+      text:
+          'Noor glows when you read the ayah of the day, and gets dim when you forget. '
+          'Read or listen to today’s ayah to light Noor up. Today is day 1!',
       action: _read ? 'Next' : (_reading ? 'Saving…' : '🔥  I read it'),
       onAction: _read ? _next : _markRead,
       child: Container(
@@ -361,7 +365,9 @@ class _Page extends StatelessWidget {
     required this.child,
     required this.action,
     required this.onAction,
+    this.hero,
   });
+  final Widget? hero;
   final String emoji;
   final String title;
   final String text;
@@ -376,7 +382,10 @@ class _Page extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 44)),
+            if (hero != null)
+              Align(alignment: Alignment.centerLeft, child: hero!)
+            else
+              Text(emoji, style: const TextStyle(fontSize: 44)),
             const SizedBox(height: 8),
             Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
             const SizedBox(height: 6),

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:workmanager/workmanager.dart';
 
 import 'api.dart';
+import 'noor.dart';
 
 /// Phone notifications for new updates (notices, new programmes, meetings ...).
 ///
@@ -63,32 +64,66 @@ class Notify {
     Api.prefs.setInt('streak_now', streak);
   }
 
+  /// The app remembers the streak (and whether yesterday was missed), so Noor knows what to say in reminders.
+  static void rememberStreak(int streak, {required bool missed, String name = '', bool games = true}) {
+    Api.prefs.setInt('streak_now', streak);
+    Api.prefs.setBool('noor_missed', missed);
+    Api.prefs.setString('noor_name', name);
+    Api.prefs.setBool('noor_games', games);
+  }
+
+  static Future<void> _noor(int id, NoorMood mood) async {
+    final streak = Api.prefs.getInt('streak_now') ?? 0;
+    final games = Api.prefs.getBool('noor_games') ?? true;
+    final name = Api.prefs.getString('noor_name') ?? '';
+    await _plugin.show(
+      id,
+      'Noor 🏮',
+      noorLine(mood, streak: streak, name: name, games: games),
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'sio_reading',
+          'Daily ayah reminder',
+          channelDescription: 'Noor reminds you once or twice a day, only if you haven’t read yet',
+          importance: Importance.high,
+          priority: Priority.high,
+          largeIcon: DrawableResourceAndroidBitmap('noor_${mood.name}'),
+          styleInformation: const DefaultStyleInformation(true, true),
+        ),
+      ),
+    );
+  }
+
   static Future<void> _dailyReminder() async {
     try {
       final at = reminderTime;
       if (at == null) return;
       final today = _today();
-      if (Api.prefs.getString('read_day') == today || Api.prefs.getString('reminded_day') == today) return;
-      final p = at.split(':');
+      if (Api.prefs.getString('read_day') == today) return;
       final now = DateTime.now();
+      final p = at.split(':');
       final due = DateTime(now.year, now.month, now.day, int.parse(p[0]), int.parse(p[1]));
-      if (now.isBefore(due) || now.difference(due).inHours >= 3) return;
-      await Api.prefs.setString('reminded_day', today);
+      final missed = Api.prefs.getBool('noor_missed') ?? false;
+      // 1) at the chosen time
+      if (Api.prefs.getString('reminded_day') != today && !now.isBefore(due) && now.difference(due).inHours < 3) {
+        await Api.prefs.setString('reminded_day', today);
+        final mood = missed
+            ? NoorMood.out
+            : noorMood(readToday: false, streak: Api.prefs.getInt('streak_now') ?? 0, missedYesterday: false, now: now);
+        await _noor(7001, mood);
+        return;
+      }
+      // 2) one last, gentle nudge at 9:30 pm if there is a streak to save (never more than two a day)
+      final late = DateTime(now.year, now.month, now.day, 21, 30);
       final streak = Api.prefs.getInt('streak_now') ?? 0;
-      await _plugin.show(
-        7001,
-        streak > 0 ? '🔥 Keep your $streak-day streak' : '📖 Today’s ayah is waiting',
-        'Take a minute to read or listen to today’s ayah in SIO Connect.',
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'sio_reading',
-            'Daily ayah reminder',
-            channelDescription: 'One reminder a day if you haven’t read yet',
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-        ),
-      );
+      if (streak > 0 &&
+          due.isBefore(late.subtract(const Duration(hours: 1))) &&
+          Api.prefs.getString('late_day') != today &&
+          !now.isBefore(late) &&
+          now.hour < 24) {
+        await Api.prefs.setString('late_day', today);
+        await _noor(7002, NoorMood.urgent);
+      }
     } catch (_) {}
   }
 
