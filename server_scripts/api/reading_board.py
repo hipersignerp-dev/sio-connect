@@ -7,7 +7,7 @@ if not m:
     frappe.throw(_("Your student record is not set up yet."))
 rows = frappe.db.sql("""select d.member, d.day from `tabSIO Streak Day` d
     join `tabSIO Member` x on x.name = d.member
-    where d.activity = 'Reading' and (x.status = 'Active' or x.name = %s)""", (m.name,))
+    where d.activity = 'Reading' and ((x.status = 'Active' and ifnull(x.hide_games, 0) = 0) or x.name = %s)""", (m.name,))
 days = {}
 for r in rows:
     days.setdefault(r[0], []).append(r[1])
@@ -25,7 +25,7 @@ for mid in days:
                    "photo": x.get("photo"), "unit": x.get("unit"), "streak": s["current"], "best": s["best"],
                    "total": len(set([str(d) for d in days[mid]])), "today": s["today"], "me": mid == m.name})
 people = sorted(people, key=lambda p: (-p["streak"], -p["total"], p["full_name"] or ""))
-active = frappe.db.count("SIO Member", {"status": "Active"})
+active = frappe.db.count("SIO Member", {"status": "Active", "hide_games": 0})
 
 
 def board(lst, limit, out_of):

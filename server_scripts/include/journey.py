@@ -118,6 +118,33 @@ def card(m):
             "unit": m.get("unit"), "member_role": m.get("member_role")}
 
 
+def can_see_phone(viewer, target, friends=None):
+    # viewer: my SIO Member row (or None); target: a row with name, unit, phone_visibility.
+    # Leaders who can see the member list always can; otherwise the person's own choice decides.
+    if not viewer or not target:
+        return False
+    if viewer.name == target.get("name"):
+        return True
+    if ctx["caps"].get("view_members") and (SCOPE_UNITS is None or target.get("unit") in SCOPE_UNITS):
+        return True
+    v = target.get("phone_visibility") or "Leaders only"
+    if v == "All members":
+        return True
+    if v == "My unit":
+        return bool(viewer.unit) and viewer.unit == target.get("unit")
+    if v == "Friends":
+        f = friends if friends is not None else set(friend_ids(viewer.name))
+        return target.get("name") in f
+    return False
+
+
+def about(r):
+    # the "who they are" fields for cards and profiles
+    return {"life_stage": r.get("life_stage"), "profession": r.get("profession"), "workplace": r.get("workplace"),
+            "current_city": r.get("current_city"), "campus": r.get("campus"), "course": r.get("course"),
+            "home_town": r.get("home_town"), "mentor_topics": r.get("mentor_topics")}
+
+
 BADGES = [
     # code, title, icon, what it takes. Kept to five that mean something (no attendance or giving badges).
     ("reader_7", "One week strong", "local_fire_department", "Read the daily ayah 7 days in a row"),

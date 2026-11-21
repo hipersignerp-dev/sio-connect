@@ -1,11 +1,11 @@
-# Post on the student board. Everyone can share notes, ask for blood and start a study circle; leaders can
-# post every kind. A blood request reaches everyone in the area straight away.
+# Post on the student board. Everyone can share notes, jobs and internships (with a referral or contact), ask for
+# blood and start a study circle; leaders can post every kind. A blood request reaches everyone in the area straight away.
 m = ctx["member"]
 if not m:
     frappe.throw(_("Your student record is not set up yet."))
 lead = bool(ctx["caps"]["send_notice"] or ctx["caps"]["manage_events"])
 kind = args.get("kind")
-if kind not in ("Scholarship", "Exam & Admission", "Career", "Study Circle", "Notes", "Blood Request"):
+if kind not in ("Scholarship", "Exam & Admission", "Career", "Job", "Internship", "Study Circle", "Notes", "Blood Request"):
     frappe.throw(_("Pick what kind of post this is."))
 if kind in ("Scholarship", "Exam & Admission", "Career") and not lead:
     frappe.throw(_("Only unit and area leaders can post this. Send it to your unit secretary."))

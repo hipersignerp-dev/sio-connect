@@ -7,7 +7,9 @@ if not target and args.get("username"):
 if not target and m:
     target = m.name
 p = frappe.db.get_value("SIO Member", target, ["name", "full_name", "username", "photo", "unit", "area", "member_role",
-                                                "status"], as_dict=True) if target else None
+                                                "status", "mobile", "phone_visibility", "hide_games", "life_stage",
+                                                "profession", "workplace", "current_city", "campus", "course",
+                                                "home_town", "mentor_topics"], as_dict=True) if target else None
 if not p or p.status != "Active":
     frappe.throw(_("Person not found."), frappe.DoesNotExistError)
 me_name = m.name if m else None
@@ -16,6 +18,12 @@ st = {"state": "self", "request": None} if p.name == me_name else (friend_state(
 b = badges_for(p)
 out = card(p)
 out["friend"] = st
+out.update(about(p))
+out["area"] = p.area
+out["mobile"] = p.mobile if can_see_phone(m, p) else None
+out["hide_games"] = 1 if p.hide_games else 0
+if p.hide_games and st["state"] != "self":
+    b = {"badges": [], "reading": None, "attendance": None, "quiz": None, "friends": b["friends"]}
 out["badges"] = [x for x in b["badges"] if x["earned"]]
 if st["state"] == "self":
     out["all_badges"] = b["badges"]
