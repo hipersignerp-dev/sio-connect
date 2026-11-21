@@ -16,12 +16,14 @@ import '../widgets.dart';
 Map<String, dynamic> _m(dynamic v) => Map<String, dynamic>.from((v ?? {}) as Map);
 List<Map<String, dynamic>> _l(dynamic v) => [for (final x in (v as List? ?? [])) _m(x)];
 
-const kinds = ['Scholarship', 'Exam & Admission', 'Career', 'Study Circle', 'Notes', 'Blood Request'];
+const kinds = ['Job', 'Internship', 'Scholarship', 'Exam & Admission', 'Career', 'Study Circle', 'Notes', 'Blood Request'];
 
 (IconData, Color, String) kindLook(String k) => switch (k) {
   'Scholarship' => (Icons.school, const Color(0xFF1E8E3E), 'Scholarships'),
   'Exam & Admission' => (Icons.assignment, const Color(0xFF1A62A8), 'Exams & admissions'),
   'Career' => (Icons.work_outline, const Color(0xFF7C3AED), 'Careers'),
+  'Job' => (Icons.business_center_outlined, const Color(0xFF0E3F70), 'Jobs'),
+  'Internship' => (Icons.badge_outlined, const Color(0xFF0E7490), 'Internships'),
   'Study Circle' => (Icons.menu_book, const Color(0xFFE0A100), 'Study circles'),
   'Notes' => (Icons.description_outlined, const Color(0xFF0E7490), 'Notes'),
   'Blood Request' => (Icons.bloodtype, const Color(0xFFC8202A), 'Blood requests'),
@@ -408,7 +410,7 @@ class _PostBoardScreenState extends State<PostBoardScreen> {
             Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
-                'Scholarships, exams and careers are posted by your unit and area leaders. Send them anything useful you find.',
+                'Know a job or internship? Post it here, it may change someone’s life. Scholarships and exam alerts are posted by leaders.',
                 style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
               ),
             ),
@@ -423,6 +425,8 @@ class _PostBoardScreenState extends State<PostBoardScreen> {
                 'Study Circle' => 'e.g. Weekly Quran study, Saturday 7 pm',
                 'Scholarship' => 'e.g. Merit scholarship for degree students',
                 'Exam & Admission' => 'e.g. Plus One admission: apply by 30 Nov',
+                'Job' => 'e.g. Accountant needed at our firm in Kochi (referral)',
+                'Internship' => 'e.g. 2-month web development internship, Calicut',
                 _ => 'e.g. Free coaching for UPSC prelims',
               },
             ),
@@ -453,14 +457,14 @@ class _PostBoardScreenState extends State<PostBoardScreen> {
               decoration: const InputDecoration(labelText: 'Link (optional)', prefixIcon: Icon(Icons.link)),
             ),
           ],
-          if (blood || _kind == 'Study Circle') ...[
+          if (blood || _kind == 'Study Circle' || _kind == 'Job' || _kind == 'Internship') ...[
             const SizedBox(height: 12),
             TextField(
               controller: _place,
               decoration: InputDecoration(labelText: blood ? 'Hospital / place' : 'Place'),
             ),
           ],
-          if (blood || _kind == 'Study Circle' || widget.lead) ...[
+          if (blood || _kind == 'Study Circle' || _kind == 'Job' || _kind == 'Internship' || widget.lead) ...[
             const SizedBox(height: 12),
             TextField(
               controller: _contact,

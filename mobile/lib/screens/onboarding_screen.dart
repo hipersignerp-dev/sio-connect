@@ -8,6 +8,7 @@ import '../photo.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'journey_screens.dart';
+import 'more_screen.dart' show StagePicker;
 
 Map<String, dynamic> _m(dynamic v) => Map<String, dynamic>.from((v ?? {}) as Map);
 List<Map<String, dynamic>> _l(dynamic v) => [for (final x in (v as List? ?? [])) _m(x)];
@@ -44,6 +45,67 @@ class _FlowState extends State<_Flow> {
   bool _reading = false;
   bool _read = false;
   String _remind = Notify.reminderTime ?? '20:00';
+  String? _stage = (AppState.i.me['life_stage'] ?? '').toString().isEmpty ? null : '${AppState.i.me['life_stage']}';
+  final _what = TextEditingController(); // college, or profession
+  final _city = TextEditingController(text: '${AppState.i.me['current_city'] ?? ''}');
+  bool _saving = false;
+
+  Future<void> _saveStage() async {
+    if (_stage == null) {
+      _next();
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final w = _what.text.trim();
+      final r = await Api.call('${Api.m}update_my_profile', {
+        'life_stage': _stage,
+        if (w.isNotEmpty && _stage == 'Working') 'profession': w,
+        if (w.isNotEmpty && _stage != 'Working') 'campus': w,
+        if (_city.text.trim().isNotEmpty) 'current_city': _city.text.trim(),
+      });
+      AppState.i.me = Map<String, dynamic>.from(r as Map);
+      if (mounted) _next();
+    } catch (e) {
+      if (mounted) toast(context, friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _stagePage() => _Page(
+    emoji: '👋',
+    title: 'Tell us about you',
+    text: 'So the app shows what’s useful for you: exam and scholarship alerts, internships, or jobs and mentoring.',
+    child: Column(
+      children: [
+        StagePicker(value: _stage, onChanged: (v) => setState(() => _stage = v)),
+        if (_stage != null) ...[
+          const SizedBox(height: 18),
+          TextField(
+            controller: _what,
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(
+              labelText: _stage == 'Working'
+                  ? 'What do you do?'
+                  : _stage == 'School'
+                  ? 'School'
+                  : 'College',
+              hintText: _stage == 'Working' ? 'e.g. Engineer, Teacher, Business' : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _city,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Lives in (city or town now)'),
+          ),
+        ],
+      ],
+    ),
+    action: _saving ? 'Saving…' : (_stage == null ? 'Skip' : 'Next'),
+    onAction: _saving ? () {} : _saveStage,
+  );
 
   @override
   void initState() {
@@ -65,6 +127,7 @@ class _FlowState extends State<_Flow> {
   }
 
   List<String> get _steps => [
+    'stage',
     if (_journey?['reading'] != null) 'ayah',
     if ('${AppState.i.me['photo'] ?? ''}'.isEmpty) 'photo',
     if (_people.isNotEmpty) 'friends',
@@ -272,6 +335,7 @@ class _FlowState extends State<_Flow> {
               children: [
                 for (final s in steps)
                   switch (s) {
+                    'stage' => _stagePage(),
                     'ayah' => _ayah(),
                     'photo' => _photo(),
                     'friends' => _friends(),

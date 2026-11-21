@@ -345,3 +345,9 @@ class AddFab extends StatelessWidget {
     child: const Icon(Icons.add, size: 28),
   );
 }
+
+/// A phone number as WhatsApp wants it (country code, digits only; Indian 10-digit numbers get 91).
+String waNumber(String mobile) {
+  final d = mobile.replaceAll(RegExp(r'[^0-9]'), '');
+  return d.length == 10 ? '91$d' : d;
+}

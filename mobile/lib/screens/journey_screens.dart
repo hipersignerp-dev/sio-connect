@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../api.dart';
@@ -14,6 +15,7 @@ import '../links.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'card_screens.dart';
 import 'album_screens.dart';
 import 'find_members_screen.dart';
 import 'more_screen.dart';
@@ -1172,6 +1174,15 @@ class _ProfileBodyState extends State<_ProfileBody> {
     final badges = _list(p['badges']);
     final self = st == 'self';
     final reading = _map(p['reading']);
+    final games = '${p['hide_games']}' != '1';
+    final stageLine = [
+      if ('${p['profession'] ?? ''}'.isNotEmpty)
+        '${p['profession']}${'${p['workplace'] ?? ''}'.isNotEmpty ? ' at ${p['workplace']}' : ''}'
+      else if ('${p['campus'] ?? ''}'.isNotEmpty)
+        '${'${p['course'] ?? ''}'.isNotEmpty ? '${p['course']}, ' : ''}${p['campus']}',
+      if ('${p['current_city'] ?? ''}'.isNotEmpty) '📍 ${p['current_city']}',
+    ].join(' · ');
+    final mobile = '${p['mobile'] ?? ''}';
     Widget count(String n, String label, [VoidCallback? onTap]) => Expanded(
       child: InkWell(
         onTap: onTap,
@@ -1206,8 +1217,8 @@ class _ProfileBodyState extends State<_ProfileBody> {
               const SizedBox(width: 8),
               count('${photos.length}', 'photos'),
               count('${p['friends'] ?? 0}', 'friends', self ? () => push(context, const FriendsScreen()) : null),
-              count('${_int(reading['current'])}🔥', 'streak'),
-              count('${badges.length}', 'badges'),
+              if (games) count('${_int(reading['current'])}🔥', 'streak'),
+              if (games) count('${badges.length}', 'badges'),
             ],
           ),
         ),
@@ -1228,6 +1239,31 @@ class _ProfileBodyState extends State<_ProfileBody> {
                 ].join(' · '),
                 style: TextStyle(color: SioColors.textSecondary),
               ),
+              if (stageLine.isNotEmpty) ...[const SizedBox(height: 2), Text(stageLine, style: TextStyle(color: SioColors.text))],
+              if ('${p['mentor_topics'] ?? ''}'.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: SioColors.blue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '🎓 Can guide students in: ${p['mentor_topics']}',
+                    style: TextStyle(color: SioColors.blue, fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ),
+              ],
+              if (self && '${p['username'] ?? ''}'.isEmpty && '${AppState.i.me['life_stage'] ?? ''}'.isEmpty) ...[
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () => push(context, const ProfileScreen()),
+                  child: Text(
+                    '+ Add your college or work so SIO friends can find you',
+                    style: TextStyle(color: SioColors.blue, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1241,18 +1277,29 @@ class _ProfileBodyState extends State<_ProfileBody> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: _SoftButton(
-                        label: handle(p).isEmpty ? 'Set username' : 'Username',
-                        onTap: () => pickUsername(context, '${p['username'] ?? ''}'),
-                      ),
+                      child: _SoftButton(label: 'My SIO card', onTap: () => push(context, const MemberCardScreen())),
                     ),
                     const SizedBox(width: 6),
-                    _SoftButton(icon: Icons.person_add_alt, onTap: () => push(context, const FindMembersScreen())),
+                    _SoftButton(icon: Icons.group_outlined, onTap: () => push(context, const FriendsScreen())),
                   ]
                 : [
                     Expanded(
                       child: _FriendButton(member: '${p['member']}', state: st),
                     ),
+                    if (mobile.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      _SoftButton(icon: Icons.call_outlined, onTap: () => launchUrl(Uri.parse('tel:$mobile'))),
+                      const SizedBox(width: 6),
+                      _SoftButton(
+                        icon: Icons.chat_outlined,
+                        onTap: () => launchUrl(
+                          Uri.parse(
+                            'https://wa.me/${waNumber(mobile)}?text=${Uri.encodeComponent('Assalamu Alaikum! Found you on SIO Connect.')}',
+                          ),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                    ],
                   ],
           ),
         ),
@@ -1279,10 +1326,10 @@ class _ProfileBodyState extends State<_ProfileBody> {
               ),
             ),
           ),
-        if (badges.isNotEmpty) ...[
+        if (games && badges.isNotEmpty) ...[
           const SizedBox(height: 14),
           SizedBox(
-            height: 92,
+            height: 104,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1327,9 +1374,10 @@ class _ProfileBodyState extends State<_ProfileBody> {
                           const SizedBox(height: 4),
                           Text(
                             '${b['title']}',
-                            maxLines: 1,
+                            maxLines: 2,
+                            textAlign: TextAlign.center,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 11),
+                            style: const TextStyle(fontSize: 11, height: 1.15),
                           ),
                         ],
                       ),
@@ -1340,29 +1388,31 @@ class _ProfileBodyState extends State<_ProfileBody> {
           ),
         ],
         const SizedBox(height: 8),
-        Row(
-          children: [
-            for (final (i, ic) in [Icons.grid_on, Icons.workspace_premium_outlined].indexed)
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _grid = i == 0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: (_grid == (i == 0)) ? SioColors.ink : SioColors.border,
-                          width: (_grid == (i == 0)) ? 1.6 : 1,
+        if (games)
+          Row(
+            children: [
+              for (final (i, ic) in [Icons.grid_on, Icons.workspace_premium_outlined].indexed)
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _grid = i == 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: (_grid == (i == 0)) ? SioColors.ink : SioColors.border,
+                            width: (_grid == (i == 0)) ? 1.6 : 1,
+                          ),
                         ),
                       ),
+                      child: Icon(ic, color: (_grid == (i == 0)) ? SioColors.ink : SioColors.textSecondary),
                     ),
-                    child: Icon(ic, color: (_grid == (i == 0)) ? SioColors.ink : SioColors.textSecondary),
                   ),
                 ),
-              ),
-          ],
-        ),
-        if (_grid) ...[
+            ],
+          ),
+        if (!games) Divider(height: 1, color: SioColors.border),
+        if (_grid || !games) ...[
           if (photos.isEmpty)
             Padding(
               padding: const EdgeInsets.all(32),

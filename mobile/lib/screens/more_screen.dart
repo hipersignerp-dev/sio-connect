@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'journey_screens.dart';
 
 import 'package:material_ui/material_ui.dart';
@@ -331,23 +333,46 @@ class _BiometricTileState extends State<_BiometricTile> {
 }
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.focusPrivacy = false});
+  final bool focusPrivacy;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
+
+/// Life stages people pick in their profile (and in the welcome steps).
+const lifeStages = [
+  ('School', 'Plus One / Plus Two', Icons.backpack_outlined),
+  ('College', 'Degree, PG or diploma', Icons.school_outlined),
+  ('Working', 'Job or own business', Icons.work_outline),
+];
+
+const phoneChoices = [
+  ('Leaders only', 'Only SIO leaders (default)'),
+  ('Friends', 'My SIO friends'),
+  ('My unit', 'Everyone in my unit'),
+  ('All members', 'All SIO members'),
+];
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final me = AppState.i.me;
   late final _campus = TextEditingController(text: (me['campus'] ?? '').toString());
   late final _course = TextEditingController(text: (me['course'] ?? '').toString());
   late final _town = TextEditingController(text: (me['home_town'] ?? '').toString());
+  late final _profession = TextEditingController(text: (me['profession'] ?? '').toString());
+  late final _workplace = TextEditingController(text: (me['workplace'] ?? '').toString());
+  late final _city = TextEditingController(text: (me['current_city'] ?? '').toString());
+  late final _mentor = TextEditingController(text: (me['mentor_topics'] ?? '').toString());
+  late String? _stage = (me['life_stage'] ?? '').toString().isEmpty ? null : '${me['life_stage']}';
+  late String _phone = '${me['phone_visibility'] ?? 'Leaders only'}';
+  late bool _hideGames = '${me['hide_games']}' == '1';
   late String? _year = (me['year_of_study'] ?? '').toString().isEmpty ? null : me['year_of_study'].toString();
   late String? _unit = me['unit']?.toString();
   List<dynamic> _units = [];
   bool _busy = false;
   late GeoPoint? _loc = GeoPoint.from(me['latitude'], me['longitude']);
   late final _landmark = TextEditingController(text: (me['location_note'] ?? '').toString());
+  final _privacyKey = GlobalKey();
 
   static const years = [
     '1st Year',
@@ -360,6 +385,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     'Research',
     'Other',
   ];
+  static const schoolYears = ['Plus One', 'Plus Two', 'Other'];
 
   @override
   void initState() {
@@ -371,15 +397,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           })
           .catchError((_) {});
     }
+    if (widget.focusPrivacy) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final c = _privacyKey.currentContext;
+        if (c != null) Scrollable.ensureVisible(c, duration: const Duration(milliseconds: 300));
+      });
+    }
   }
 
   Future<void> _save() async {
     setState(() => _busy = true);
     final ok = await run(context, () async {
       final r = await Api.call('${Api.m}update_my_profile', {
-        'campus': _campus.text.trim(),
-        'course': _course.text.trim(),
-        'year_of_study': _year,
+        'life_stage': _stage ?? '',
+        'campus': _stage == 'Working' ? '' : _campus.text.trim(),
+        'course': _stage == 'Working' ? '' : _course.text.trim(),
+        'year_of_study': _stage == 'Working' ? '' : _year,
+        'profession': _stage == 'Working' ? _profession.text.trim() : '',
+        'workplace': _stage == 'Working' ? _workplace.text.trim() : '',
+        'current_city': _city.text.trim(),
+        'mentor_topics': _stage == 'School' ? '' : _mentor.text.trim(),
+        'phone_visibility': _phone,
+        'hide_games': _hideGames ? 1 : 0,
         'home_town': _town.text.trim().isEmpty ? null : _town.text.trim(),
         'unit': AppState.i.pending ? _unit : null,
         'latitude': _loc?.lat,
@@ -388,6 +427,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'location_note': _landmark.text.trim(),
       });
       AppState.i.me = Map<String, dynamic>.from(r as Map);
+      await Api.prefs.setString('me_cache', jsonEncode(AppState.i.me));
+      AppState.i.refreshAll();
     }, done: 'Profile saved.');
     if (mounted) {
       setState(() => _busy = false);
@@ -395,9 +436,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Widget _field(TextEditingController c, String label, {String? hint, int lines = 1}) => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: TextField(
+      controller: c,
+      minLines: lines,
+      maxLines: lines == 1 ? 1 : 4,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: InputDecoration(labelText: label, hintText: hint, alignLabelWithHint: lines > 1),
+    ),
+  );
+
+  Widget _section(String t, {Key? key}) => Padding(
+    key: key,
+    padding: const EdgeInsets.fromLTRB(2, 10, 0, 10),
+    child: Text(t, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+  );
+
   @override
   Widget build(BuildContext context) {
     final pending = AppState.i.pending;
+    final school = _stage == 'School';
+    final working = _stage == 'Working';
     return Scaffold(
       appBar: AppBar(title: const Text('My profile')),
       body: ListView(
@@ -434,11 +494,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 if (me['joined_on'] != null)
                   Text('Member since ${fmtDate(me['joined_on'])}', style: TextStyle(color: SioColors.textSecondary)),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    await pickUsername(context, '${me['username'] ?? ''}');
+                    if (mounted) setState(() {});
+                  },
+                  child: Text(
+                    '${me['username'] ?? ''}'.isEmpty ? '+ Choose a username' : '@${me['username']} · change',
+                    style: TextStyle(color: SioColors.blue, fontWeight: FontWeight.w700),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
           if (pending && _units.isNotEmpty) ...[
+            const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _units.any((u) => u['name'] == _unit) ? _unit : null,
               isExpanded: true,
@@ -446,33 +517,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
               items: [for (final u in _units) DropdownMenuItem(value: u['name'].toString(), child: Text(u['name'].toString()))],
               onChanged: (v) => setState(() => _unit = v),
             ),
-            const SizedBox(height: 14),
           ],
-          TextField(
-            controller: _campus,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(labelText: 'College / campus'),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _course,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(labelText: 'Course'),
-          ),
-          const SizedBox(height: 14),
-          DropdownButtonFormField<String>(
-            initialValue: years.contains(_year) ? _year : null,
-            decoration: const InputDecoration(labelText: 'Year'),
-            items: [for (final y in years) DropdownMenuItem(value: y, child: Text(y))],
-            onChanged: (v) => setState(() => _year = v),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _town,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(labelText: 'Home town'),
-          ),
-          const SizedBox(height: 14),
+          _section('Where are you in life?'),
+          StagePicker(value: _stage, onChanged: (v) => setState(() => _stage = v)),
+          const SizedBox(height: 16),
+          if (working) ...[
+            _field(_profession, 'Profession', hint: 'e.g. Software engineer, Doctor, Teacher, Business'),
+            _field(_workplace, 'Workplace (optional)', hint: 'Company, hospital, school or own business'),
+          ] else if (_stage != null) ...[
+            _field(_campus, school ? 'School' : 'College / campus'),
+            _field(_course, school ? 'Stream (e.g. Science, Commerce)' : 'Course'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: DropdownButtonFormField<String>(
+                initialValue: (school ? schoolYears : years).contains(_year) ? _year : null,
+                decoration: const InputDecoration(labelText: 'Year'),
+                items: [for (final y in (school ? schoolYears : years)) DropdownMenuItem(value: y, child: Text(y))],
+                onChanged: (v) => setState(() => _year = v),
+              ),
+            ),
+          ],
+          _field(_city, 'Lives in (city or town now)', hint: 'Where you study or work, e.g. Kochi, Bengaluru'),
+          _field(_town, 'Home town'),
+          if (_stage != null && !school) ...[
+            _section('Guide younger students'),
+            Text(
+              'Juniors can find you when they need advice. Leave empty if you’d rather not.',
+              style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 10),
+            _field(
+              _mentor,
+              'I can guide students in…',
+              hint: 'e.g. NEET preparation, engineering admissions, jobs in the Gulf, starting a business',
+              lines: 2,
+            ),
+          ],
+          _section('Home location (optional)'),
           LocationField(value: _loc, onChanged: (g) => setState(() => _loc = g)),
           const SizedBox(height: 10),
           TextField(
@@ -480,12 +561,77 @@ class _ProfileScreenState extends State<ProfileScreen> {
             maxLines: 2,
             decoration: const InputDecoration(labelText: 'House name / landmark (optional)', alignLabelWithHint: true),
           ),
+          _section('Privacy', key: _privacyKey),
+          const Text('Who can see my phone number', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          RadioGroup<String>(
+            groupValue: _phone,
+            onChanged: (v) => setState(() => _phone = v ?? _phone),
+            child: Column(
+              children: [
+                for (final c in phoneChoices)
+                  RadioListTile<String>(dense: true, contentPadding: EdgeInsets.zero, value: c.$1, title: Text(c.$2)),
+              ],
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _hideGames,
+            onChanged: (v) => setState(() => _hideGames = v),
+            title: const Text('Hide streaks, badges and leaderboards'),
+            subtitle: const Text('You still get the daily ayah. You won’t appear on leaderboards.'),
+          ),
           const SizedBox(height: 20),
           FilledButton(onPressed: _busy ? null : _save, child: const Text('Save')),
         ],
       ),
     );
   }
+}
+
+/// School / College / Working as three big choices.
+class StagePicker extends StatelessWidget {
+  const StagePicker({super.key, required this.value, required this.onChanged});
+  final String? value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      for (final s in lifeStages)
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => onChanged(s.$1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+                decoration: BoxDecoration(
+                  color: value == s.$1 ? SioColors.blue.withValues(alpha: 0.10) : SioColors.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: value == s.$1 ? SioColors.blue : SioColors.border, width: value == s.$1 ? 2 : 1),
+                ),
+                child: Column(
+                  children: [
+                    Icon(s.$3, color: value == s.$1 ? SioColors.blue : SioColors.textSecondary, size: 28),
+                    const SizedBox(height: 6),
+                    Text(s.$1, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(
+                      s.$2,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 11, color: SioColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
 }
 
 Future<void> deleteMyAccount(BuildContext context) async {

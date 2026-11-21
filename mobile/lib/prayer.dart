@@ -239,3 +239,71 @@ class _PrayerCardState extends State<PrayerCard> {
     );
   }
 }
+
+/// One line under the greeting: "🕌 Asr in 1h 12m · 3:42 PM". Tap for all five times and the Qibla.
+class PrayerLine extends StatefulWidget {
+  const PrayerLine({super.key, this.onQibla});
+  final VoidCallback? onQibla;
+
+  @override
+  State<PrayerLine> createState() => _PrayerLineState();
+}
+
+class _PrayerLineState extends State<PrayerLine> {
+  PrayerTimes? _p;
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    PrayerTimes.load().then((p) {
+      if (p != null) HomeWidgetSync.prayers(p.times);
+      if (mounted) setState(() => _p = p);
+    });
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _p;
+    final cs = Theme.of(context).colorScheme;
+    if (p == null) return const SizedBox(height: 20);
+    final next = p.next;
+    final left = next.value.difference(DateTime.now());
+    final h = left.inHours;
+    final m = left.inMinutes % 60;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        builder: (_) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: PrayerCard(onQibla: widget.onQibla),
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Text(
+              '🕌 ${next.key} in ${h > 0 ? '${h}h ' : ''}${m}m · ${_hm(next.value)}',
+              style: TextStyle(color: cs.onSurfaceVariant, fontWeight: FontWeight.w600),
+            ),
+            Icon(Icons.expand_more, size: 18, color: cs.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+}

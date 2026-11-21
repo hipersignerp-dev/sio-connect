@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api.dart';
 import '../fx.dart';
@@ -14,8 +15,9 @@ import 'social_screens.dart';
 /// Find SIO members anywhere: search by name, @username or place; browse by unit, area, college or
 /// home town; or see who is near you. Only public details are shown (no phone numbers, distances rounded).
 class FindMembersScreen extends StatefulWidget {
-  const FindMembersScreen({super.key, this.initial});
+  const FindMembersScreen({super.key, this.mentors = false, this.initial});
   final String? initial;
+  final bool mentors; // open with the mentors list
 
   @override
   State<FindMembersScreen> createState() => _FindMembersScreenState();
@@ -41,6 +43,9 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
     super.initState();
     _loadPlaces();
     if ((widget.initial ?? '').isNotEmpty) _search(widget.initial!);
+    if (widget.mentors) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _run('Members who can guide students', {'mentors': 1}));
+    }
   }
 
   @override
@@ -120,14 +125,14 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
       children: [
         TextField(
           controller: _q,
-          autofocus: widget.initial == null,
+          autofocus: widget.initial == null && !widget.mentors,
           textInputAction: TextInputAction.search,
           onChanged: _search,
           decoration: InputDecoration(
             filled: true,
             fillColor: SioColors.card,
             prefixIcon: const Icon(Icons.search),
-            hintText: 'Name, @username, unit, college or place',
+            hintText: 'Name, college, profession, city…',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
             suffixIcon: _q.text.isEmpty && _title == null ? null : IconButton(icon: const Icon(Icons.close), onPressed: _clear),
@@ -176,6 +181,31 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final f in const [
+                ('mentors', '🎓 Mentors', 'Members who can guide students'),
+                ('Working', '💼 Working', 'Working members'),
+                ('College', '🏫 College', 'College students'),
+                ('School', '📚 School', 'School students'),
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ActionChip(
+                    label: Text(f.$2, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      _q.clear();
+                      _run(f.$3, f.$1 == 'mentors' ? {'mentors': 1} : {'stage': f.$1});
+                    },
+                  ),
+                ),
+            ],
           ),
         ),
         if (_title != null) ..._results() else ..._browse(),
@@ -232,7 +262,14 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
   List<Widget> _browse() {
     final places = _m(_places?['places']);
     final list = _l(places[_placeKind]);
-    const icons = {'Unit': Icons.groups, 'Area': Icons.map, 'College': Icons.school, 'Home town': Icons.home};
+    const icons = {
+      'Unit': Icons.groups,
+      'Area': Icons.map,
+      'College': Icons.school,
+      'Profession': Icons.work_outline,
+      'City': Icons.location_city,
+      'Home town': Icons.home,
+    };
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(4, 22, 4, 4),
@@ -240,7 +277,7 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
           children: [
             Expanded(
               child: Text(
-                'Browse by place',
+                'Browse',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SioColors.ink),
               ),
             ),
@@ -258,13 +295,13 @@ class _FindMembersScreenState extends State<FindMembersScreen> {
                 padding: const EdgeInsets.only(right: 8),
                 child: ChoiceChip(
                   avatar: Icon(icons[k], size: 18, color: _placeKind == k ? Colors.white : SioColors.blue),
-                  label: Text(
-                    k == 'College'
-                        ? 'Colleges'
-                        : k == 'Home town'
-                        ? 'Home towns'
-                        : '${k}s',
-                  ),
+                  label: Text(switch (k) {
+                    'College' => 'Colleges',
+                    'Home town' => 'Home towns',
+                    'City' => 'Cities now',
+                    'Profession' => 'Professions',
+                    _ => '${k}s',
+                  }),
                   selected: _placeKind == k,
                   showCheckmark: false,
                   selectedColor: SioColors.blue,
@@ -374,11 +411,15 @@ class _MemberCardState extends State<_MemberCard> {
   @override
   Widget build(BuildContext context) {
     final p = widget.p;
+    final what = '${p['profession'] ?? ''}'.isNotEmpty
+        ? '${p['profession']}${'${p['workplace'] ?? ''}'.isNotEmpty ? ' at ${p['workplace']}' : ''}'
+        : '${p['campus'] ?? ''}';
     final where = [
+      if (what.isNotEmpty) what,
+      if ('${p['current_city'] ?? ''}'.isNotEmpty) '📍 ${p['current_city']}',
       if ('${p['unit'] ?? ''}'.isNotEmpty) 'SIO ${p['unit']}',
-      if ('${p['campus'] ?? ''}'.isNotEmpty) '${p['campus']}',
-      if ('${p['home_town'] ?? ''}'.isNotEmpty && p['home_town'] != p['unit']) '${p['home_town']}',
     ];
+    final mobile = '${p['mobile'] ?? ''}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Squish(
@@ -386,7 +427,7 @@ class _MemberCardState extends State<_MemberCard> {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: SioColors.background,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: SioColors.border),
             boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 10, offset: Offset(0, 3))],
@@ -413,9 +454,19 @@ class _MemberCardState extends State<_MemberCard> {
                     if (where.isNotEmpty)
                       Text(
                         where.join(' · '),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: SioColors.text, fontSize: 13),
+                      ),
+                    if ('${p['mentor_topics'] ?? ''}'.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Text(
+                          '🎓 Can guide in ${p['mentor_topics']}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: SioColors.blue, fontSize: 12.5, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     if (p['distance'] != null)
                       Padding(
@@ -433,6 +484,12 @@ class _MemberCardState extends State<_MemberCard> {
                 ),
               ),
               const SizedBox(width: 8),
+              if (mobile.isNotEmpty)
+                IconButton(
+                  tooltip: 'Call',
+                  icon: Icon(Icons.call_outlined, color: SioColors.green),
+                  onPressed: () => launchUrl(Uri.parse('tel:$mobile')),
+                ),
               KeyedSubtree(
                 key: _key,
                 child: AnimatedSwitcher(
