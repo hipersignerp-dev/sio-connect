@@ -915,7 +915,7 @@ class _AyahCompact extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(20),
         ),
-                child: Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             NoorSays(mood: mood, text: says, light: true, size: 60),

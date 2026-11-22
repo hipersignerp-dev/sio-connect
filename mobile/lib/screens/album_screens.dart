@@ -183,10 +183,13 @@ Future<String?> newAlbum(BuildContext context, {String? event}) async {
     final r = _m(await Api.call('${Api.m}save_album', {'event': event}));
     return '${r['name']}';
   }
-  final events = _l(await Api.call('${Api.m}events'));
+  // past programmes too (up to two years back), newest first, so photos of an old programme can be added
+  final events = _l(await Api.call('${Api.m}events', {'since_days': 730, 'limit': 300}))
+    ..sort((a, b) => '${b['starts_on']}'.compareTo('${a['starts_on']}'));
   if (!context.mounted) return null;
   final title = TextEditingController();
   String? ev;
+  DateTime day = DateTime.now();
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -201,15 +204,36 @@ Future<String?> newAlbum(BuildContext context, {String? event}) async {
               decoration: const InputDecoration(labelText: 'Programme (optional)'),
               items: [
                 const DropdownMenuItem(value: null, child: Text('No programme')),
-                for (final e in events) DropdownMenuItem(value: '${e['name']}', child: Text('${e['title']}')),
+                for (final e in events)
+                  DropdownMenuItem(
+                    value: '${e['name']}',
+                    child: Text('${e['title']} · ${fmtDate(e['starts_on'])}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
               ],
               onChanged: (v) => set(() => ev = v),
             ),
-            if (ev == null)
+            if (ev == null) ...[
               TextField(
                 controller: title,
                 decoration: const InputDecoration(labelText: 'Title', hintText: 'e.g. Unit meet, Nov 2026'),
               ),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.event),
+                title: Text('Date: ${fmtDate(day.toIso8601String().substring(0, 10))}'),
+                trailing: const Icon(Icons.edit_calendar),
+                onTap: () async {
+                  final d = await showDatePicker(
+                    context: ctx,
+                    initialDate: day,
+                    firstDate: DateTime(2010),
+                    lastDate: DateTime.now(),
+                  );
+                  if (d != null) set(() => day = d);
+                },
+              ),
+            ],
           ],
         ),
         actions: [
@@ -221,7 +245,13 @@ Future<String?> newAlbum(BuildContext context, {String? event}) async {
   );
   if (ok != true) return null;
   try {
-    final r = _m(await Api.call('${Api.m}save_album', {'event': ev, 'title': title.text.trim()}));
+    final r = _m(
+      await Api.call('${Api.m}save_album', {
+        'event': ev,
+        'title': title.text.trim(),
+        if (ev == null) 'album_date': day.toIso8601String().substring(0, 10),
+      }),
+    );
     return '${r['name']}';
   } on ApiException catch (e) {
     if (context.mounted) toast(context, e.message);
