@@ -1,0 +1,129 @@
+ctx = run_script("SIO lib ctx").sio_ctx
+if ctx["user"] == "Guest":
+    frappe.throw(_("Please sign in."), frappe.AuthenticationError)
+args = frappe.form_dict
+SCOPE_UNITS = ctx["units"]  # None = every unit, else the units this person may see
+
+
+def in_scope(u):
+    return SCOPE_UNITS is None or (u in SCOPE_UNITS)
+
+
+def scope_list():
+    return SCOPE_UNITS or ["__none__"]
+
+# A new entry in a collection. entry_type: Offer (will pay later), Payment (paid now) or Items.
+# for_self=1: the signed-in person makes their own offer. Otherwise a collector records someone else's.
+member = ctx["member"]
+all_visible = run_script("SIO lib collections").sio_collections
+visible = [c["name"] for c in all_visible if c["phase"] == "Running"]
+collection = args.get("collection") or (visible[0] if visible else None)
+if collection and collection not in visible:
+    for c in all_visible:
+        if c["name"] == collection and c["phase"] == "Upcoming":
+            frappe.throw(_("This collection starts on ") + frappe.utils.formatdate(c["starts_on"]) + ".")
+        if c["name"] == collection and c["phase"] == "Ended":
+            frappe.throw(_("This collection ended on ") + frappe.utils.formatdate(c["ends_on"])
+                         + _(". You can still record payments of earlier offers."))
+if not collection or collection not in visible:
+    frappe.throw(_("Pick an open collection."))
+entry_type = args.get("entry_type")
+if entry_type not in ("Offer", "Payment", "Items"):
+    frappe.throw(_("Unknown entry type."))
+paid = frappe.utils.flt(args.get("paid_amount"))
+# Which unit this money counts for: your own unit; finance and area admins pick any unit.
+unit = ctx["unit"]
+if ctx["caps"]["all_units"] and args.get("unit"):
+    unit = args.get("unit")
+    if not frappe.db.exists("SIO Unit", unit):
+        frappe.throw(_("Pick a unit from the list."))
+    if not in_scope(unit):
+        frappe.throw(_("That unit is not in your area."), frappe.PermissionError)
+if not unit and not frappe.utils.cint(args.get("for_self")):
+    frappe.throw(_("Pick the unit this collection is for."))
+doc = frappe.get_doc({"doctype": "SIO Collection Entry", "collection": collection, "entry_type": entry_type,
+                      "unit": unit})
+if frappe.utils.cint(args.get("for_self")):
+    if not ctx["caps"]["offer"]:
+        frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
+    if entry_type != "Offer":
+        frappe.throw(_("Give your offer; the collector marks it paid when you pay."))
+    doc.contributor_name = member.full_name
+    doc.contributor_type = "Member" if ctx["is_member"] else "Associate"
+    doc.contributor_member = member.name
+    doc.contributor_mobile = member.mobile
+    paid = 0
+else:
+    if not ctx["caps"]["collect"]:
+        frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
+    name = (args.get("contributor_name") or "").strip()
+    if not name:
+        frappe.throw(_("Enter the name of the person giving."))
+    doc.contributor_name = name
+    doc.contributor_type = args.get("contributor_type") or "Well-wisher"
+    doc.contributor_mobile = "".join([c for c in (args.get("contributor_mobile") or "") if c.isdigit() or c == "+"]) or None
+    doc.contributor_place = (args.get("contributor_place") or "").strip() or None
+    doc.collected_by = member.name if member else None
+updated = None
+basis = args.get("pledge_basis") or None
+if basis and entry_type != "Offer":
+    frappe.throw(_("A monthly pledge is an offer."))
+if basis:
+    # monthly pledge: 10% of pocket money, 1% of salary, or a fixed amount, for the months left in the collection
+    if basis not in ("Pocket money (10%)", "Salary (1%)", "Fixed amount"):
+        frappe.throw(_("Pick how the monthly amount is worked out."))
+    base = frappe.utils.flt(args.get("pledge_base"))
+    if basis == "Pocket money (10%)":
+        monthly = round(base * 0.10)
+    elif basis == "Salary (1%)":
+        monthly = round(base * 0.01)
+    else:
+        monthly = round(frappe.utils.flt(args.get("monthly_amount")))
+        base = 0
+    if monthly <= 0:
+        frappe.throw(_("Enter the pocket money, salary or monthly amount."))
+    cinfo = frappe.db.get_value("SIO Collection", collection, ["starts_on", "ends_on"], as_dict=True)
+    today = frappe.utils.getdate(frappe.utils.nowdate())
+    months = 12
+    if cinfo.ends_on:
+        end = frappe.utils.getdate(cinfo.ends_on)
+        months = max(1, (end.year - today.year) * 12 + end.month - today.month + 1)
+    doc.pledge_basis = basis
+    doc.pledge_base = base or None
+    doc.monthly_amount = monthly
+    doc.pledge_months = months
+    doc.offered_amount = monthly * months
+    # one pledge per person per collection: change the existing one instead of adding another
+    if frappe.utils.cint(args.get("for_self")) and member:
+        old_name = frappe.db.get_value("SIO Collection Entry", {"collection": collection,
+                                       "contributor_member": member.name, "monthly_amount": [">", 0]})
+        if old_name:
+            old_doc = frappe.get_doc("SIO Collection Entry", old_name)
+            old_doc.pledge_basis = basis
+            old_doc.pledge_base = base or None
+            old_doc.monthly_amount = monthly
+            old_doc.offered_amount = frappe.utils.flt(old_doc.paid_amount) + monthly * months
+            old_doc.save(ignore_permissions=True)
+            updated = {"name": old_doc.name, "status": old_doc.status, "monthly": monthly, "months": months,
+                       "updated": 1}
+elif entry_type == "Offer":
+    doc.offered_amount = frappe.utils.flt(args.get("offered_amount"))
+    if doc.offered_amount <= 0:
+        frappe.throw(_("Enter the amount offered."))
+elif entry_type == "Items":
+    doc.items_given = args.get("items_given")
+    doc.items_value = frappe.utils.flt(args.get("items_value"))
+    if not (doc.items_given or "").strip():
+        frappe.throw(_("Enter the items given."))
+if entry_type != "Items" and paid > 0:
+    doc.append("payments", {"payment_date": frappe.utils.nowdate(), "amount": paid,
+                            "mode": args.get("payment_mode") or "Cash", "reference_no": args.get("reference_no"),
+                            "received_by": doc.collected_by})
+if entry_type == "Payment" and paid <= 0:
+    frappe.throw(_("Enter the amount received."))
+if updated:
+    frappe.response["message"] = updated
+else:
+    doc.insert(ignore_permissions=True)
+    frappe.response["message"] = {"name": doc.name, "status": doc.status,
+                                  "monthly": doc.get("monthly_amount"), "months": doc.get("pledge_months")}

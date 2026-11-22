@@ -1,0 +1,66 @@
+ctx = run_script("SIO lib ctx").sio_ctx
+if ctx["user"] == "Guest":
+    frappe.throw(_("Please sign in."), frappe.AuthenticationError)
+args = frappe.form_dict
+SCOPE_UNITS = ctx["units"]  # None = every unit, else the units this person may see
+
+
+def in_scope(u):
+    return SCOPE_UNITS is None or (u in SCOPE_UNITS)
+
+
+def scope_list():
+    return SCOPE_UNITS or ["__none__"]
+
+# Send a follow-up reminder for one task now (organisers and the coordinator).
+# --- event task helpers (shared) ---
+def task_event(ev_name):
+    ev = frappe.db.get_value("SIO Event", ev_name, ["name", "title", "unit", "area", "starts_on", "venue", "status"],
+                             as_dict=True)
+    if not ev:
+        frappe.throw(_("Event not found."), frappe.DoesNotExistError)
+    return ev
+
+
+def can_manage_event(ev):
+    # office bearers of the event's unit (or, for an area-wide event, the area leaders / admins)
+    if not ctx["caps"]["manage_events"]:
+        return False
+    if ev.unit:
+        return in_scope(ev.unit)
+    return SCOPE_UNITS is None or (ctx["is_area_lead"] and ev.area == ctx["area"])
+
+
+def is_coordinator(ev_name):
+    if not ctx["member"]:
+        return False
+    return bool(frappe.db.exists("SIO Event Team Member", {"parent": ev_name, "parenttype": "SIO Event",
+                                                           "member": ctx["member"].name,
+                                                           "responsibility": ["like", "%oordinator%"]}))
+
+
+def can_run_tasks(ev):
+    return can_manage_event(ev) or is_coordinator(ev.name)
+
+
+def notify_person(member, title, message, event=None, task=None):
+    if not member:
+        return
+    frappe.get_doc({"doctype": "SIO Notice", "title": title, "message": message, "audience": "Person",
+                    "member": member, "event": event, "task": task}).insert(ignore_permissions=True)
+
+
+def when_text(dt):
+    return frappe.utils.format_datetime(dt, "EEE d MMM, h:mm a") if dt else ""
+# --- end event task helpers ---
+doc = frappe.get_doc("SIO Event Task", args.get("name"))
+ev = task_event(doc.event)
+if not can_run_tasks(ev):
+    frappe.throw(_("Only the organisers of this event can do this."), frappe.PermissionError)
+if not doc.assigned_to:
+    frappe.throw(_("This task is not assigned to anyone yet."))
+notify_person(doc.assigned_to, "Reminder: " + doc.title,
+              "For " + ev.title + (". Due " + when_text(doc.due_on) if doc.due_on else "")
+              + ". Please update the task in SIO Connect when it's done.", event=ev.name, task=doc.name)
+frappe.db.set_value("SIO Event Task", doc.name, "last_reminded", frappe.utils.nowdate())
+frappe.response["message"] = {"reminded": doc.assigned_name}

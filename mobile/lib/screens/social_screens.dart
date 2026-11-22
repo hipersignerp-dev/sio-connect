@@ -33,6 +33,7 @@ import '../ayah_share.dart';
 import '../home_widget_sync.dart';
 import '../share_in.dart';
 import '../bug_report.dart';
+import '../push.dart';
 import 'onboarding_screen.dart';
 import 'task_screens.dart';
 
@@ -68,6 +69,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
       Links.openPending();
       ShareIn.start();
       BugReport.startShake();
+      Push.start();
       if (mounted) Onboarding.maybeShow(context);
     });
     Notify.start('${AppState.i.me['user'] ?? ''}');

@@ -1,0 +1,277 @@
+ctx = run_script("SIO lib ctx").sio_ctx
+if ctx["user"] == "Guest":
+    frappe.throw(_("Please sign in."), frappe.AuthenticationError)
+args = frappe.form_dict
+SCOPE_UNITS = ctx["units"]  # None = every unit, else the units this person may see
+
+
+def in_scope(u):
+    return SCOPE_UNITS is None or (u in SCOPE_UNITS)
+
+
+def scope_list():
+    return SCOPE_UNITS or ["__none__"]
+
+# Tag someone in an album photo (yourself, a friend, or anyone if you run the album); remove=1 to untag.
+# The tagged person gets an update.
+# --- album helpers (shared) ---
+def album_visible(a):
+    # everyone in the album's area (or everywhere if no area); admins see all
+    if SCOPE_UNITS is None:
+        return True
+    if not a.get("area") or a.get("area") == ctx["area"]:
+        return True
+    return bool(a.get("unit")) and in_scope(a.get("unit"))
+
+
+def can_manage_album(a):
+    if not ctx["caps"]["manage_events"]:
+        return False
+    if SCOPE_UNITS is None:
+        return True
+    if a.get("unit"):
+        return in_scope(a.get("unit"))
+    return bool(ctx["is_area_lead"]) and a.get("area") == ctx["area"]
+
+
+def mini(member):
+    m = frappe.db.get_value("SIO Member", member, ["name", "full_name", "username", "photo", "unit"], as_dict=True)
+    if not m:
+        return None
+    return {"member": m.name, "full_name": m.full_name, "username": m.username, "photo": m.photo, "unit": m.unit}
+
+
+def album_photos(album):
+    return frappe.get_all("File", filters={"attached_to_doctype": "SIO Album", "attached_to_name": album,
+                                   "attached_to_field": ["is", "not set"]},
+                          fields=["name", "file_url", "creation"], order_by="creation asc")
+REACTIONS = ["❤️", "🔥", "😂", "👏"]
+
+
+def add_reactions(photos, me):
+    # puts "reactions" ({emoji: count}) and "my_reaction" on each photo dict (keyed by File name)
+    names = [p["name"] for p in photos]
+    by = {}
+    if names:
+        for r in frappe.get_all("SIO Photo Reaction", filters={"photo": ["in", names]}, fields=["photo", "member", "emoji"]):
+            by.setdefault(r.photo, []).append(r)
+    for p in photos:
+        counts = {}
+        mine = None
+        for r in by.get(p["name"], []):
+            counts[r.emoji] = counts.get(r.emoji, 0) + 1
+            if me and r.member == me:
+                mine = r.emoji
+        p["reactions"] = counts
+        p["my_reaction"] = mine
+    return photos
+# --- end album helpers ---
+# --- journey helpers (shared): streaks, badges, friends ---
+def jday(d):
+    return frappe.utils.getdate(d)
+
+
+def week_key(d):
+    # Monday of the week a date falls in
+    d = jday(d)
+    return str(frappe.utils.add_days(d, -d.weekday()))
+
+
+def streak_from_days(days, freeze=False):
+    # days: dates something was done. current = run ending today (or yesterday, so it isn't lost before
+    # today's turn); best = longest run ever. With freeze, one missed single day per week is forgiven
+    # (a "streak freeze") so one busy day doesn't wipe out weeks of reading.
+    have = set([str(jday(d)) for d in days])
+    today = jday(frappe.utils.nowdate())
+    d = today
+    if str(d) not in have:
+        d = frappe.utils.add_days(d, -1)
+    cur = 0
+    frozen = []
+    used = set()
+    while True:
+        if str(jday(d)) in have:
+            cur = cur + 1
+        elif freeze and week_key(d) not in used and str(jday(frappe.utils.add_days(jday(d), -1))) in have:
+            used.add(week_key(d))
+            frozen.append(str(jday(d)))
+        else:
+            break
+        d = frappe.utils.add_days(jday(d), -1)
+    best = 0
+    run = 0
+    prev = None
+    for x in sorted([jday(s) for s in have]):
+        if prev is not None and frappe.utils.date_diff(x, prev) == 1:
+            run = run + 1
+        else:
+            run = 1
+        if run > best:
+            best = run
+        prev = x
+    if cur > best:
+        best = cur
+    this_week = week_key(today)
+    return {"current": cur, "best": best, "today": str(today) in have, "frozen": frozen,
+            "freeze_left": 0 if (this_week in used) else 1,
+            "week_days": len([x for x in have if week_key(x) == this_week])}
+
+
+def member_days(member, activity):
+    return [r[0] for r in frappe.db.sql(
+        "select distinct day from `tabSIO Streak Day` where member = %s and activity = %s", (member, activity))]
+
+
+def attendance_streak(member):
+    # meetings in a row (most recent completed meetings this person was on the list for) where they were present
+    rows = frappe.db.sql(
+        """select a.status from `tabSIO Meeting Attendance` a join `tabSIO Meeting` m on m.name = a.parent
+        where a.member = %s and m.status = 'Completed'
+        order by m.meeting_date desc, m.meeting_time desc limit 60""", member)
+    n = 0
+    for r in rows:
+        if r[0] == "Present":
+            n = n + 1
+        else:
+            break
+    present = len([r for r in rows if r[0] == "Present"])
+    return {"current": n, "present": present}
+
+
+def quiz_streak(member, area):
+    today = frappe.utils.nowdate()
+    quizzes = frappe.db.sql(
+        """select name, ends_on from `tabSIO Quiz` where starts_on <= %s
+        and (ifnull(area, '') = '' or area = %s) order by starts_on desc limit 52""", (today, area or "__none__"))
+    done = set([r[0] for r in frappe.db.sql("select quiz from `tabSIO Quiz Attempt` where member = %s", member)])
+    n = 0
+    for q in quizzes:
+        if q[0] in done:
+            n = n + 1
+        elif str(q[1]) >= today:
+            continue  # still open: not missed yet
+        else:
+            break
+    return {"current": n, "taken": len(done)}
+
+
+def friend_ids(member):
+    rows = frappe.db.sql(
+        """select requester, addressee from `tabSIO Friend` where status = 'Accepted'
+        and (requester = %s or addressee = %s)""", (member, member))
+    return [r[1] if r[0] == member else r[0] for r in rows]
+
+
+def friend_state(me_name, other):
+    r = frappe.db.sql(
+        """select name, requester, status from `tabSIO Friend`
+        where (requester = %s and addressee = %s) or (requester = %s and addressee = %s) limit 1""",
+        (me_name, other, other, me_name), as_dict=True)
+    if not r:
+        return {"state": "none", "request": None}
+    r = r[0]
+    if r.status == "Accepted":
+        return {"state": "friends", "request": r.name}
+    return {"state": "sent" if r.requester == me_name else "received", "request": r.name}
+
+
+def duo_streak(a, b):
+    da = set([str(jday(d)) for d in member_days(a, "Reading")])
+    both = [d for d in member_days(b, "Reading") if str(jday(d)) in da]
+    return streak_from_days(both)
+
+
+def card(m):
+    return {"member": m.name, "full_name": m.full_name, "username": m.get("username"), "photo": m.get("photo"),
+            "unit": m.get("unit"), "member_role": m.get("member_role")}
+
+
+def can_see_phone(viewer, target, friends=None):
+    # viewer: my SIO Member row (or None); target: a row with name, unit, phone_visibility.
+    # Leaders who can see the member list always can; otherwise the person's own choice decides.
+    if not viewer or not target:
+        return False
+    if viewer.name == target.get("name"):
+        return True
+    if ctx["caps"].get("view_members") and (SCOPE_UNITS is None or target.get("unit") in SCOPE_UNITS):
+        return True
+    v = target.get("phone_visibility") or "Leaders only"
+    if v == "All members":
+        return True
+    if v == "My unit":
+        return bool(viewer.unit) and viewer.unit == target.get("unit")
+    if v == "Friends":
+        f = friends if friends is not None else set(friend_ids(viewer.name))
+        return target.get("name") in f
+    return False
+
+
+def about(r):
+    # the "who they are" fields for cards and profiles
+    return {"life_stage": r.get("life_stage"), "profession": r.get("profession"), "workplace": r.get("workplace"),
+            "current_city": r.get("current_city"), "campus": r.get("campus"), "course": r.get("course"),
+            "home_town": r.get("home_town"), "mentor_topics": r.get("mentor_topics")}
+
+
+BADGES = [
+    # code, title, icon, what it takes. Kept to five that mean something (no attendance or giving badges).
+    ("reader_7", "One week strong", "local_fire_department", "Read the daily ayah 7 days in a row"),
+    ("reader_30", "Thirty days", "whatshot", "Read the daily ayah 30 days in a row"),
+    ("first_programme", "First programme", "event_available", "Join your first SIO programme"),
+    ("volunteer", "Volunteer", "volunteer_activism", "Finish a task for a programme"),
+    ("quiz_full", "Full marks", "emoji_events", "Get every answer right in a weekly quiz"),
+]
+
+
+def badges_for(m):
+    name = m.name
+    reading = streak_from_days(member_days(name, "Reading"), True)
+    att = attendance_streak(name)
+    qs = quiz_streak(name, m.get("area"))
+    full = frappe.db.sql("select count(*) from `tabSIO Quiz Attempt` where member = %s and score = total and total > 0",
+                         name)[0][0]
+    regs = frappe.db.count("SIO Event Registration", {"member": name, "status": ["!=", "Cancelled"]})
+    tasks = frappe.db.count("SIO Event Task", {"assigned_to": name, "status": "Done"})
+    paid = frappe.db.sql("select count(*) from `tabSIO Collection Entry` where contributor_member = %s and paid_amount > 0",
+                         name)[0][0]
+    invited = frappe.db.count("SIO Member", {"invited_by": name})
+    friends = len(friend_ids(name))
+    have = {
+        "reader_3": (reading["best"], 3), "reader_7": (reading["best"], 7), "reader_30": (reading["best"], 30),
+        "first_programme": (regs, 1), "meetings_10": (att["present"], 10), "attend_4": (att["current"], 4),
+        "volunteer": (tasks, 1), "giver": (paid, 1), "quiz_first": (qs["taken"], 1), "quiz_full": (full, 1),
+        "quiz_4": (qs["current"], 4), "inviter": (invited, 1), "friends_5": (friends, 5),
+    }
+    out = []
+    for b in BADGES:
+        got = have[b[0]]
+        out.append({"code": b[0], "title": b[1], "icon": b[2], "how": b[3], "earned": got[0] >= got[1],
+                    "progress": min(got[0], got[1]), "goal": got[1]})
+    return {"badges": out, "reading": reading, "attendance": att, "quiz": qs, "friends": friends, "invited": invited}
+# --- end journey helpers ---
+m = ctx["member"]
+if not m:
+    frappe.throw(_("Your student record is not set up yet."))
+f = frappe.get_doc("File", args.get("photo"))
+if f.attached_to_doctype != "SIO Album":
+    frappe.throw(_("Photo not found."))
+a = frappe.get_doc("SIO Album", f.attached_to_name)
+if not album_visible(a):
+    frappe.throw(_("You are not allowed to do this."), frappe.PermissionError)
+who = args.get("member") or m.name
+existing = frappe.db.get_value("SIO Photo Tag", {"photo": f.name, "member": who}, ["name", "tagged_by"], as_dict=True)
+if frappe.utils.cint(args.get("remove")):
+    if existing and (who == m.name or existing.tagged_by == m.name or can_manage_album(a)):
+        frappe.delete_doc("SIO Photo Tag", existing.name, ignore_permissions=True)
+    frappe.response["message"] = {"tagged": 0}
+else:
+    if who != m.name and not can_manage_album(a) and friend_state(m.name, who)["state"] != "friends":
+        frappe.throw(_("You can tag yourself and your friends."))
+    if not existing:
+        frappe.get_doc({"doctype": "SIO Photo Tag", "photo": f.name, "album": a.name, "member": who,
+                        "tagged_by": m.name}).insert(ignore_permissions=True)
+        if who != m.name:
+            frappe.get_doc({"doctype": "SIO Notice", "title": m.full_name + " tagged you in a photo 📸",
+                            "message": "From " + a.title + ". Open Albums to see it and share it.",
+                            "audience": "Person", "member": who}).insert(ignore_permissions=True)
+    frappe.response["message"] = {"tagged": 1}

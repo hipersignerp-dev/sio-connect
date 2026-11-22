@@ -144,7 +144,9 @@ class Notify {
     final seen = raw == null ? null : Set<String>.from(jsonDecode(raw) as List);
     final me = Api.prefs.getString('me_user') ?? '';
     final ids = [for (final n in list) n['name'].toString()];
-    if (seen != null) {
+    // when the server pushes notices (Firebase), don't show them a second time from here
+    final pushed = Api.prefs.getBool('push_ok') ?? false;
+    if (seen != null && !pushed) {
       for (final n in list.reversed) {
         final id = n['name'].toString();
         if (seen.contains(id) || n['sent_by'] == me) continue;

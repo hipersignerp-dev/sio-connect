@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'api.dart';
 import 'biometric.dart';
 import 'notify.dart';
+import 'push.dart';
 import 'widgets.dart';
 
 enum Stage { loading, signedOut, locked, signedIn }
@@ -287,6 +288,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> signOut() async {
     await Notify.stop();
+    await Push.stop();
     await Biometric.clearGoogleToken();
     try {
       await GoogleSignIn.instance.signOut();

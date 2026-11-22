@@ -55,6 +55,8 @@ dependencies:
   flutter_compass: ^0.8.1
   home_widget: ^0.10.0
   sensors_plus: ^7.1.1
+  firebase_core: ^5.2.0
+  firebase_messaging: ^17.1.0
 
 dev_dependencies:
   flutter_test:
