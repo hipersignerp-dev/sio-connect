@@ -1,7 +1,7 @@
 # @include tasks
 # One event, with its team, tasks and expenses: office bearers see budget, spent, pending and every expense;
 # members see their own claims for the event.
-found = [e for e in run_script("SIO lib events", limit=500).sio_events if e.name == args.get("name")]
+found = [e for e in run_script("SIO lib events", limit=500, since_days=3650).sio_events if e.name == args.get("name")]
 if not found:
     frappe.throw(_("Event not found."), frappe.DoesNotExistError)
 out = found[0]
