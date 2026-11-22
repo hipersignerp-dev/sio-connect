@@ -28,4 +28,5 @@ if m:
                     "album_date": a.album_date, "tags": people, "me": me_in, "creation": t.creation})
         if len(out) >= 30:
             break
+add_reactions(out, m.name if m else None)
 frappe.response["message"] = out

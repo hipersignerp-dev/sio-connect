@@ -17,6 +17,7 @@ for p in photos:
         if cards[mbr]:
             p["tags"].append(cards[mbr])
     p["me"] = bool(me) and me in tags.get(p.name, [])
+add_reactions(photos, me)
 frappe.response["message"] = {
     "name": a.name, "title": a.title, "event": a.event, "album_date": a.album_date, "unit": a.unit, "area": a.area,
     "cover": a.cover, "photos": photos, "can_manage": can_manage_album(a),
