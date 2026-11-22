@@ -79,7 +79,7 @@ class _FlowState extends State<_Flow> {
     emoji: '👋',
     title: 'Tell us about you',
     text: 'So the app shows what’s useful for you: exam and scholarship alerts, internships, or jobs and mentoring.',
-    child: Column(
+    content: Column(
       children: [
         StagePicker(value: _stage, onChanged: (v) => setState(() => _stage = v)),
         if (_stage != null) ...[
@@ -173,7 +173,7 @@ class _FlowState extends State<_Flow> {
           'Read or listen to today’s ayah to light Noor up. Today is day 1!',
       action: _read ? 'Next' : (_reading ? 'Saving…' : '🔥  I read it'),
       onAction: _read ? _next : _markRead,
-      child: Container(
+      content: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(colors: [Color(0xFF0E3F70), Color(0xFF1A62A8)]),
@@ -222,7 +222,7 @@ class _FlowState extends State<_Flow> {
     text: 'So friends from your unit recognise you on the leaderboard and in programme photos.',
     action: 'Next',
     onAction: _next,
-    child: Center(
+    content: Center(
       child: PhotoPicker(
         name: '${AppState.i.me['full_name'] ?? ''}',
         photo: AppState.i.me['photo']?.toString(),
@@ -242,7 +242,7 @@ class _FlowState extends State<_Flow> {
     text: 'See who read today, nudge them, and race them on the leaderboard. Add at least 3.',
     action: _sent.isEmpty ? 'Skip for now' : 'Next (${_sent.length} added)',
     onAction: _next,
-    child: Column(
+    content: Column(
       children: [
         for (final p in _people)
           ListTile(
@@ -285,7 +285,7 @@ class _FlowState extends State<_Flow> {
         await Notify.setReminder(_remind == 'off' ? null : _remind);
         _next();
       },
-      child: Column(
+      content: Column(
         children: [
           for (final o in options)
             Padding(
@@ -363,7 +363,7 @@ class _Page extends StatelessWidget {
     required this.emoji,
     required this.title,
     required this.text,
-    required this.child,
+    required this.content,
     required this.action,
     required this.onAction,
     this.hero,
@@ -372,7 +372,7 @@ class _Page extends StatelessWidget {
   final String emoji;
   final String title;
   final String text;
-  final Widget child;
+  final Widget content;
   final String action;
   final VoidCallback onAction;
 
@@ -392,7 +392,7 @@ class _Page extends StatelessWidget {
             const SizedBox(height: 6),
             Text(text, style: TextStyle(fontSize: 15, color: SioColors.textSecondary, height: 1.4)),
             const SizedBox(height: 20),
-            child,
+            content,
           ],
         ),
       ),
