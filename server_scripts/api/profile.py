@@ -10,7 +10,7 @@ p = frappe.db.get_value("SIO Member", target, ["name", "full_name", "username", 
                                                 "status", "mobile", "phone_visibility", "hide_games", "life_stage",
                                                 "profession", "workplace", "current_city", "campus", "course",
                                                 "home_town", "mentor_topics"], as_dict=True) if target else None
-if not p or p.status != "Active":
+if not p or (p.status != "Active" and not (m and p.name == m.name)):
     frappe.throw(_("Person not found."), frappe.DoesNotExistError)
 me_name = m.name if m else None
 st = {"state": "self", "request": None} if p.name == me_name else (friend_state(me_name, p.name) if me_name
