@@ -30,6 +30,7 @@ import 'programmes_screen.dart';
 import '../noor.dart';
 import '../ayah_share.dart';
 import '../home_widget_sync.dart';
+import '../share_in.dart';
 import 'onboarding_screen.dart';
 import 'task_screens.dart';
 
@@ -63,6 +64,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) UpdateService.check(context);
       Links.openPending();
+      ShareIn.start();
       if (mounted) Onboarding.maybeShow(context);
     });
     Notify.start('${AppState.i.me['user'] ?? ''}');
@@ -271,6 +273,7 @@ class SocialHome extends StatelessWidget {
       Api.call('${Api.m}events').catchError((_) => []),
       Api.call('${Api.m}albums').catchError((_) => null),
       Api.call('${Api.m}opportunities').catchError((_) => null),
+      Api.call('${Api.m}my_photos').catchError((_) => []),
     ]);
     final h = _m(r[0]);
     AppState.i.me = _m(h['me']);
@@ -283,6 +286,7 @@ class SocialHome extends StatelessWidget {
       'events': r[5],
       'albums': r[6],
       'board': r[7],
+      'my_photos': r[8],
     };
   }
 
@@ -293,20 +297,16 @@ class SocialHome extends StatelessWidget {
       backgroundColor: SioColors.background,
       surfaceTintColor: SioColors.background,
       titleSpacing: 16,
+      toolbarHeight: 52,
       title: Row(
         children: [
-          Image.asset('assets/sio-logo.png', height: 30),
+          Image.asset('assets/sio-logo.png', height: 24),
           const SizedBox(width: 8),
           Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: ShaderMask(
-                shaderCallback: (r) => sioGradient.createShader(r),
-                child: const Text(
-                  'SIO Connect',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
-                ),
-              ),
+            child: Text(
+              'SIO Connect',
+              maxLines: 1,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: SioColors.ink, letterSpacing: -0.3),
             ),
           ),
         ],
@@ -396,6 +396,11 @@ class SocialHome extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Enter(child: _AdminCard(home: h)),
+            ),
+          if (_NewPhotos.of(d).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Enter(child: _NewPhotos(photos: _NewPhotos.of(d))),
             ),
           // 2. today's ayah, compact
           if (j != null && j['reading'] != null)
@@ -537,7 +542,7 @@ class SocialHome extends StatelessWidget {
           if (suggest.isNotEmpty && friends.length < 8) ...[
             _Header('People you may know', action: 'Find members', onAction: () => push(context, const FindMembersScreen())),
             SizedBox(
-              height: 206,
+              height: 190 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -846,6 +851,80 @@ class _MiniStat extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// "You're in 5 new photos from Area Tour": the photos I was tagged in since I last looked (last 2 weeks).
+class _NewPhotos extends StatelessWidget {
+  const _NewPhotos({required this.photos});
+  final List<Map<String, dynamic>> photos;
+
+  static List<Map<String, dynamic>> of(Map<String, dynamic> d) {
+    final seen = DateTime.tryParse(Api.prefs.getString('photos_seen_at') ?? '') ?? DateTime(2000);
+    final since = DateTime.now().subtract(const Duration(days: 14));
+    final from = seen.isAfter(since) ? seen : since;
+    return [
+      for (final p in _l(d['my_photos']))
+        if ((DateTime.tryParse('${p['tagged_on']}') ?? DateTime(2000)).isAfter(from)) p,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final albums = {for (final p in photos) '${p['album_title'] ?? ''}'}..remove('');
+    final where = albums.length == 1 ? ' from ${albums.first}' : '';
+    return Squish(
+      onTap: () async {
+        await Api.prefs.setString('photos_seen_at', DateTime.now().toIso8601String());
+        if (context.mounted) await push(context, const MyPhotosScreen());
+        AppState.i.refreshAll();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(18)),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 44.0 + 22 * (photos.take(3).length - 1),
+              height: 50,
+              child: Stack(
+                children: [
+                  for (var i = 0; i < photos.take(3).length; i++)
+                    Positioned(
+                      left: i * 22.0,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: SioColors.background, width: 2),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            '${Api.baseUrl}${photos[i]['file_url']}',
+                            cacheWidth: 150,
+                            width: 44,
+                            height: 46,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(width: 44, height: 46, color: SioColors.greyBg),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '📸 You’re in ${photos.length} new photo${photos.length == 1 ? '' : 's'}$where',
+                style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+              ),
+            ),
+            Icon(Icons.chevron_right, color: SioColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Home: today's ayah in a few lines; tap to open the full reader (Arabic, Malayalam, audio, lesson).
@@ -1312,9 +1391,10 @@ class _SuggestCardState extends State<_SuggestCard> {
   @override
   Widget build(BuildContext context) {
     final p = widget.p;
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
     return Container(
-      width: 150,
-      padding: const EdgeInsets.all(12),
+      width: 140 * scale,
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
       decoration: BoxDecoration(
         border: Border.all(color: SioColors.border),
         borderRadius: BorderRadius.circular(16),
@@ -1324,7 +1404,7 @@ class _SuggestCardState extends State<_SuggestCard> {
           InkWell(
             customBorder: const CircleBorder(),
             onTap: () => push(context, PersonPage(member: '${p['member']}')),
-            child: Avatar('${p['full_name'] ?? ''}', radius: 36, light: true, photo: p['photo']),
+            child: Avatar('${p['full_name'] ?? ''}', radius: 32, light: true, photo: p['photo']),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1341,14 +1421,24 @@ class _SuggestCardState extends State<_SuggestCard> {
           const Spacer(),
           SizedBox(
             width: double.infinity,
+            height: 36 * scale,
             child: _sent
-                ? OutlinedButton(onPressed: null, child: const Text('Requested'))
-                : FilledButton(
+                ? OutlinedButton.icon(
+                    onPressed: null,
+                    style: OutlinedButton.styleFrom(padding: EdgeInsets.zero, shape: const StadiumBorder()),
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const FittedBox(child: Text('Sent')),
+                  )
+                : FilledButton.icon(
+                    style: FilledButton.styleFrom(padding: EdgeInsets.zero, shape: const StadiumBorder()),
                     onPressed: () async {
                       final ok = await run(context, () => Api.call('${Api.m}friend_request', {'member': p['member']}));
                       if (ok && mounted) setState(() => _sent = true);
                     },
-                    child: const Text('Add friend'),
+                    icon: const Icon(Icons.person_add_alt_1, size: 16),
+                    label: const FittedBox(
+                      child: Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
                   ),
           ),
         ],
@@ -1445,13 +1535,8 @@ class EventTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: Colors.white70),
                       ),
-                      if (_i(e['registered_count']) > 0) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          '${e['registered_count']} going',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
-                        ),
-                      ],
+                      const SizedBox(height: 6),
+                      FacesGoing(e: e, light: true),
                     ],
                   ),
                 ),

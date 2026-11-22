@@ -402,7 +402,7 @@ class EventFormScreen extends StatefulWidget {
 }
 
 class _EventFormScreenState extends State<EventFormScreen> {
-  static const types = ['Campus Programme', 'Camp', 'Workshop', 'Conference', 'Iftar', 'Other'];
+  static const types = ['Campus Programme', 'Study Circle', 'Camp', 'Workshop', 'Conference', 'Iftar', 'Other'];
   static const statuses = ['Planning', 'Registrations Open', 'Registrations Closed', 'Completed', 'Cancelled'];
   final _title = TextEditingController();
   final _venue = TextEditingController();

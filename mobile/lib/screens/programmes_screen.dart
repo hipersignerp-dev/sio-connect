@@ -225,12 +225,11 @@ class _ProgrammeRowState extends State<_ProgrammeRow> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        [
-                          '${e['unit'] ?? ''}'.isEmpty ? 'Area-wide' : 'SIO ${e['unit']}',
-                          if (_count > 0) '$_count going',
-                        ].join(' · '),
-                        style: TextStyle(color: SioColors.text, fontSize: 12.5, fontWeight: FontWeight.w600),
+                        '${e['unit'] ?? ''}'.isEmpty ? 'Area-wide' : 'SIO ${e['unit']}',
+                        style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
                       ),
+                      const SizedBox(height: 4),
+                      FacesGoing(e: e, extra: _count - numOf(e['registered_count']).toInt()),
                     ],
                   ),
                 ),

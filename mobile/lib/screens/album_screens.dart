@@ -617,6 +617,8 @@ class _PhotoViewerState extends State<PhotoViewer> {
                       ),
                     ),
                   const SizedBox(height: 8),
+                  ReactionBar(key: ValueKey('rx-${_p['name']}'), photo: _p, light: true),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
@@ -786,6 +788,10 @@ class PhotoFeedCard extends StatelessWidget {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: ReactionBar(key: ValueKey('rx-${p['name']}'), photo: p),
+          ),
           if (who.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -831,4 +837,106 @@ class PhotoFeedCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// ❤️ 🔥 😂 👏 under a photo, with counts. Tap to react (tap again to take it back); the people in the photo and
+/// the person who added it get a notice.
+class ReactionBar extends StatefulWidget {
+  const ReactionBar({super.key, required this.photo, this.light = false});
+  final Map<String, dynamic> photo;
+  final bool light; // on the dark photo viewer
+
+  @override
+  State<ReactionBar> createState() => _ReactionBarState();
+}
+
+class _ReactionBarState extends State<ReactionBar> {
+  static const emojis = ['❤️', '🔥', '😂', '👏'];
+  late Map<String, int> _counts = {
+    for (final e in (Map<String, dynamic>.from((widget.photo['reactions'] ?? {}) as Map)).entries) e.key: numOf(e.value).toInt(),
+  };
+  late String? _mine = widget.photo['my_reaction']?.toString();
+  bool _busy = false;
+
+  Future<void> _react(String e) async {
+    if (_busy) return;
+    HapticFeedback.lightImpact();
+    final before = (Map<String, int>.from(_counts), _mine);
+    setState(() {
+      // update straight away; the server answer replaces it
+      if (_mine != null) _counts[_mine!] = (_counts[_mine!] ?? 1) - 1;
+      if (_mine == e) {
+        _mine = null;
+      } else {
+        _mine = e;
+        _counts[e] = (_counts[e] ?? 0) + 1;
+      }
+      _busy = true;
+    });
+    try {
+      final r = Map<String, dynamic>.from(
+        await Api.call('${Api.m}react_photo', {'photo': widget.photo['name'], 'emoji': e}) as Map,
+      );
+      if (!mounted) return;
+      setState(() {
+        _counts = {
+          for (final x in Map<String, dynamic>.from((r['reactions'] ?? {}) as Map).entries) x.key: numOf(x.value).toInt(),
+        };
+        _mine = r['my_reaction']?.toString();
+      });
+      widget.photo['reactions'] = _counts;
+      widget.photo['my_reaction'] = _mine;
+    } catch (err) {
+      if (mounted) {
+        setState(() {
+          _counts = before.$1;
+          _mine = before.$2;
+        });
+        toast(context, friendlyError(err));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 6,
+    runSpacing: 6,
+    children: [
+      for (final e in emojis)
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _react(e),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _mine == e
+                  ? (widget.light ? Colors.white24 : SioColors.blue.withValues(alpha: 0.14))
+                  : (widget.light ? Colors.white10 : SioColors.card),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _mine == e ? (widget.light ? Colors.white70 : SioColors.blue) : Colors.transparent),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: _mine == e ? 1.2 : 1,
+                  duration: const Duration(milliseconds: 160),
+                  child: Text(e, style: const TextStyle(fontSize: 16)),
+                ),
+                if ((_counts[e] ?? 0) > 0) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_counts[e]}',
+                    style: TextStyle(fontWeight: FontWeight.w700, color: widget.light ? Colors.white : SioColors.text),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
 }

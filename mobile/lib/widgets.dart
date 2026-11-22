@@ -351,3 +351,67 @@ String waNumber(String mobile) {
   final d = mobile.replaceAll(RegExp(r'[^0-9]'), '');
   return d.length == 10 ? '91$d' : d;
 }
+
+/// "Adnan, Affan and 3 more going" with their faces overlapping (friends first), or just "12 going".
+class FacesGoing extends StatelessWidget {
+  const FacesGoing({super.key, required this.e, this.light = false, this.extra = 0});
+  final Map<String, dynamic> e;
+  final bool light; // on a blue card
+  final int extra; // my own change after tapping "I'll go"
+
+  @override
+  Widget build(BuildContext context) {
+    final friends = [for (final f in (e['friends_going'] as List? ?? [])) Map<String, dynamic>.from(f as Map)];
+    final fCount = numOf(e['friends_going_count']).toInt();
+    final total = numOf(e['registered_count']).toInt() + extra;
+    if (total <= 0 && friends.isEmpty) return const SizedBox.shrink();
+    String first(Map<String, dynamic> f) {
+      final w = '${f['full_name'] ?? ''}'.trim().split(RegExp(r'\s+'));
+      final skip = {'mohammed', 'muhammed', 'muhammad', 'mohammad', 'md', 'mhd'};
+      return w.firstWhere((x) => !skip.contains(x.toLowerCase()) && x.length > 1, orElse: () => w.first);
+    }
+
+    final text = friends.isEmpty
+        ? '$total going'
+        : [
+            friends.take(2).map(first).join(', '),
+            if (total - friends.take(2).length > 0) ' and ${total - friends.take(2).length} more',
+            ' going',
+          ].join();
+    final color = light ? Colors.white : SioColors.text;
+    return Row(
+      children: [
+        if (friends.isNotEmpty)
+          SizedBox(
+            width: 18.0 * friends.length + 10,
+            height: 28,
+            child: Stack(
+              children: [
+                for (var i = 0; i < friends.length; i++)
+                  Positioned(
+                    left: i * 18.0,
+                    child: Container(
+                      padding: const EdgeInsets.all(1.5),
+                      decoration: BoxDecoration(
+                        color: light ? const Color(0xFF1A62A8) : SioColors.background,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Avatar('${friends[i]['full_name'] ?? ''}', radius: 12, light: true, photo: friends[i]['photo']),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        if (friends.isNotEmpty) const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            fCount > 0 && friends.isEmpty ? '$total going' : text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12.5),
+          ),
+        ),
+      ],
+    );
+  }
+}

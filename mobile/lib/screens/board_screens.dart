@@ -16,7 +16,7 @@ import '../widgets.dart';
 Map<String, dynamic> _m(dynamic v) => Map<String, dynamic>.from((v ?? {}) as Map);
 List<Map<String, dynamic>> _l(dynamic v) => [for (final x in (v as List? ?? [])) _m(x)];
 
-const kinds = ['Job', 'Internship', 'Scholarship', 'Exam & Admission', 'Career', 'Study Circle', 'Notes', 'Blood Request'];
+const kinds = ['Job', 'Internship', 'Scholarship', 'Exam & Admission', 'Career', 'Notes', 'Blood Request'];
 
 (IconData, Color, String) kindLook(String k) => switch (k) {
   'Scholarship' => (Icons.school, const Color(0xFF1E8E3E), 'Scholarships'),
@@ -312,9 +312,10 @@ class _Btn extends StatelessWidget {
 }
 
 class PostBoardScreen extends StatefulWidget {
-  const PostBoardScreen({super.key, required this.lead, this.kind});
+  const PostBoardScreen({super.key, required this.lead, this.kind, this.shared});
   final bool lead;
   final String? kind;
+  final String? shared; // text forwarded from another app (Share > SIO Connect)
 
   @override
   State<PostBoardScreen> createState() => _PostBoardScreenState();
@@ -322,7 +323,34 @@ class PostBoardScreen extends StatefulWidget {
 
 class _PostBoardScreenState extends State<PostBoardScreen> {
   late String _kind = widget.kind != null && (widget.lead || !_leadOnly.contains(widget.kind)) ? widget.kind! : 'Notes';
-  static const _leadOnly = ['Scholarship', 'Exam & Admission', 'Career'];
+  static const _leadOnly = ['Career'];
+
+  @override
+  void initState() {
+    super.initState();
+    final t = (widget.shared ?? '').trim();
+    if (t.isEmpty) return;
+    // fill the post from the forwarded message: first line as title, the rest as details, the first link as link
+    final url = RegExp(r'https?://\S+').firstMatch(t)?.group(0);
+    final lines = t.split('\n').map((l) => l.replaceAll('*', '').trim()).where((l) => l.isNotEmpty).toList();
+    final first = lines.isEmpty ? '' : lines.first;
+    _title.text = first.length > 100 ? '${first.substring(0, 97)}…' : first;
+    _details.text = t;
+    if (url != null) _link.text = url;
+    final low = t.toLowerCase();
+    _kind = low.contains('intern')
+        ? 'Internship'
+        : low.contains('scholarship')
+        ? 'Scholarship'
+        : RegExp(r'vacanc|hiring|job|walk-in|recruit|opening').hasMatch(low)
+        ? 'Job'
+        : RegExp(r'exam|admission|entrance|apply|application|last date').hasMatch(low)
+        ? 'Exam & Admission'
+        : RegExp(r'blood|donor').hasMatch(low)
+        ? 'Blood Request'
+        : 'Notes';
+  }
+
   final _title = TextEditingController();
   final _details = TextEditingController();
   final _link = TextEditingController();
@@ -410,7 +438,7 @@ class _PostBoardScreenState extends State<PostBoardScreen> {
             Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
-                'Know a job or internship? Post it here, it may change someone’s life. Scholarships and exam alerts are posted by leaders.',
+                'Saw a job, scholarship or exam alert on WhatsApp? Share it here: in WhatsApp, long-press the message → Share → SIO Connect.',
                 style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
               ),
             ),
