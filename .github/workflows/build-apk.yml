@@ -90,6 +90,8 @@ jobs:
             --dart-define=BUILD_NUMBER=${{ steps.version.outputs.build }} \
             --dart-define=PLAY_STORE=true
           cp build/app/outputs/bundle/release/app-release.aab build/app/outputs/flutter-apk/SIO-Connect-play.aab
+          # remove the CI debug signature so the bundle can be signed once with the SIO upload key
+          zip -q -d build/app/outputs/flutter-apk/SIO-Connect-play.aab 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/MANIFEST.MF' || true
           git checkout android/app/src/main/AndroidManifest.xml
       - uses: actions/upload-artifact@v4
         with:
