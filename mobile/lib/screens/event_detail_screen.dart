@@ -9,6 +9,7 @@ import '../api.dart';
 import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'certificate_screen.dart';
 import 'expense_screens.dart';
 import 'manage_screens.dart';
 import 'task_screens.dart';
@@ -149,6 +150,7 @@ class EventDetailScreen extends StatelessWidget {
                 ],
               ),
             ],
+            if (e['attended'] == 1 || e['ratings'] != null) ProgrammeAfter(e: e),
             ...teamAndTaskSections(context, e),
             if (sum != null) ...[
               const SectionTitle('Spending'),

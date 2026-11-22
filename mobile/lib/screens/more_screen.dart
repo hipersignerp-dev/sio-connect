@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../update_service.dart';
 import '../photo.dart';
 import 'settings_sheets.dart';
+import '../bug_report.dart';
 import '../widgets.dart';
 import '../location.dart';
 import 'task_screens.dart';
@@ -218,12 +219,26 @@ class MoreScreen extends StatelessWidget {
                   onTap: () => showAppearance(context),
                 ),
                 SioTile(
-                  icon: Icons.feedback_outlined,
-                  title: 'Send feedback',
-                  subtitle: 'Report a problem or share an idea',
-                  onTap: () => showFeedback(context),
+                  icon: Icons.bug_report_outlined,
+                  title: 'Report a problem',
+                  subtitle: 'Or share an idea. Tip: shake your phone anywhere',
+                  onTap: () => BugReport.open(context),
                 ),
+                SioTile(
+                  icon: Icons.inbox_outlined,
+                  title: 'My reports',
+                  subtitle: 'See replies from the SIO Connect team',
+                  onTap: () => push(context, const MyReportsScreen()),
+                ),
+                const _ShakeTile(),
               ],
+              if (AppState.i.can('handle_feedback'))
+                SioTile(
+                  icon: Icons.bug_report,
+                  title: 'Bug reports & feedback',
+                  subtitle: 'Reports from students, with screenshots',
+                  onTap: () => push(context, const FeedbackInboxScreen()),
+                ),
               if (!dashboardOpen && s.isLeader)
                 SioTile(
                   icon: Icons.space_dashboard_outlined,
@@ -672,4 +687,24 @@ Future<void> deleteMyAccount(BuildContext context) async {
     Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
     await AppState.i.signOut();
   }
+}
+
+class _ShakeTile extends StatefulWidget {
+  const _ShakeTile();
+
+  @override
+  State<_ShakeTile> createState() => _ShakeTileState();
+}
+
+class _ShakeTileState extends State<_ShakeTile> {
+  @override
+  Widget build(BuildContext context) => SwitchListTile(
+    secondary: Icon(Icons.vibration, color: SioColors.blue),
+    title: const Text('Shake to report a problem'),
+    value: BugReport.shakeOn,
+    onChanged: (v) async {
+      await BugReport.setShake(v);
+      setState(() {});
+    },
+  );
 }

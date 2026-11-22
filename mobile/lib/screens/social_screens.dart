@@ -27,10 +27,12 @@ import 'notice_screens.dart';
 import 'public_screens.dart';
 import 'qibla_screen.dart';
 import 'programmes_screen.dart';
+import 'recap_screen.dart';
 import '../noor.dart';
 import '../ayah_share.dart';
 import '../home_widget_sync.dart';
 import '../share_in.dart';
+import '../bug_report.dart';
 import 'onboarding_screen.dart';
 import 'task_screens.dart';
 
@@ -65,6 +67,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
       if (mounted) UpdateService.check(context);
       Links.openPending();
       ShareIn.start();
+      BugReport.startShake();
       if (mounted) Onboarding.maybeShow(context);
     });
     Notify.start('${AppState.i.me['user'] ?? ''}');
@@ -407,6 +410,23 @@ class SocialHome extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: _AyahCompact(journey: j, games: games),
+            ),
+          if (j != null && _m(j['unit_today'])['total'] != null && _i(_m(j['unit_today'])['total']) > 1)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: _UnitToday(u: _m(j['unit_today'])),
+            ),
+          if (j != null && (DateTime.now().weekday >= DateTime.friday || DateTime.now().weekday == DateTime.monday))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: _Pill(
+                icon: Icons.auto_awesome,
+                color: SioColors.blue,
+                text: DateTime.now().weekday == DateTime.monday
+                    ? 'Your week is ready: see it and share it on WhatsApp Status'
+                    : 'Your week so far: share it on WhatsApp Status',
+                onTap: () => push(context, RecapScreen(games: games)),
+              ),
             ),
           if (stage.isEmpty && !pending)
             Padding(
@@ -851,6 +871,62 @@ class _MiniStat extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// "Ottaplam: 18 of 44 read today": the whole unit together, no names (togetherness, not a ranking).
+class _UnitToday extends StatelessWidget {
+  const _UnitToday({required this.u});
+  final Map<String, dynamic> u;
+
+  @override
+  Widget build(BuildContext context) {
+    final read = _i(u['read']);
+    final total = _i(u['total']);
+    final f = total == 0 ? 0.0 : (read / total).clamp(0.0, 1.0);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🏮', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${u['unit']}: $read of $total read today',
+                  style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                ),
+              ),
+              Text(
+                '${(f * 100).round()}%',
+                style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.blue),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: f,
+              minHeight: 8,
+              backgroundColor: SioColors.greyBg,
+              color: const Color(0xFFF2A93B),
+            ),
+          ),
+          if (read < total)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                read == 0 ? 'Be the first in your unit today ✨' : 'Every reader lights the unit up a little more',
+                style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// "You're in 5 new photos from Area Tour": the photos I was tagged in since I last looked (last 2 weeks).
@@ -1574,6 +1650,7 @@ class ExploreScreen extends StatelessWidget {
         if (s.me['member'] != null) (Icons.task_alt, 'My tasks', const MyTasksScreen()),
         if (s.me['member'] != null) (Icons.badge_outlined, 'My SIO card', const MemberCardScreen()),
         (Icons.info_outline, 'About SIO', const PublicScreen()),
+        (Icons.bug_report_outlined, 'Report a problem', const MyReportsScreen()),
       ];
       return Scaffold(
         backgroundColor: SioColors.background,

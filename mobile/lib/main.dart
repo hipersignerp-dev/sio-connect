@@ -5,6 +5,7 @@ import 'app_state.dart';
 import 'screens/auth_screens.dart';
 import 'screens/public_screens.dart';
 import 'screens/social_screens.dart';
+import 'bug_report.dart';
 import 'error_report.dart';
 import 'links.dart';
 import 'look.dart';
@@ -59,7 +60,7 @@ class _SioAppState extends State<SioApp> with WidgetsBindingObserver {
           final mq = MediaQuery.of(context);
           return MediaQuery(
             data: mq.copyWith(textScaler: TextScaler.linear(mq.textScaler.scale(1) * Look.textScale)),
-            child: child!,
+            child: RepaintBoundary(key: BugReport.shotKey, child: child!),
           );
         },
         home: ListenableBuilder(

@@ -62,6 +62,11 @@ class Api {
     return out;
   }
 
+  /// The signed-in headers, for loading private files (e.g. bug report screenshots).
+  static Map<String, String> get authHeaders => {
+    if ((token ?? '').isNotEmpty) 'Authorization': 'token $token' else if ((sid ?? '').isNotEmpty) 'Cookie': 'sid=$sid',
+  };
+
   static Future<http.Response> _post(String path, Map<String, dynamic> args, {bool withSession = true}) async {
     try {
       return await http

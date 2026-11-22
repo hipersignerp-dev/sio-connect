@@ -16,6 +16,7 @@ import '../app_state.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'card_screens.dart';
+import 'recap_screen.dart';
 import 'album_screens.dart';
 import 'find_members_screen.dart';
 import 'more_screen.dart';
@@ -124,6 +125,13 @@ class _JourneyScreenState extends State<JourneyScreen> {
             title: 'Reading leaderboard',
             subtitle: 'See your rank among all SIO students',
             onTap: () => push(context, const ReadingBoardScreen()),
+          ),
+          const SizedBox(height: 8),
+          SioTile(
+            icon: Icons.auto_awesome,
+            title: 'My week',
+            subtitle: 'Days read, programmes and photos: share it on Status',
+            onTap: () => push(context, const RecapScreen()),
           ),
           const SizedBox(height: 12),
           if (reading != null) _ReadingCard(reading: reading, done: rs['today'] == true, busy: _reading, onRead: () => _read(j)),
