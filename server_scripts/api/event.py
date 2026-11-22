@@ -74,4 +74,25 @@ if boss:
         pf["area"] = evr.area
     out["people"] = frappe.get_all("SIO Member", filters=pf, fields=["name", "full_name", "unit", "member_role"],
                                    order_by="full_name asc", limit=500)
+# rating and certificate: people who attended can rate the programme and get a participation certificate
+me = ctx["member"]
+att = bool(me) and frappe.db.exists("SIO Event Registration", {"event": out.name, "member": me.name, "status": "Attended"})
+ended = out.get("status") == "Completed" or (out.get("ends_on") or out.get("starts_on")) and \
+    frappe.utils.get_datetime(out.get("ends_on") or out.get("starts_on")) < frappe.utils.now_datetime()
+out["attended"] = 1 if att else 0
+out["can_rate"] = 1 if (att and ended) else 0
+mine = frappe.db.get_value("SIO Event Feedback", {"event": out.name, "member": me.name}, ["rating", "comment"],
+                           as_dict=True) if me else None
+out["my_rating"] = mine.rating if mine else None
+out["my_comment"] = mine.comment if mine else None
+if boss or ctx["caps"].get("manage_events"):
+    fb = frappe.get_all("SIO Event Feedback", filters={"event": out.name}, fields=["rating", "comment", "member"])
+    rated = [f.rating for f in fb if f.rating]
+    out["ratings"] = {"count": len(rated), "average": round(sum(rated) / len(rated), 1) if rated else None,
+                      "comments": [{"comment": f.comment,
+                                    "full_name": frappe.db.get_value("SIO Member", f.member, "full_name")}
+                                   for f in fb if f.comment][:30]}
+if att:
+    out["certificate"] = {"full_name": me.full_name, "unit": me.unit, "area": ctx["area"],
+                          "code": frappe.utils.sha256_hash(out.name + ":" + me.name)[:10].upper()}
 frappe.response["message"] = out

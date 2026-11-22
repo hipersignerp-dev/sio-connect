@@ -69,6 +69,7 @@ caps = {
     "manage_events": is_unit_admin,
     "add_members": is_unit_admin,
     "manage_units": is_admin or is_area_lead,
+    "handle_feedback": is_admin,  # bug reports and feedback inbox
     "view_donors": is_unit_admin or is_finance or is_member,
     "request_funds": is_unit_admin and member is not None,
     "approve_funds": is_finance or is_area_lead,

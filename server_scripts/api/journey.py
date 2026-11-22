@@ -27,10 +27,18 @@ if quiz:
     quiz["my_total"] = att.total if att else None
     quiz["questions"] = frappe.db.count("SIO Quiz Question", {"parent": quiz.name, "parenttype": "SIO Quiz"})
 pending = frappe.db.count("SIO Friend", {"addressee": m.name, "status": "Pending"})
+# how my unit is doing today (everyone in it, no names: togetherness, not ranking)
+unit_today = None
+if m.unit:
+    total = frappe.db.count("SIO Member", {"unit": m.unit, "status": "Active"})
+    done = frappe.db.sql("""select count(distinct d.member) from `tabSIO Streak Day` d join `tabSIO Member` x
+        on x.name = d.member where d.activity = 'Reading' and d.day = %s and x.unit = %s and x.status = 'Active'""",
+                         (frappe.utils.nowdate(), m.unit))[0][0]
+    unit_today = {"unit": m.unit, "read": done, "total": total}
 frappe.response["message"] = {
     "me": card(me_doc), "reading": reading, "reading_streak": b["reading"], "attendance": b["attendance"],
     "quiz_streak": b["quiz"], "quiz": quiz, "badges": b["badges"], "friends": b["friends"], "invited": b["invited"],
-    "friend_requests": pending,
+    "friend_requests": pending, "unit_today": unit_today,
     "invite_text": "Join me on SIO Connect, the app of SIO Ottapalam Area: programmes, photos, daily ayah streak, "
                    "quiz and more. " + frappe.utils.get_url("/go" + ("?i=" + me_doc.username if me_doc.username else ""))
                    + (" (my invite code: " + me_doc.username + ")" if me_doc.username else ""),
