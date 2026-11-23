@@ -22,33 +22,17 @@ class AyahWidgetProvider : HomeWidgetProvider() {
         appWidgetIds: IntArray,
         widgetData: SharedPreferences,
     ) {
-        val cal = Calendar.getInstance()
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
-        val fresh = widgetData.getString("w_day", "") == today
-        val readToday = widgetData.getString("w_read_day", "") == today
-        val streak = if (readToday || fresh) widgetData.getInt("w_streak", 0) else 0
-        val games = !widgetData.getBoolean("w_hide_games", false)
-        val missed = widgetData.getBoolean("w_missed", false) && !readToday
-        val name = widgetData.getString("w_name", "") ?: ""
-        val h = cal.get(Calendar.HOUR_OF_DAY)
-        val mood = when {
-            readToday -> "happy"
-            missed && streak == 0 -> "out"
-            h < 12 -> "hello"
-            h < 17 -> "waiting"
-            h < 21 -> "worried"
-            else -> "urgent"
-        }
+        val st = NoorState.of(widgetData)
+        val cal = st.cal
+        val fresh = st.fresh
+        val readToday = st.readToday
+        val streak = st.streak
+        val games = st.games
+        val name = st.name
+        val mood = st.mood
         val pick = cal.get(Calendar.YEAR) * 400 + (cal.get(Calendar.MONTH) + 1) * 31 + cal.get(Calendar.DAY_OF_MONTH)
         val says = line(mood, if (games) streak else 0, name, pick)
-        val img = when (mood) {
-            "happy" -> R.drawable.noor_happy
-            "out" -> R.drawable.noor_out
-            "waiting" -> R.drawable.noor_waiting
-            "worried" -> R.drawable.noor_worried
-            "urgent" -> R.drawable.noor_urgent
-            else -> R.drawable.noor_hello
-        }
+        val img = NoorState.face(mood)
         for (id in appWidgetIds) {
             val v = RemoteViews(context.packageName, R.layout.ayah_widget)
             v.setImageViewResource(R.id.w_noor, img)

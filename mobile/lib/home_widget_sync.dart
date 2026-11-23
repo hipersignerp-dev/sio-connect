@@ -3,6 +3,11 @@ import 'package:home_widget/home_widget.dart';
 /// Keeps the home-screen widget (Android, AyahWidgetProvider) in step with the app: today's ayah, the streak
 /// and the prayer times. Quietly does nothing where widgets aren't supported.
 class HomeWidgetSync {
+  static Future<void> _refresh() async {
+    await HomeWidget.updateWidget(androidName: 'AyahWidgetProvider');
+    await HomeWidget.updateWidget(androidName: 'NoorWidgetProvider');
+  }
+
   static String _today() => DateTime.now().toIso8601String().substring(0, 10);
 
   static Future<void> reading(
@@ -27,7 +32,7 @@ class HomeWidgetSync {
       }
       await HomeWidget.saveWidgetData<int>('w_streak', streak);
       await HomeWidget.saveWidgetData<bool>('w_read', readToday);
-      await HomeWidget.updateWidget(androidName: 'AyahWidgetProvider');
+      await _refresh();
     } catch (_) {}
   }
 
@@ -37,7 +42,7 @@ class HomeWidgetSync {
       String two(int n) => n.toString().padLeft(2, '0');
       final s = times.entries.map((e) => '${e.key}|${two(e.value.hour)}:${two(e.value.minute)}').join(',');
       await HomeWidget.saveWidgetData<String>('w_times', s);
-      await HomeWidget.updateWidget(androidName: 'AyahWidgetProvider');
+      await _refresh();
     } catch (_) {}
   }
 }

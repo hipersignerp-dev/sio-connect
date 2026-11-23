@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="ayah_widget_desc">Today’s ayah, your streak and the next prayer time</string>
+    <string name="noor_widget_desc">Noor and your reading streak</string>
 </resources>
