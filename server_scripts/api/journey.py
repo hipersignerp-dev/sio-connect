@@ -39,6 +39,7 @@ frappe.response["message"] = {
     "me": card(me_doc), "reading": reading, "reading_streak": b["reading"], "attendance": b["attendance"],
     "quiz_streak": b["quiz"], "quiz": quiz, "badges": b["badges"], "friends": b["friends"], "invited": b["invited"],
     "friend_requests": pending, "unit_today": unit_today,
+    "read_days": [str(d) for d in sorted(member_days(m.name, "Reading"), reverse=True)[:60]],
     "invite_text": "Join me on SIO Connect, the app of SIO Ottapalam Area: programmes, photos, daily ayah streak, "
                    "quiz and more. " + frappe.utils.get_url("/go" + ("?i=" + me_doc.username if me_doc.username else ""))
                    + (" (my invite code: " + me_doc.username + ")" if me_doc.username else ""),

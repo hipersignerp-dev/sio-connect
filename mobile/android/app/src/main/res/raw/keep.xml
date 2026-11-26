@@ -1,3 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Noor's pictures are used by name in notifications, so the build must keep them. -->
-<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@drawable/noor_*" />
+<!-- Pictures and sounds used by name in notifications and widgets, so the build must keep them. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@drawable/noor_*,@drawable/sprout_*,@raw/prayer_*" />

@@ -32,7 +32,7 @@ class AyahWidgetProvider : HomeWidgetProvider() {
         val mood = st.mood
         val pick = cal.get(Calendar.YEAR) * 400 + (cal.get(Calendar.MONTH) + 1) * 31 + cal.get(Calendar.DAY_OF_MONTH)
         val says = line(mood, if (games) streak else 0, name, pick)
-        val img = NoorState.face(mood)
+        val img = NoorState.face(context, mood, streak)
         for (id in appWidgetIds) {
             val v = RemoteViews(context.packageName, R.layout.ayah_widget)
             v.setImageViewResource(R.id.w_noor, img)
@@ -53,26 +53,26 @@ class AyahWidgetProvider : HomeWidgetProvider() {
         val s = streak > 0
         val lines = when (mood) {
             "happy" -> listOfNotNull(
-                if (s) "$streak days of light$n! I’m glowing ✨" else null,
-                "Alhamdulillah! Today’s ayah is done.",
-                "You lit me up today$n. See you tomorrow!",
+                if (s) "$streak days$n! I’m growing so well 🌱" else null,
+                "Alhamdulillah! You watered me today 💧",
+                "Thank you$n. I feel so fresh. See you tomorrow!",
             )
-            "hello" -> listOf("Assalamu Alaikum$n! Today’s ayah is ready ☀️", "One ayah, one minute. Shall we?")
+            "hello" -> listOf("Assalamu Alaikum$n! ☀️ One ayah to water me?", "Morning! Let’s grow together today 🌱")
             "waiting" -> listOfNotNull(
-                "Still waiting for you$n 👀",
-                if (s) "Your $streak-day light is waiting." else null,
+                "I’m waiting for you$n 👀 Just one ayah.",
+                if (s) "Your $streak-day sprout is getting thirsty." else null,
                 "I saved today’s ayah for you$n.",
             )
             "worried" -> listOfNotNull(
-                "My light is getting dim$n… 🥺",
-                if (s) "Don’t let your $streak-day streak go dark!" else null,
-                "I’m flickering… one ayah and I’ll glow again.",
+                "I’m getting thirsty$n… 🥺",
+                if (s) "Please don’t let me dry up after $streak days!" else null,
+                "My leaves are drooping… one ayah and I’ll stand up again.",
             )
             "urgent" -> listOfNotNull(
-                "I’m almost out$n! One ayah before you sleep?",
-                if (s) "Only a few hours left for your $streak days 😟" else null,
+                "I’m so thirsty$n! One ayah before you sleep?",
+                if (s) "Only a few hours left for your $streak days 😢" else null,
             )
-            else -> listOf("My light went out$n… light me up again 🕯️", "Every day is a new start. Read with me?")
+            else -> listOf("I dried up$n… 🥀 Water me today and I’ll grow again.", "Every day is a new start. Plant me again?")
         }
         return lines[pick % lines.size]
     }

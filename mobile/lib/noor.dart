@@ -2,16 +2,17 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-/// Noor (نور, "light"): SIO Connect's little lantern. Its light is your reading streak: bright after you read,
-/// fading through the day while today's ayah waits, nearly out late at night, and out when a day is missed.
-/// The same moods are drawn for the home-screen widget and notification pictures.
+/// Noor: SIO Connect's little sprout in an SIO-blue pot. One ayah a day waters it. It grows with the streak
+/// (seedling → sprout → growing → first bud → in bloom), gets thirsty through the day while today's ayah waits,
+/// and dries up when a day is missed. The same pictures are used by the home-screen widgets and notifications.
 enum NoorMood {
   happy, // read today
   hello, // morning, not read yet
   waiting, // afternoon
-  worried, // evening
-  urgent, // late night, light nearly out
-  out, // a day was missed: the light went out
+  worried, // evening: thirsty
+  urgent, // late night: very thirsty
+  out, // a day was missed: dried up
+  celebrate, // just read
 }
 
 /// Which mood fits right now.
@@ -25,62 +26,101 @@ NoorMood noorMood({required bool readToday, required int streak, required bool m
   return NoorMood.urgent;
 }
 
+/// How big the sprout has grown: 0 seedling (days 0–2), 1 sprout (3–6), 2 growing (7–29), 3 first bud (30–99),
+/// 4 in bloom (100+).
+int sproutStage(int streak) => streak >= 100
+    ? 4
+    : streak >= 30
+    ? 3
+    : streak >= 7
+    ? 2
+    : streak >= 3
+    ? 1
+    : 0;
+
+const sproutStageNames = ['Tiny seedling', 'Little sprout', 'Growing', 'First bud', 'In bloom'];
+const _stageAt = [0, 3, 7, 30, 100];
+
+/// "4 more days until your first bud" (null when fully grown).
+String? nextGrowth(int streak) {
+  final st = sproutStage(streak);
+  if (st >= 4) return null;
+  final left = _stageAt[st + 1] - streak;
+  final what = ['it sprouts', 'it starts growing', 'its first bud', 'it blooms'][st];
+  return left == 1 ? '1 more day until $what' : '$left more days until $what';
+}
+
+String _img(NoorMood m) => switch (m) {
+  NoorMood.happy => 'happy',
+  NoorMood.hello => 'hello',
+  NoorMood.waiting => 'waiting',
+  NoorMood.worried || NoorMood.urgent => 'sad',
+  NoorMood.out => 'out',
+  NoorMood.celebrate => 'celebrate',
+};
+
 /// What Noor says. A different line each day (picked by the date), so it doesn't feel like a robot.
 String noorLine(NoorMood m, {int streak = 0, String name = '', bool games = true, DateTime? now}) {
   final n = name.isEmpty ? '' : ', $name';
   final s = games && streak > 0;
   final lines = switch (m) {
-    NoorMood.happy => [
-      if (s) '$streak days of light$n! I’m glowing ✨',
-      'Alhamdulillah! Today’s ayah is done. I’m shining bright.',
-      'You lit me up today$n. See you tomorrow!',
-      if (s) 'MashaAllah, $streak days! Keep me glowing tomorrow too.',
+    NoorMood.happy || NoorMood.celebrate => [
+      if (s) '$streak days$n! I’m growing so well 🌱',
+      'Alhamdulillah! You watered me today 💧',
+      'Thank you$n. I feel so fresh now. See you tomorrow!',
+      if (s) 'MashaAllah, $streak days! Look how tall I’m getting.',
     ],
     NoorMood.hello => [
-      'Assalamu Alaikum$n! Today’s ayah is ready ☀️',
-      'Good morning$n. One ayah, one minute. Shall we?',
-      'Start the day with light: today’s ayah is waiting.',
+      'Assalamu Alaikum$n! ☀️ One ayah to water me?',
+      'Good morning$n. I’m ready for today’s ayah.',
+      'Morning! Let’s grow together today 🌱',
     ],
     NoorMood.waiting => [
-      'Still waiting for you$n 👀 Just one ayah.',
-      'A quick break? Read today’s ayah with me.',
-      if (s) 'Your $streak-day light is waiting for today’s ayah.',
+      'I’m waiting for you$n 👀 Just one ayah.',
+      'A quick break? One ayah and I’ll be happy.',
+      if (s) 'Your $streak-day sprout is getting a little thirsty.',
       'I saved today’s ayah for you$n.',
     ],
     NoorMood.worried => [
-      'My light is getting dim$n… 🥺',
-      if (s) 'Don’t let your $streak-day streak go dark tonight!',
+      'I’m getting thirsty$n… 🥺',
+      if (s) 'Please don’t let me dry up after $streak days!',
       'Just one minute before the day ends?',
-      'I’m flickering… read today’s ayah and I’ll glow again.',
+      'My leaves are drooping… one ayah and I’ll stand up again.',
     ],
     NoorMood.urgent => [
-      if (s) 'Only a few hours left for your $streak-day streak 😟',
-      'I’m almost out$n! One ayah before you sleep?',
-      'Quick, before midnight! Keep me burning 🕯️',
+      if (s) 'Only a few hours left$n. Don’t let $streak days dry up 😢',
+      'I’m so thirsty$n! One ayah before you sleep?',
+      'Quick, before midnight! Water me with one ayah 💧',
     ],
     NoorMood.out => [
-      'My light went out$n… read today and light me up again 🕯️',
-      'I missed you yesterday. Let’s start a new streak today!',
-      'Every day is a new start. Light me up again$n?',
+      'I dried up$n… 🥀 Water me today and I’ll grow again.',
+      'I missed you yesterday. Let’s start again together?',
+      'Every day is a new start. Plant me again$n?',
     ],
   };
   final d = now ?? DateTime.now();
   return lines[(d.year * 400 + d.month * 31 + d.day) % lines.length];
 }
 
-/// Noor, gently floating (and glowing) on screen.
+/// The sprout, gently swaying on screen.
 class Noor extends StatefulWidget {
-  const Noor({super.key, required this.mood, this.size = 96, this.animate = true});
+  const Noor({super.key, required this.mood, this.size = 96, this.animate = true, this.stage});
   final NoorMood mood;
   final double size;
   final bool animate;
+
+  /// Growth stage 0–4; null = the signed-in person's sprout ([Noor.myStreak]).
+  final int? stage;
+
+  /// The signed-in person's streak, so every Noor on screen shows their sprout at the right size.
+  static int myStreak = 0;
 
   @override
   State<Noor> createState() => _NoorState();
 }
 
 class _NoorState extends State<Noor> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
 
   @override
   void initState() {
@@ -95,25 +135,40 @@ class _NoorState extends State<Noor> with SingleTickerProviderStateMixin {
   }
 
   @override
-  Widget build(BuildContext context) => RepaintBoundary(
-    child: AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) {
-        final t = _c.value * 2 * math.pi;
-        final bob = widget.mood == NoorMood.happy ? math.sin(t) * 0.05 : math.sin(t) * 0.025;
-        return Transform.translate(
-          offset: Offset(0, bob * widget.size),
-          child: CustomPaint(
-            size: Size.square(widget.size),
-            painter: NoorPainter(widget.mood, flicker: widget.animate ? (math.sin(t * 3) + 1) / 2 : 0.5),
-          ),
-        );
-      },
-    ),
-  );
+  Widget build(BuildContext context) {
+    final st = widget.mood == NoorMood.out ? 0 : (widget.stage ?? sproutStage(Noor.myStreak));
+    final img = Image.asset(
+      'assets/sprout/s${st}_${_img(widget.mood)}.png',
+      width: widget.size,
+      height: widget.size,
+      filterQuality: FilterQuality.medium,
+      gaplessPlayback: true,
+    );
+    if (!widget.animate) return img;
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, child) {
+          final t = _c.value * 2 * math.pi;
+          final happy = widget.mood == NoorMood.happy || widget.mood == NoorMood.celebrate;
+          final droop = widget.mood == NoorMood.out;
+          final sway = droop ? 0.0 : math.sin(t) * (happy ? 0.05 : 0.03);
+          final squash = happy ? 1 + math.sin(t * 2).abs() * 0.04 : 1.0;
+          return Transform(
+            alignment: Alignment.bottomCenter,
+            transform: Matrix4.identity()
+              ..rotateZ(sway)
+              ..scaleByDouble(1 / squash, squash, 1, 1),
+            child: child,
+          );
+        },
+        child: img,
+      ),
+    );
+  }
 }
 
-/// Noor in a speech row: the lantern and what it says.
+/// Noor in a speech row: the sprout and what it says.
 class NoorSays extends StatelessWidget {
   const NoorSays({super.key, required this.mood, required this.text, this.light = false, this.size = 64});
   final NoorMood mood;
@@ -151,240 +206,4 @@ class NoorSays extends StatelessWidget {
       ),
     ],
   );
-}
-
-class NoorPainter extends CustomPainter {
-  NoorPainter(this.mood, {this.flicker = 0.5});
-  final NoorMood mood;
-  final double flicker; // 0..1, for the glow pulse
-
-  static const _frame = Color(0xFF1A4F8A);
-  static const _frameDark = Color(0xFF0E3F70);
-  static const _gold = Color(0xFFE8B33A);
-
-  double get _light => switch (mood) {
-    NoorMood.happy => 1.0,
-    NoorMood.hello => 0.85,
-    NoorMood.waiting => 0.7,
-    NoorMood.worried => 0.45,
-    NoorMood.urgent => 0.25 + 0.15 * flicker,
-    NoorMood.out => 0.0,
-  };
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final u = w / 100; // design on a 100 x 100 box
-    final cx = w / 2;
-    final light = _light;
-    Offset p(double x, double y) => Offset(x * u, y * u);
-
-    // glow behind
-    if (light > 0) {
-      final g = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            const Color(0xFFFFD36B).withValues(alpha: 0.55 * light * (0.85 + 0.15 * flicker)),
-            const Color(0xFFFFD36B).withValues(alpha: 0),
-          ],
-        ).createShader(Rect.fromCircle(center: p(50, 56), radius: 48 * u));
-      canvas.drawCircle(p(50, 56), 48 * u, g);
-    }
-
-    // hanging ring and cap
-    final ring = Paint()
-      ..color = _gold
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3 * u;
-    canvas.drawCircle(p(50, 9), 5 * u, ring);
-    final cap = Path()
-      ..moveTo(cx - 14 * u, 26 * u)
-      ..quadraticBezierTo(cx, 8 * u, cx + 14 * u, 26 * u)
-      ..close();
-    canvas.drawPath(cap, Paint()..color = _frameDark);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(cx - 20 * u, 24 * u, 40 * u, 6 * u), Radius.circular(3 * u)),
-      Paint()..color = _gold,
-    );
-
-    // glass body
-    final body = RRect.fromRectAndRadius(Rect.fromLTWH(cx - 22 * u, 29 * u, 44 * u, 50 * u), Radius.circular(14 * u));
-    final warm = Color.lerp(const Color(0xFF8A97A6), const Color(0xFFFFE7A3), light)!;
-    final warm2 = Color.lerp(const Color(0xFF5E6B7A), const Color(0xFFFFB547), light)!;
-    canvas.drawRRect(
-      body,
-      Paint()
-        ..shader = LinearGradient(
-          colors: [warm, warm2],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ).createShader(body.outerRect),
-    );
-    // frame bars
-    final bar = Paint()
-      ..color = _frame
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2 * u;
-    canvas.drawRRect(body, bar);
-    canvas.drawLine(p(50, 30), p(50, 37), bar..strokeWidth = 2.4 * u);
-    canvas.drawLine(p(50, 72), p(50, 78), bar);
-    // little arch window detail
-    final arch = Path()
-      ..moveTo(cx - 16 * u, 40 * u)
-      ..quadraticBezierTo(cx, 30 * u, cx + 16 * u, 40 * u);
-    canvas.drawPath(
-      arch,
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.35 * (0.4 + light))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6 * u,
-    );
-
-    // base
-    final base = Path()
-      ..moveTo(cx - 18 * u, 78 * u)
-      ..lineTo(cx + 18 * u, 78 * u)
-      ..lineTo(cx + 12 * u, 88 * u)
-      ..lineTo(cx - 12 * u, 88 * u)
-      ..close();
-    canvas.drawPath(base, Paint()..color = _frameDark);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(cx - 14 * u, 87 * u, 28 * u, 4 * u), Radius.circular(2 * u)),
-      Paint()..color = _gold,
-    );
-
-    // face
-    final ink = Paint()..color = const Color(0xFF2B2118);
-    final eyeY = 52.0;
-    void eye(double x, {double h = 7, double wdt = 5.5}) {
-      canvas.drawOval(Rect.fromCenter(center: p(x, eyeY), width: wdt * u, height: h * u), ink);
-      canvas.drawCircle(p(x + 1.2, eyeY - 1.8), 1.3 * u, Paint()..color = Colors.white);
-    }
-
-    void arcEye(double x, {bool up = true}) {
-      final path = Path()
-        ..moveTo((x - 3.5) * u, eyeY * u)
-        ..quadraticBezierTo(x * u, (eyeY + (up ? -5 : 4)) * u, (x + 3.5) * u, eyeY * u);
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = const Color(0xFF2B2118)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4 * u
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-
-    final mouth = Paint()
-      ..color = const Color(0xFF2B2118)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2 * u
-      ..strokeCap = StrokeCap.round;
-    final cheek = Paint()..color = const Color(0xFFFF8A80).withValues(alpha: 0.45);
-
-    switch (mood) {
-      case NoorMood.happy:
-        arcEye(42);
-        arcEye(58);
-        canvas.drawPath(
-          Path()
-            ..moveTo(44 * u, 60 * u)
-            ..quadraticBezierTo(50 * u, 68 * u, 56 * u, 60 * u),
-          mouth,
-        );
-        canvas.drawCircle(p(37, 59), 3 * u, cheek);
-        canvas.drawCircle(p(63, 59), 3 * u, cheek);
-        _sparkle(canvas, p(18, 34), 5 * u);
-        _sparkle(canvas, p(83, 28), 4 * u);
-        _sparkle(canvas, p(84, 62), 3 * u);
-      case NoorMood.hello:
-        eye(42);
-        eye(58);
-        canvas.drawPath(
-          Path()
-            ..moveTo(45 * u, 61 * u)
-            ..quadraticBezierTo(50 * u, 65 * u, 55 * u, 61 * u),
-          mouth,
-        );
-        canvas.drawCircle(p(37, 59), 2.6 * u, cheek);
-        canvas.drawCircle(p(63, 59), 2.6 * u, cheek);
-      case NoorMood.waiting:
-        eye(43, h: 6.5);
-        eye(59, h: 6.5);
-        canvas.drawLine(p(46, 62), p(54, 62), mouth);
-        // a little "…" thought bubble
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(Rect.fromCenter(center: p(80, 27), width: 22 * u, height: 12 * u), Radius.circular(6 * u)),
-          Paint()..color = Colors.white,
-        );
-        canvas.drawCircle(p(70, 36), 2 * u, Paint()..color = Colors.white);
-        for (final x in [74.0, 80.0, 86.0]) {
-          canvas.drawCircle(p(x, 27), 1.8 * u, Paint()..color = const Color(0xFF1A62A8));
-        }
-      case NoorMood.worried:
-        eye(42, h: 7.5);
-        eye(58, h: 7.5);
-        // brows up in the middle
-        canvas.drawLine(p(38, 44), p(45, 42), mouth);
-        canvas.drawLine(p(62, 44), p(55, 42), mouth);
-        canvas.drawPath(
-          Path()
-            ..moveTo(45 * u, 64 * u)
-            ..quadraticBezierTo(50 * u, 60 * u, 55 * u, 64 * u),
-          mouth,
-        );
-        _drop(canvas, p(70, 40), 4 * u);
-      case NoorMood.urgent:
-        eye(42, h: 9, wdt: 7);
-        eye(58, h: 9, wdt: 7);
-        canvas.drawLine(p(37, 43), p(45, 40), mouth);
-        canvas.drawLine(p(63, 43), p(55, 40), mouth);
-        canvas.drawOval(Rect.fromCenter(center: p(50, 64), width: 5 * u, height: 6 * u), ink);
-        _drop(canvas, p(71, 38), 4.5 * u);
-        _drop(canvas, p(29, 44), 3.5 * u);
-      case NoorMood.out:
-        arcEye(42, up: false);
-        arcEye(58, up: false);
-        canvas.drawPath(
-          Path()
-            ..moveTo(45 * u, 65 * u)
-            ..quadraticBezierTo(50 * u, 60 * u, 55 * u, 65 * u),
-          mouth,
-        );
-        // a wisp of smoke from the cap
-        final smoke = Paint()
-          ..color = const Color(0xFF9AA7B4)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2 * u
-          ..strokeCap = StrokeCap.round;
-        canvas.drawPath(
-          Path()
-            ..moveTo(62 * u, 22 * u)
-            ..quadraticBezierTo(70 * u, 16 * u, 64 * u, 10 * u)
-            ..quadraticBezierTo(58 * u, 4 * u, 68 * u, 0),
-          smoke,
-        );
-    }
-  }
-
-  void _sparkle(Canvas c, Offset o, double r) {
-    final path = Path()
-      ..moveTo(o.dx, o.dy - r)
-      ..quadraticBezierTo(o.dx, o.dy, o.dx + r, o.dy)
-      ..quadraticBezierTo(o.dx, o.dy, o.dx, o.dy + r)
-      ..quadraticBezierTo(o.dx, o.dy, o.dx - r, o.dy)
-      ..quadraticBezierTo(o.dx, o.dy, o.dx, o.dy - r);
-    c.drawPath(path, Paint()..color = _gold);
-  }
-
-  void _drop(Canvas c, Offset o, double r) {
-    final path = Path()
-      ..moveTo(o.dx, o.dy - r * 1.6)
-      ..quadraticBezierTo(o.dx + r, o.dy, o.dx, o.dy + r)
-      ..quadraticBezierTo(o.dx - r, o.dy, o.dx, o.dy - r * 1.6);
-    c.drawPath(path, Paint()..color = const Color(0xFF6EC1FF));
-  }
-
-  @override
-  bool shouldRepaint(NoorPainter old) => old.mood != mood || old.flicker != flicker;
 }

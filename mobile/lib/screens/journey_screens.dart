@@ -20,6 +20,8 @@ import 'recap_screen.dart';
 import 'album_screens.dart';
 import 'find_members_screen.dart';
 import 'more_screen.dart';
+import 'me_screen.dart';
+import 'today_screen.dart' show celebrateSprout;
 
 // My journey: daily ayah / hadith streak, weekly quiz, badges, friends and their pages, posts, unit board.
 
@@ -1130,37 +1132,11 @@ class PersonPage extends StatelessWidget {
   const PersonPage({super.key, this.member, this.asTab = false, this.username});
   final String? member; // null (and no username) = my page
   final String? username; // from a shared link
-  final bool asTab; // the Profile tab of the associate app (no back button, a menu instead)
+  final bool asTab;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      automaticallyImplyLeading: !asTab,
-      title: ListenableBuilder(
-        listenable: AppState.i,
-        builder: (context, _) => Text(
-          member == null && username == null && '${AppState.i.me['username'] ?? ''}'.isNotEmpty
-              ? '@${AppState.i.me['username']}'
-              : (member == null && username == null ? 'My page' : 'Profile'),
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ),
-      actions: [
-        if (asTab)
-          IconButton(
-            tooltip: 'Settings and more',
-            icon: const Icon(Icons.menu),
-            onPressed: () => push(context, const MoreScreen()),
-          ),
-      ],
-    ),
-    body: Loader<Map<String, dynamic>>(
-      cacheKey: 'profile_${member ?? username ?? 'me'}',
-      padding: const EdgeInsets.fromLTRB(0, 4, 0, 110),
-      load: () async => _map(await Api.call('${Api.m}profile', {'member': ?member, 'username': ?username})),
-      builder: (context, p) => [_ProfileBody(p: p)],
-    ),
-  );
+  Widget build(BuildContext context) =>
+      member == null && username == null ? const MeScreen() : PersonView(member: member, username: username);
 }
 
 class _ProfileBody extends StatefulWidget {
@@ -2298,36 +2274,7 @@ Widget? journeyNotice(dynamic n) {
 }
 
 /// After "I read it": the streak moment, every day (bigger words on milestones), with Share.
-Future<void> celebrateRead(BuildContext context, Map<String, dynamic> r) {
-  final n = _int(r['current']);
-  final milestone = r['milestone'] == true;
-  final title = n == 1
-      ? 'Your streak has begun!'
-      : milestone
-      ? '$n days. MashaAllah!'
-      : '$n days in a row';
-  final sub = n == 1
-      ? 'Come back tomorrow to make it 2 🔥'
-      : milestone
-      ? 'A milestone. Share it with your friends.'
-      : 'See you tomorrow, insha Allah. Don’t break the chain!';
-  return celebrate(
-    context,
-    number: n,
-    title: title,
-    subtitle: sub,
-    onShare: () => showShareCard(
-      context,
-      kind: 'Streak',
-      icon: Icons.local_fire_department,
-      color: _flame,
-      big: '$n',
-      title: n == 1 ? 'Day 1 of my reading streak' : '$n-day reading streak',
-      line: 'Reading a daily ayah / hadith with SIO Connect',
-      person: AppState.i.me,
-    ),
-  );
-}
+Future<void> celebrateRead(BuildContext context, Map<String, dynamic> r) => celebrateSprout(context, r);
 
 /// How a role is shown to students: no internal words like Associate or Worker.
 String? friendlyRole(dynamic role) => switch ('${role ?? ''}') {
@@ -2422,7 +2369,8 @@ class _Leaderboard extends StatelessWidget {
 
 /// Reading leaderboard: everyone ranked by reading streak (no weekly reset), with my unit and my friends.
 class ReadingBoardScreen extends StatefulWidget {
-  const ReadingBoardScreen({super.key});
+  const ReadingBoardScreen({super.key, this.embedded = false});
+  final bool embedded; // inside the Friends tab: no app bar of its own
 
   @override
   State<ReadingBoardScreen> createState() => _ReadingBoardScreenState();
@@ -2492,7 +2440,7 @@ class _ReadingBoardScreenState extends State<ReadingBoardScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Reading leaderboard')),
+    appBar: widget.embedded ? null : AppBar(title: const Text('Reading leaderboard')),
     body: Loader<Map<String, dynamic>>(
       cacheKey: 'reading_board',
       load: () async => _map(await Api.call('${Api.m}reading_board')),

@@ -5,8 +5,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'api.dart';
 import 'app_state.dart';
-import 'screens/album_screens.dart';
-import 'screens/board_screens.dart';
 import 'screens/event_detail_screen.dart';
 import 'screens/journey_screens.dart';
 
@@ -48,14 +46,8 @@ class Links {
     Widget? screen;
     if (q['e'] != null) {
       screen = EventDetailScreen(name: q['e']!, title: 'Programme');
-    } else if (q['a'] != null) {
-      screen = AlbumScreen(name: q['a']!);
     } else if (q['u'] != null || q['i'] != null) {
       screen = PersonPage(username: q['u'] ?? q['i']);
-    } else if (q['q'] != null) {
-      screen = const JourneyScreen();
-    } else if (q['b'] != null) {
-      screen = const BoardScreen();
     }
     if (screen != null) nav.push(MaterialPageRoute<void>(builder: (_) => screen!));
   }

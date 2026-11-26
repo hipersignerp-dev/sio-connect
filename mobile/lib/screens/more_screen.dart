@@ -94,27 +94,6 @@ class MoreScreen extends StatelessWidget {
                 ),
               if (me['member'] != null && !dashboardOpen)
                 SioTile(
-                  icon: Icons.local_fire_department_outlined,
-                  title: 'My journey',
-                  subtitle: 'Daily ayah streak, quiz, badges, friends',
-                  onTap: () => push(context, const JourneyScreen()),
-                ),
-              if (me['member'] != null && !dashboardOpen)
-                SioTile(
-                  icon: Icons.account_circle_outlined,
-                  title: 'My page',
-                  subtitle: 'Username, badges and posts friends see',
-                  onTap: () => push(context, const PersonPage()),
-                ),
-              if (s.can('manage_events'))
-                SioTile(
-                  icon: Icons.quiz_outlined,
-                  title: 'Weekly quizzes',
-                  subtitle: 'Make the quiz for the week, see scores',
-                  onTap: () => push(context, const QuizzesScreen()),
-                ),
-              if (me['member'] != null && !dashboardOpen)
-                SioTile(
                   icon: Icons.task_alt,
                   title: 'My tasks',
                   subtitle: 'Event tasks given to me, reminders',
@@ -250,7 +229,7 @@ class MoreScreen extends StatelessWidget {
                 SioTile(
                   icon: Icons.auto_awesome,
                   title: 'Back to the app',
-                  subtitle: 'Feed, friends and my journey',
+                  subtitle: 'Today, programmes, friends and prayer',
                   onTap: () => Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst),
                 ),
               if (!dashboardOpen && !UpdateService.playStore)
@@ -385,7 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late String? _unit = me['unit']?.toString();
   List<dynamic> _units = [];
   bool _busy = false;
-  late GeoPoint? _loc = GeoPoint.from(me['latitude'], me['longitude']);
+  late final GeoPoint? _loc = GeoPoint.from(me['latitude'], me['longitude']);
   late final _landmark = TextEditingController(text: (me['location_note'] ?? '').toString());
   final _privacyKey = GlobalKey();
 
@@ -554,28 +533,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
           _field(_city, 'Lives in (city or town now)', hint: 'Where you study or work, e.g. Kochi, Bengaluru'),
           _field(_town, 'Home town'),
-          if (_stage != null && !school) ...[
-            _section('Guide younger students'),
-            Text(
-              'Juniors can find you when they need advice. Leave empty if you’d rather not.',
-              style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
-            ),
-            const SizedBox(height: 10),
-            _field(
-              _mentor,
-              'I can guide students in…',
-              hint: 'e.g. NEET preparation, engineering admissions, jobs in the Gulf, starting a business',
-              lines: 2,
-            ),
-          ],
-          _section('Home location (optional)'),
-          LocationField(value: _loc, onChanged: (g) => setState(() => _loc = g)),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _landmark,
-            maxLines: 2,
-            decoration: const InputDecoration(labelText: 'House name / landmark (optional)', alignLabelWithHint: true),
-          ),
           _section('Privacy', key: _privacyKey),
           const Text('Who can see my phone number', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),

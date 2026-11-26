@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:initialLayout="@layout/noor_widget"
-    android:previewImage="@drawable/noor_peek_happy"
+    android:previewImage="@drawable/sprout_s2_happy"
     android:minWidth="110dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"

@@ -42,6 +42,7 @@ dependencies:
   url_launcher: ^6.3.3
   speech_to_text: ^7.5.0
   flutter_local_notifications: ^19.5.0
+  timezone: ^0.10.1
   workmanager: ^0.10.10
   geolocator: ^14.1.2
   share_plus: ^13.3.1
@@ -82,6 +83,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/sprout/
+    - assets/sounds/
   fonts:
     - family: AmiriQuran
       fonts:

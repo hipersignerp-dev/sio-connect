@@ -6,6 +6,7 @@ import 'package:workmanager/workmanager.dart';
 
 import 'api.dart';
 import 'noor.dart';
+import 'prayer_alarms.dart';
 
 /// Phone notifications for new updates (notices, new programmes, meetings ...).
 ///
@@ -78,7 +79,7 @@ class Notify {
     final name = Api.prefs.getString('noor_name') ?? '';
     await _plugin.show(
       id,
-      'Noor 🏮',
+      'Noor 🌱',
       noorLine(mood, streak: streak, name: name, games: games),
       NotificationDetails(
         android: AndroidNotificationDetails(
@@ -179,6 +180,7 @@ void callbackDispatcher() {
       WidgetsFlutterBinding.ensureInitialized();
       await Api.init();
       await Notify.check();
+      await PrayerAlarms.scheduleDaily();
     } catch (_) {}
     return true;
   });

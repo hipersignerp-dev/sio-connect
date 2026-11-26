@@ -43,20 +43,33 @@ class NoorState(
             return NoorState(cal, fresh, readToday, streak, games, name, mood)
         }
 
-        fun face(mood: String) = when (mood) {
-            "happy" -> R.drawable.noor_happy
-            "out" -> R.drawable.noor_out
-            "waiting" -> R.drawable.noor_waiting
-            "worried" -> R.drawable.noor_worried
-            "urgent" -> R.drawable.noor_urgent
-            else -> R.drawable.noor_hello
+        fun stage(streak: Int) = when {
+            streak >= 100 -> 4
+            streak >= 30 -> 3
+            streak >= 7 -> 2
+            streak >= 3 -> 1
+            else -> 0
+        }
+
+        /** The sprout picture for a mood at the size the streak has grown to (dried-up seedling when out). */
+        fun face(context: Context, mood: String, streak: Int): Int {
+            val img = when (mood) {
+                "happy" -> "happy"
+                "out" -> "out"
+                "waiting" -> "waiting"
+                "worried", "urgent" -> "sad"
+                else -> "hello"
+            }
+            val st = if (mood == "out") 0 else stage(streak)
+            val id = context.resources.getIdentifier("sprout_s${st}_$img", "drawable", context.packageName)
+            return if (id != 0) id else R.drawable.noor_hello
         }
     }
 }
 
 /**
- * Small 2×2 widget, Duolingo-style: big streak number, a short nudge with the person's name, and Noor peeking up
- * from the bottom. The colour follows Noor's mood (sky blue in the morning, dusk purple in the evening, red late
+ * Small 2×2 widget, Duolingo-style: big streak number, a short nudge with the person's name, and Noor the sprout
+ * in its pot at the bottom (bigger as the streak grows). The colour follows Noor's mood (sky blue in the morning, dusk purple in the evening, red late
  * at night, gold once today's ayah is read, grey when the light went out).
  */
 class NoorWidgetProvider : HomeWidgetProvider() {
@@ -70,12 +83,12 @@ class NoorWidgetProvider : HomeWidgetProvider() {
         val first = st.name.split(" ").firstOrNull { it.isNotEmpty() } ?: ""
         val n = if (first.isEmpty()) "" else "$first! "
         val says = when (st.mood) {
-            "happy" -> if (first.isEmpty()) "Glowing bright ✨" else "Glowing, $first ✨"
-            "hello" -> "${n}Read today?"
-            "waiting" -> "${n}Ayah time?"
-            "worried" -> "${n}I’m dimming…"
-            "urgent" -> "${n}Quick, one ayah!"
-            else -> if (first.isEmpty()) "Light me up again?" else "$first… light me up?"
+            "happy" -> if (first.isEmpty()) "Watered today 💧" else "Thank you, $first 💧"
+            "hello" -> "${n}Ayah time? ☀️"
+            "waiting" -> "${n}One ayah? 👀"
+            "worried" -> "${n}I’m thirsty 🥺"
+            "urgent" -> "${n}Water me! 💧"
+            else -> if (first.isEmpty()) "I dried up… 🥀" else "$first… I dried up 🥀"
         }
         val bg = when (st.mood) {
             "happy" -> R.drawable.noor_bg_happy
@@ -85,18 +98,11 @@ class NoorWidgetProvider : HomeWidgetProvider() {
             "out" -> R.drawable.noor_bg_out
             else -> R.drawable.noor_bg_hello
         }
-        val peek = when (st.mood) {
-            "happy" -> R.drawable.noor_peek_happy
-            "waiting" -> R.drawable.noor_peek_waiting
-            "worried" -> R.drawable.noor_peek_worried
-            "urgent" -> R.drawable.noor_peek_urgent
-            "out" -> R.drawable.noor_peek_out
-            else -> R.drawable.noor_peek_hello
-        }
+        val pic = NoorState.face(context, st.mood, st.streak)
         for (id in appWidgetIds) {
             val v = RemoteViews(context.packageName, R.layout.noor_widget)
             v.setInt(R.id.n_root, "setBackgroundResource", bg)
-            v.setImageViewResource(R.id.n_noor, peek)
+            v.setImageViewResource(R.id.n_noor, pic)
             v.setTextViewText(R.id.n_says, says)
             if (st.games) {
                 v.setViewVisibility(R.id.n_flame, View.VISIBLE)

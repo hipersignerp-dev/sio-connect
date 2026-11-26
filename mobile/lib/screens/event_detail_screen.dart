@@ -2,7 +2,6 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'album_screens.dart';
 import 'card_screens.dart';
 import '../links.dart';
 import '../api.dart';
@@ -110,27 +109,6 @@ class EventDetailScreen extends StatelessWidget {
                         label: const Text('Check in'),
                       ),
                     ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final albums = (Map<String, dynamic>.from(await Api.call('${Api.m}albums') as Map)['albums'] as List)
-                            .where((a) => a['event'] == e['name'])
-                            .toList();
-                        if (!context.mounted) return;
-                        if (albums.isNotEmpty) {
-                          push(context, AlbumScreen(name: '${albums.first['name']}'));
-                        } else if (e['can_manage_tasks'] == true) {
-                          final n = await newAlbum(context, event: '${e['name']}');
-                          if (n != null && context.mounted) push(context, AlbumScreen(name: n));
-                        } else {
-                          toast(context, 'No photos from this programme yet.');
-                        }
-                      },
-                      icon: const Icon(Icons.photo_library_outlined),
-                      label: const Text('Photos'),
-                    ),
-                  ),
                   const SizedBox(width: 8),
                   IconButton.filled(
                     style: IconButton.styleFrom(backgroundColor: const Color(0xFF25D366)),

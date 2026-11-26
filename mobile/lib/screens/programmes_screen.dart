@@ -40,6 +40,11 @@ class _ProgrammesScreenState extends State<ProgrammesScreen> {
       automaticallyImplyLeading: false,
       title: const Text('Programmes', style: TextStyle(fontWeight: FontWeight.w800)),
       actions: [
+        IconButton(
+          tooltip: 'My SIO card',
+          icon: const Icon(Icons.badge_outlined),
+          onPressed: () => push(context, const MemberCardScreen()),
+        ),
         IconButton(tooltip: 'Check in with QR', icon: const Icon(Icons.qr_code_scanner), onPressed: () => scanToCheckIn(context)),
         IconButton(tooltip: 'Invite a friend', icon: const Icon(Icons.person_add_alt), onPressed: _invite),
       ],

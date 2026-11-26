@@ -129,7 +129,6 @@ class _FlowState extends State<_Flow> {
   }
 
   List<String> get _steps => [
-    'stage',
     if (_journey?['reading'] != null) 'ayah',
     if ('${AppState.i.me['photo'] ?? ''}'.isEmpty) 'photo',
     if (_people.isNotEmpty) 'friends',
@@ -166,12 +165,12 @@ class _FlowState extends State<_Flow> {
     final audio = [for (final u in (r['audio'] as List? ?? [])) '$u'];
     return _Page(
       emoji: '',
-      hero: const Noor(mood: NoorMood.hello, size: 92),
-      title: 'Meet Noor, your little light',
+      hero: const Noor(mood: NoorMood.hello, size: 110, stage: 0),
+      title: 'Meet Noor, your little sprout',
       text:
-          'Noor glows when you read the ayah of the day, and gets dim when you forget. '
-          'Read or listen to today’s ayah to light Noor up. Today is day 1!',
-      action: _read ? 'Next' : (_reading ? 'Saving…' : '🔥  I read it'),
+          'One ayah a day waters Noor. Keep going and it grows, gets a bud and blooms. '
+          'Forget, and it gets thirsty. Read today’s ayah to plant it. Today is day 1!',
+      action: _read ? 'Next' : (_reading ? 'Saving…' : '💧  I read it'),
       onAction: _read ? _next : _markRead,
       content: Container(
         padding: const EdgeInsets.all(16),

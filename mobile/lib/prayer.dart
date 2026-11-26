@@ -38,7 +38,7 @@ class PrayerTimes {
   }
 
   /// Location without nagging: uses it only if already allowed (asks once, never opens settings).
-  static Future<(double, double, String)> _where() async {
+  static Future<(double, double, String)> where() async {
     try {
       if (await Geolocator.isLocationServiceEnabled()) {
         var p = await Geolocator.checkPermission();
@@ -84,7 +84,7 @@ class PrayerTimes {
       if (_cache != null) return _cache;
     }
     try {
-      final (lat, lng, place) = await _where();
+      final (lat, lng, place) = await where();
       // method 1 = Karachi (used in Kerala), school 0 = Shafi'i Asr
       final r = await http
           .get(Uri.parse('https://api.aladhan.com/v1/timings/$day?latitude=$lat&longitude=$lng&method=1&school=0'))

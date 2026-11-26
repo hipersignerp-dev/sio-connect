@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -31,10 +34,13 @@ import 'recap_screen.dart';
 import '../noor.dart';
 import '../ayah_share.dart';
 import '../home_widget_sync.dart';
-import '../share_in.dart';
 import '../bug_report.dart';
 import '../push.dart';
 import 'onboarding_screen.dart';
+import 'today_screen.dart';
+import 'friends_tab.dart';
+import 'prayer_tab.dart';
+import '../prayer_alarms.dart';
 import 'task_screens.dart';
 
 // The associates' app: a friendly, Instagram-like app in SIO colours. Home feed with friends' rings,
@@ -67,9 +73,9 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) UpdateService.check(context);
       Links.openPending();
-      ShareIn.start();
       BugReport.startShake();
       Push.start();
+      PrayerAlarms.schedule();
       if (mounted) Onboarding.maybeShow(context);
     });
     Notify.start('${AppState.i.me['user'] ?? ''}');
@@ -86,6 +92,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
     if (state == AppLifecycleState.resumed && mounted) {
       UpdateService.check(context);
       Notify.check().catchError((_) {});
+      PrayerAlarms.schedule();
       AppState.i.refreshAll();
     }
   }
@@ -97,13 +104,7 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      SocialHome(openTab: _go),
-      const ExploreScreen(),
-      const ProgrammesScreen(),
-      const JourneyScreen(asTab: true),
-      const PersonPage(asTab: true),
-    ];
+    const pages = [TodayScreen(), ProgrammesScreen(), FriendsTab(), PrayerTab()];
     Widget item(int i, IconData off, IconData on, String label) => Expanded(
       child: Semantics(
         button: true,
@@ -112,22 +113,29 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
         child: InkResponse(
           onTap: () => _go(i),
           child: SizedBox(
-            height: 56,
+            height: 60,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Pop(
                   trigger: _tab == i,
                   scale: 1.25,
-                  child: Icon(_tab == i ? on : off, size: 25, color: _tab == i ? SioColors.blue : SioColors.ink),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _tab == i ? SioColors.blue.withValues(alpha: 0.12) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(_tab == i ? on : off, size: 26, color: _tab == i ? SioColors.blue : SioColors.textSecondary),
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: _tab == i ? FontWeight.w800 : FontWeight.w500,
-                    color: _tab == i ? SioColors.blue : SioColors.ink,
+                    fontSize: 11.5,
+                    fontWeight: _tab == i ? FontWeight.w800 : FontWeight.w600,
+                    color: _tab == i ? SioColors.blue : SioColors.textSecondary,
                   ),
                 ),
               ],
@@ -141,50 +149,17 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: SioColors.background,
-          border: Border(top: BorderSide(color: SioColors.border, width: 0.6)),
+          border: Border(top: BorderSide(color: SioColors.border, width: 1)),
         ),
         child: SafeArea(
           child: SizedBox(
-            height: 58,
+            height: 62,
             child: Row(
               children: [
-                item(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-                item(1, Icons.explore_outlined, Icons.explore, 'Explore'),
-                item(2, Icons.event_outlined, Icons.event, 'Programmes'),
-                item(3, Icons.local_fire_department_outlined, Icons.local_fire_department, 'Journey'),
-                Expanded(
-                  child: InkResponse(
-                    onTap: () => _go(4),
-                    child: SizedBox(
-                      height: 56,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ListenableBuilder(
-                            listenable: AppState.i,
-                            builder: (context, _) => Container(
-                              padding: const EdgeInsets.all(1.5),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: _tab == 4 ? SioColors.ink : Colors.transparent, width: 1.6),
-                              ),
-                              child: Avatar(AppState.i.firstName, radius: 11, light: true, photo: AppState.i.me['photo']),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Profile',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: _tab == 4 ? FontWeight.w800 : FontWeight.w500,
-                              color: _tab == 4 ? SioColors.blue : SioColors.ink,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
+                item(0, Icons.spa_outlined, Icons.spa, 'Today'),
+                item(1, Icons.event_outlined, Icons.event, 'Programmes'),
+                item(2, Icons.group_outlined, Icons.group, 'Friends'),
+                item(3, Icons.mosque_outlined, Icons.mosque, 'Prayer'),
               ],
             ),
           ),
@@ -1157,14 +1132,142 @@ class AyahReaderScreen extends StatelessWidget {
                 mood: mood,
                 text: rs['today'] == true
                     ? noorLine(mood, streak: _i(rs['current']), name: AppState.i.firstName, games: games)
-                    : 'Listen to the end, or tap “I read it”, and I’ll glow bright ✨',
+                    : 'Listen to the end, or tap “I read it”, to water me today 💧',
               ),
             );
           },
         ),
         _AyahHero(journey: journey, games: games, alwaysOpen: true),
+        if (_m(journey['reading'])['kind'] != 'Hadith') _MoreAyahs(reference: '${_m(journey['reading'])['reference'] ?? ''}'),
       ],
     ),
+  );
+}
+
+/// Optional: keep reading the next ayahs after today's one (today's streak only needs the first).
+class _MoreAyahs extends StatefulWidget {
+  const _MoreAyahs({required this.reference});
+  final String reference; // "Qur'an 94:5-6"
+
+  @override
+  State<_MoreAyahs> createState() => _MoreAyahsState();
+}
+
+class _MoreAyahsState extends State<_MoreAyahs> {
+  final _ayahs = <Map<String, dynamic>>[];
+  bool _busy = false;
+  String? _error;
+
+  (int, int)? get _next {
+    final last = _ayahs.isNotEmpty ? _ayahs.last : null;
+    if (last != null) return ((last['surah'] as int), (last['ayah'] as int) + 1);
+    final m = RegExp(r'(\d+):(\d+)(?:-(\d+))?').firstMatch(widget.reference);
+    if (m == null) return null;
+    return (int.parse(m.group(1)!), int.parse(m.group(3) ?? m.group(2)!) + 1);
+  }
+
+  Future<void> _more() async {
+    final n = _next;
+    if (n == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final r = await http
+          .get(Uri.parse('https://api.alquran.cloud/v1/ayah/${n.$1}:${n.$2}/editions/quran-uthmani,ml.abdulhameed,en.sahih'))
+          .timeout(const Duration(seconds: 15));
+      final data = (jsonDecode(r.body)['data'] as List?) ?? const [];
+      if (r.statusCode != 200 || data.length < 3) {
+        // end of the surah: carry on with the next one
+        if (n.$1 < 114 && _ayahs.isNotEmpty) {
+          _ayahs.add({'surah': n.$1 + 1, 'ayah': 0, 'skip': true});
+          await _more();
+          return;
+        }
+        throw Exception('end');
+      }
+      setState(() {
+        _ayahs.removeWhere((a) => a['skip'] == true);
+        _ayahs.add({
+          'surah': n.$1,
+          'ayah': n.$2,
+          'ar': '${data[0]['text'] ?? ''}',
+          'ml': '${data[1]['text'] ?? ''}',
+          'en': '${data[2]['text'] ?? ''}',
+          'name': '${data[0]['surah']?['englishName'] ?? ''}',
+          'audio': 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/${data[0]['number']}.mp3',
+        });
+      });
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Couldn’t load the next ayah. Check your internet and try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (final a in _ayahs.where((a) => a['skip'] != true))
+        Container(
+          margin: const EdgeInsets.only(top: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: SioColors.card, borderRadius: BorderRadius.circular(20)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${a['name']} ${a['surah']}:${a['ayah']}',
+                style: TextStyle(color: SioColors.blue, fontWeight: FontWeight.w800, fontSize: 12, letterSpacing: 1),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  '${a['ar']}',
+                  textAlign: TextAlign.right,
+                  textDirection: TextDirection.rtl,
+                  style: arabicStyle(color: SioColors.ink, size: 22),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${a['ml']}',
+                style: malayalamStyle(color: SioColors.ink, size: 16, weight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text('“${a['en']}”', style: TextStyle(color: SioColors.textSecondary, height: 1.4)),
+              const SizedBox(height: 8),
+              AyahAudioButton(urls: ['${a['audio']}']),
+            ],
+          ),
+        ),
+      if (_error != null)
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Text(_error!, style: TextStyle(color: SioColors.danger)),
+        ),
+      if (_next != null) ...[
+        const SizedBox(height: 14),
+        OutlinedButton.icon(
+          onPressed: _busy ? null : _more,
+          icon: _busy
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.auto_stories_outlined),
+          label: Text(_ayahs.isEmpty ? 'Keep reading: the next ayah' : 'Read one more'),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            'Optional. One ayah a day is enough for your streak.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: SioColors.textSecondary, fontSize: 12),
+          ),
+        ),
+      ],
+    ],
   );
 }
 
@@ -1399,7 +1502,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                             shape: const StadiumBorder(),
                           ),
                           onPressed: _busy ? null : _read,
-                          icon: const Icon(Icons.local_fire_department, color: _flameC),
+                          icon: const Icon(Icons.water_drop_rounded, color: Color(0xFF1CB0F6)),
                           label: Text(_busy ? 'Saving…' : 'I read it', style: const TextStyle(fontWeight: FontWeight.w800)),
                         ),
                       ),
