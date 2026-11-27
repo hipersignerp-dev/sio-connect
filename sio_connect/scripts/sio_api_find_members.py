@@ -83,7 +83,8 @@ def reading_series():
                                   "sort_order"])
     rows.sort(key=lambda r: (r.series_week or 999, r.sort_order or 0))
     weeks = []
-    for i, r in enumerate(rows):
+    for i in range(len(rows)):
+        r = rows[i]
         w = r.series_week or 0
         if not weeks or weeks[-1]["week"] != w:
             weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
