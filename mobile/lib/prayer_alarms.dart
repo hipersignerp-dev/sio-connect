@@ -20,7 +20,7 @@ class PrayerAlarms {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static const _base = 9000; // notification ids 9000–9499
 
-  static const sounds = {'chime': 'Soft chime', 'bell': 'Bell', 'soft': 'Gentle tone', 'default': 'Phone’s sound'};
+  static const sounds = {'ayah': 'Recitation: Kullu nafsin dhā’iqatul mawt (29:57)', 'chime': 'Soft chime', 'bell': 'Bell', 'soft': 'Gentle tone', 'default': 'Phone’s sound'};
   static const defaultOffsets = [0, 15];
 
   // ---- settings (kept on the phone)
@@ -38,7 +38,7 @@ class PrayerAlarms {
     return o..sort();
   }
 
-  static Future<String> sound() async => (await _p).getString('pa_sound') ?? 'chime';
+  static Future<String> sound() async => (await _p).getString('pa_sound') ?? 'ayah';
 
   // ---- an uploaded sound (an azan downloaded from the internet, a recording…)
   static const _soundCh = MethodChannel('com.hipersign.sio_connect/sound');
@@ -163,7 +163,8 @@ class PrayerAlarms {
     _ready = true;
   }
 
-  static Future<NotificationDetails> _details(String sound) async {
+  static Future<NotificationDetails> _details(String sound, {String? big}) async {
+    final style = big == null ? null : BigTextStyleInformation(big);
     if (sound == 'custom') {
       final p = await _p;
       final uri = p.getString('pa_custom_uri') ?? '';
@@ -180,6 +181,7 @@ class PrayerAlarms {
             category: AndroidNotificationCategory.alarm,
             audioAttributesUsage: AudioAttributesUsage.alarm, // plays in full, at alarm volume
             sound: UriAndroidNotificationSound(uri),
+            styleInformation: style,
             largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
           ),
         );
@@ -193,8 +195,11 @@ class PrayerAlarms {
         channelDescription: 'Reminders for the five prayers',
         importance: Importance.max,
         priority: Priority.high,
-        category: AndroidNotificationCategory.reminder,
+        category: sound == 'ayah' ? AndroidNotificationCategory.alarm : AndroidNotificationCategory.reminder,
+        // the recitation plays in full, at alarm volume, so it is never cut off mid-ayah
+        audioAttributesUsage: sound == 'ayah' ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
         sound: sound == 'default' ? null : RawResourceAndroidNotificationSound('prayer_$sound'),
+        styleInformation: style,
         largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
       ),
     );
@@ -204,6 +209,12 @@ class PrayerAlarms {
     final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
     return '$h:${t.minute.toString().padLeft(2, '0')} ${t.hour < 12 ? 'AM' : 'PM'}';
   }
+
+  /// Shown under the reminder when the recitation is the sound, so people read what they hear.
+  static const ayahText = 'كُلُّ نَفْسٍ ذَائِقَةُ الْمَوْتِ ۖ ثُمَّ إِلَيْنَا تُرْجَعُونَ';
+  static const ayahMeaning = 'Every soul will taste death, then to Us you will be returned. (29:57)';
+  static const ayahMeaningMl = 'ഓരോ ആത്മാവും മരണം രുചിക്കുന്നതാണ്. പിന്നീട് നമ്മുടെ അടുക്കലേക്കാണ് നിങ്ങൾ മടക്കപ്പെടുക.';
+  static String withAyah(String body) => '$body\n\n$ayahText\n$ayahMeaning\n$ayahMeaningMl';
 
   static (String, String) _text(String prayer, DateTime at, int offset) {
     final ml = PrayerTimes.ml[prayer] ?? '';
@@ -239,7 +250,7 @@ class PrayerAlarms {
       if (!await enabled()) return;
       final on = await prayersOn();
       final offs = await offsets();
-      final details = await _details(await sound());
+      final snd = await sound();
       final exact = await exactAllowed();
       final now = DateTime.now();
       final ids = <String>[];
@@ -252,13 +263,14 @@ class PrayerAlarms {
             final when = at.add(Duration(minutes: o));
             if (!when.isAfter(now.add(const Duration(seconds: 30))) || n >= 450) continue;
             final id = _base + n++;
-            final (title, body) = _text(prayer, at, o);
+            final (title, text) = _text(prayer, at, o);
+            final body = snd == 'ayah' ? withAyah(text) : text;
             await _plugin.zonedSchedule(
               id,
               title,
               body,
               tz.TZDateTime.from(when.toUtc(), tz.UTC),
-              details,
+              await _details(snd, big: body),
               androidScheduleMode: exact ? AndroidScheduleMode.exactAllowWhileIdle : AndroidScheduleMode.inexactAllowWhileIdle,
             );
             ids.add('$id');
@@ -283,11 +295,9 @@ class PrayerAlarms {
   /// A reminder right now, to hear the sound.
   static Future<void> test() async {
     await _init();
-    await _plugin.show(
-      _base + 499,
-      'It’s time for Dhuhr · ളുഹ്ർ',
-      'This is how your prayer reminder will look 🕌',
-      await _details(await sound()),
-    );
+    final snd = await sound();
+    const text = 'This is how your prayer reminder will look 🕌';
+    final body = snd == 'ayah' ? withAyah(text) : text;
+    await _plugin.show(_base + 499, 'It’s time for Dhuhr · ളുഹ്ർ', body, await _details(snd, big: body));
   }
 }

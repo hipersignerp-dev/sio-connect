@@ -321,7 +321,16 @@ class _PrayerTabState extends State<PrayerTab> {
                 child: Column(
                   children: [
                     for (final e in PrayerAlarms.sounds.entries)
-                      RadioListTile<String>(contentPadding: EdgeInsets.zero, value: e.key, title: Text(e.value)),
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: e.key,
+                        title: Text(e.value),
+                        subtitle: e.key == 'ayah'
+                            ? const Text(
+                                'كُلُّ نَفْسٍ ذَائِقَةُ الْمَوْتِ ۖ ثُمَّ إِلَيْنَا تُرْجَعُونَ\nEvery soul will taste death, then to Us you will return · Mishary Alafasy',
+                              )
+                            : null,
+                      ),
                     if (_custom != null)
                       RadioListTile<String>(
                         contentPadding: EdgeInsets.zero,
