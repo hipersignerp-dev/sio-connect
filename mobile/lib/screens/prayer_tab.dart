@@ -28,6 +28,7 @@ class _PrayerTabState extends State<PrayerTab> {
   String _sound = 'chime';
   bool _enabled = true;
   bool _exact = true;
+  String? _custom; // name of the uploaded sound
   Timer? _tick;
   final _player = AudioPlayer();
 
@@ -48,6 +49,7 @@ class _PrayerTabState extends State<PrayerTab> {
     final snd = await PrayerAlarms.sound();
     final en = await PrayerAlarms.enabled();
     final ex = await PrayerAlarms.exactAllowed();
+    final custom = await PrayerAlarms.customName();
     if (mounted) {
       setState(() {
         _p = p;
@@ -56,6 +58,7 @@ class _PrayerTabState extends State<PrayerTab> {
         _sound = snd;
         _enabled = en;
         _exact = ex;
+        _custom = custom;
       });
     }
   }
@@ -304,7 +307,12 @@ class _PrayerTabState extends State<PrayerTab> {
                   setState(() => _sound = v);
                   if (v != 'default') {
                     try {
-                      await _player.setAsset('assets/sounds/prayer_$v.ogg');
+                      if (v == 'custom') {
+                        final path = await PrayerAlarms.customPath();
+                        if (path != null) await _player.setFilePath(path);
+                      } else {
+                        await _player.setAsset('assets/sounds/prayer_$v.ogg');
+                      }
                       await _player.play();
                     } catch (_) {}
                   }
@@ -314,9 +322,39 @@ class _PrayerTabState extends State<PrayerTab> {
                   children: [
                     for (final e in PrayerAlarms.sounds.entries)
                       RadioListTile<String>(contentPadding: EdgeInsets.zero, value: e.key, title: Text(e.value)),
+                    if (_custom != null)
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: 'custom',
+                        title: Text(_custom!),
+                        subtitle: const Text('Your uploaded sound · plays in full, at alarm volume'),
+                      ),
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      _player.stop();
+                      final name = await PrayerAlarms.pickCustom();
+                      if (name == null) return;
+                      await _load();
+                      if (context.mounted) toast(context, '“$name” will play for prayer reminders');
+                    } catch (e) {
+                      if (context.mounted) toast(context, '$e'.replaceFirst('Exception: ', ''));
+                    }
+                  },
+                  icon: const Icon(Icons.upload_file),
+                  label: Text(_custom == null ? 'Upload a sound (e.g. an azan)' : 'Upload a different sound'),
+                ),
+              ),
+              Text(
+                'Download an azan or any sound you like to your phone, then upload it here.',
+                style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+              ),
+              const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
                 child: OutlinedButton.icon(

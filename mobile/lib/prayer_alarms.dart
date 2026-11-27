@@ -1,6 +1,11 @@
 import 'dart:convert';
 
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -34,6 +39,49 @@ class PrayerAlarms {
   }
 
   static Future<String> sound() async => (await _p).getString('pa_sound') ?? 'chime';
+
+  // ---- an uploaded sound (an azan downloaded from the internet, a recording…)
+  static const _soundCh = MethodChannel('com.hipersign.sio_connect/sound');
+
+  /// The name of the uploaded sound, if there is one.
+  static Future<String?> customName() async {
+    final p = await _p;
+    final path = p.getString('pa_custom_path');
+    if (path == null || !File(path).existsSync()) return null;
+    return p.getString('pa_custom_name') ?? 'My sound';
+  }
+
+  static Future<String?> customPath() async => (await _p).getString('pa_custom_path');
+
+  /// Pick an audio file on the phone and use it for prayer reminders. Returns its name, or null if cancelled.
+  static Future<String?> pickCustom() async {
+    final r = await FilePicker.pickFiles(type: FileType.audio);
+    if (r.isEmpty) return null;
+    final src = r.first.path;
+    if (src == null) return null;
+    final f = File(src);
+    if (await f.length() > 15 * 1024 * 1024) throw Exception('That file is too big. Choose one under 15 MB.');
+    final dir = Directory('${(await getApplicationSupportDirectory()).path}/sounds');
+    await dir.create(recursive: true);
+    for (final old in dir.listSync()) {
+      try {
+        old.deleteSync();
+      } catch (_) {}
+    }
+    final ext = src.contains('.') ? src.substring(src.lastIndexOf('.')) : '.mp3';
+    final id = DateTime.now().millisecondsSinceEpoch;
+    final dest = '${dir.path}/prayer_$id$ext';
+    await f.copy(dest);
+    final uri = await _soundCh.invokeMethod<String>('uri', {'path': dest});
+    final name = r.first.name.replaceAll(RegExp(r'\.[A-Za-z0-9]+$'), '');
+    final p = await _p;
+    await p.setString('pa_custom_path', dest);
+    await p.setString('pa_custom_uri', uri ?? '');
+    await p.setString('pa_custom_id', '$id');
+    await p.setString('pa_custom_name', name);
+    await save(sound: 'custom');
+    return name;
+  }
 
   static Future<void> save({bool? enabled, Set<String>? on, List<int>? offsets, String? sound}) async {
     final p = await _p;
@@ -115,18 +163,42 @@ class PrayerAlarms {
     _ready = true;
   }
 
-  static NotificationDetails _details(String sound) => NotificationDetails(
-    android: AndroidNotificationDetails(
-      'prayer_$sound',
-      'Prayer reminders (${sounds[sound] ?? sound})',
-      channelDescription: 'Reminders for the five prayers',
-      importance: Importance.max,
-      priority: Priority.high,
-      category: AndroidNotificationCategory.reminder,
-      sound: sound == 'default' ? null : RawResourceAndroidNotificationSound('prayer_$sound'),
-      largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
-    ),
-  );
+  static Future<NotificationDetails> _details(String sound) async {
+    if (sound == 'custom') {
+      final p = await _p;
+      final uri = p.getString('pa_custom_uri') ?? '';
+      final path = p.getString('pa_custom_path') ?? '';
+      if (uri.isNotEmpty && File(path).existsSync()) {
+        // each uploaded file gets its own channel: Android fixes a channel's sound when it is made
+        return NotificationDetails(
+          android: AndroidNotificationDetails(
+            'prayer_custom_${p.getString('pa_custom_id') ?? '0'}',
+            'Prayer reminders (my sound)',
+            channelDescription: 'Reminders for the five prayers, with the sound you uploaded',
+            importance: Importance.max,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.alarm,
+            audioAttributesUsage: AudioAttributesUsage.alarm, // plays in full, at alarm volume
+            sound: UriAndroidNotificationSound(uri),
+            largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
+          ),
+        );
+      }
+      sound = 'chime';
+    }
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        'prayer_$sound',
+        'Prayer reminders (${sounds[sound] ?? sound})',
+        channelDescription: 'Reminders for the five prayers',
+        importance: Importance.max,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.reminder,
+        sound: sound == 'default' ? null : RawResourceAndroidNotificationSound('prayer_$sound'),
+        largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
+      ),
+    );
+  }
 
   static String _hm(DateTime t) {
     final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
@@ -167,7 +239,7 @@ class PrayerAlarms {
       if (!await enabled()) return;
       final on = await prayersOn();
       final offs = await offsets();
-      final snd = await sound();
+      final details = await _details(await sound());
       final exact = await exactAllowed();
       final now = DateTime.now();
       final ids = <String>[];
@@ -186,7 +258,7 @@ class PrayerAlarms {
               title,
               body,
               tz.TZDateTime.from(when.toUtc(), tz.UTC),
-              _details(snd),
+              details,
               androidScheduleMode: exact ? AndroidScheduleMode.exactAllowWhileIdle : AndroidScheduleMode.inexactAllowWhileIdle,
             );
             ids.add('$id');
@@ -215,7 +287,7 @@ class PrayerAlarms {
       _base + 499,
       'It’s time for Dhuhr · ളുഹ്ർ',
       'This is how your prayer reminder will look 🕌',
-      _details(await sound()),
+      await _details(await sound()),
     );
   }
 }
