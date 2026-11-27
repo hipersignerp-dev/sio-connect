@@ -3,10 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import 'api.dart';
 import 'theme.dart';
 
-/// Appearance chosen in Settings: light / dark / follow the phone, and text size.
+/// Appearance chosen in Settings: light (default) / dark / follow the phone, and text size.
 class Look {
   static final changes = ValueNotifier<int>(0);
-  static String get mode => Api.prefs.getString('theme_mode') ?? 'system';
+  static String get mode => Api.prefs.getString('theme_mode') ?? 'light';
   static double get textScale => Api.prefs.getDouble('text_scale') ?? 1.0;
 
   static void apply() {
