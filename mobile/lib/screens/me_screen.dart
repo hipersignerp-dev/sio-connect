@@ -160,7 +160,7 @@ class _SproutCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFFEFFBE3), Color(0xFFD3F2B8)]),
+        gradient: const LinearGradient(colors: [Color(0xFFE6F2FD), Color(0xFFCFE5FA)]),
         borderRadius: BorderRadius.circular(22),
       ),
       child: Row(
@@ -175,7 +175,7 @@ class _SproutCard extends StatelessWidget {
                   mood == NoorMood.out
                       ? (mine ? 'Your Noor dried up' : '$first’s Noor dried up')
                       : sproutStageNames[sproutStage(cur)],
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF1F3D12)),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF0E3F70)),
                 ),
                 const SizedBox(height: 6),
                 Row(
@@ -183,13 +183,13 @@ class _SproutCard extends StatelessWidget {
                     const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF8A1F)),
                     Text(
                       ' $cur day${cur == 1 ? '' : 's'}',
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF3F5233)),
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF2F7BC4)),
                     ),
                     const SizedBox(width: 14),
                     const Icon(Icons.emoji_events_rounded, color: Color(0xFFE5A400), size: 20),
                     Text(
                       ' best ${_i(r['best'])}',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF3F5233)),
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF2F7BC4)),
                     ),
                   ],
                 ),
@@ -200,7 +200,7 @@ class _SproutCard extends StatelessWidget {
                       : cur == 0
                       ? (mine ? 'Read today’s ayah to plant it again' : 'Not watered for a while')
                       : (mine ? 'Thirsty: read today’s ayah' : 'Hasn’t watered yet today'),
-                  style: const TextStyle(color: Color(0xFF4A5A40), fontSize: 13),
+                  style: const TextStyle(color: Color(0xFF2F7BC4), fontSize: 13),
                 ),
               ],
             ),

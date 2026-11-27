@@ -21,8 +21,16 @@ Map<String, dynamic> _m(dynamic v) => Map<String, dynamic>.from((v ?? {}) as Map
 int _i(dynamic v) => numOf(v).toInt();
 
 const _flame = Color(0xFFFF8A1F);
-const _done = Color(0xFF58CC02);
-const _doneEdge = Color(0xFF46A302);
+// SIO blues
+const _deep = Color(0xFF0E3F70);
+const _sio = Color(0xFF1A62A8);
+const _mid = Color(0xFF2F7BC4);
+const _light = Color(0xFF5AA6E8);
+const _pale = Color(0xFFE6F2FD);
+const _pale2 = Color(0xFFCFE5FA);
+const _lockTop = Color(0xFFDCE7F2);
+const _lockEdge = Color(0xFFC3D3E4);
+const _lockInk = Color(0xFF8AA3BE);
 const _gold = Color(0xFFFFC800);
 const _goldEdge = Color(0xFFE5A400);
 
@@ -59,7 +67,15 @@ class TodayScreen extends StatelessWidget {
         builder: (context, j) {
           final rs = _m(j['reading_streak']);
           Noor.myStreak = _i(rs['current']);
-          return [_TopBar(rs: rs), const SizedBox(height: 10), _SproutHero(j: j), const SizedBox(height: 18), _Path(j: j)];
+          return [
+            _TopBar(rs: rs),
+            const SizedBox(height: 10),
+            _SproutHero(j: j),
+            const SizedBox(height: 12),
+            _GrowthStrip(streak: _i(rs['current'])),
+            const SizedBox(height: 18),
+            _Path(j: j),
+          ];
         },
       ),
     ),
@@ -158,12 +174,7 @@ class _SproutHero extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 14, 16, 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: switch (mood) {
-            NoorMood.happy || NoorMood.celebrate => [const Color(0xFFE9F9DA), const Color(0xFFD3F2B8)],
-            NoorMood.worried || NoorMood.urgent => [const Color(0xFFFFF1E0), const Color(0xFFFFE0C2)],
-            NoorMood.out => [const Color(0xFFEDE8DE), const Color(0xFFDCD3C2)],
-            _ => [const Color(0xFFE6F2FD), const Color(0xFFCFE5FA)],
-          },
+          colors: mood == NoorMood.out ? [const Color(0xFFEDF1F5), const Color(0xFFDCE3EA)] : [_pale, _pale2],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -197,7 +208,7 @@ class _SproutHero extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   mood == NoorMood.out ? 'Noor dried up' : 'Noor · ${sproutStageNames[st]}',
-                  style: const TextStyle(color: Color(0xFF2E5E1E), fontWeight: FontWeight.w900, fontSize: 13),
+                  style: const TextStyle(color: _deep, fontWeight: FontWeight.w900, fontSize: 13),
                 ),
                 if (next != null && mood != NoorMood.out && _games) ...[
                   const SizedBox(height: 4),
@@ -207,13 +218,13 @@ class _SproutHero extends StatelessWidget {
                       value: _growthProgress(streak),
                       minHeight: 8,
                       backgroundColor: Colors.white.withValues(alpha: 0.7),
-                      color: _done,
+                      color: _sio,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     next,
-                    style: const TextStyle(color: Color(0xFF4A5A40), fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: _mid, fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ],
               ],
@@ -232,7 +243,87 @@ class _SproutHero extends StatelessWidget {
   }
 }
 
-/// The week as a winding path: done days, today, locked days, a chest on day 7.
+/// Noor's growth journey: the five sizes the sprout grows through, the current one highlighted, future ones
+/// waiting in grey with the day they unlock.
+class _GrowthStrip extends StatelessWidget {
+  const _GrowthStrip({required this.streak});
+  final int streak;
+
+  @override
+  Widget build(BuildContext context) {
+    const at = [1, 3, 7, 30, 100];
+    final cur = sproutStage(streak);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      decoration: BoxDecoration(
+        color: SioColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _pale2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 6, bottom: 6),
+            child: Text(
+              'NOOR’S GROWTH',
+              style: TextStyle(color: _sio, fontWeight: FontWeight.w900, letterSpacing: 1.3, fontSize: 12),
+            ),
+          ),
+          Row(
+            children: [
+              for (var i = 0; i < 5; i++)
+                Expanded(
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: i == cur ? _pale : Colors.transparent,
+                          border: Border.all(color: i == cur ? _sio : Colors.transparent, width: 2.5),
+                        ),
+                        child: Opacity(
+                          opacity: i <= cur ? 1 : 0.35,
+                          child: ColorFiltered(
+                            colorFilter: i <= cur
+                                ? const ColorFilter.mode(Colors.transparent, BlendMode.dst)
+                                : const ColorFilter.matrix([
+                                    0.33, 0.33, 0.33, 0, 0, //
+                                    0.33, 0.33, 0.33, 0, 0,
+                                    0.33, 0.33, 0.33, 0, 0,
+                                    0, 0, 0, 1, 0,
+                                  ]),
+                            child: Noor(mood: NoorMood.happy, size: 52, stage: i, animate: i == cur),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (i < cur)
+                        const Icon(Icons.check_circle_rounded, size: 16, color: _light)
+                      else
+                        Text(
+                          i == cur ? 'Now' : 'Day ${at[i]}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: i == cur ? _sio : (i < cur ? _light : _lockInk),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The week as a winding garden trail: a soft blue road joins the steps, the walked part darker, little
+/// plants and flowers along the edges, a chest on day 7, and a signpost where Noor grows to a new size.
 class _Path extends StatelessWidget {
   const _Path({required this.j});
   final Map<String, dynamic> j;
@@ -248,12 +339,54 @@ class _Path extends StatelessWidget {
     final reading = j['reading'] == null ? null : _m(j['reading']);
     final kind = reading?['kind'] == 'Hadith' ? 'hadith' : 'ayah';
 
-    Widget banner(int w, {bool locked = false}) => Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+    _State st(int d) => d < dayNo || (d == dayNo && readToday)
+        ? _State.done
+        : d == dayNo
+        ? _State.today
+        : _State.locked;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _WeekBanner(week: week),
+        const SizedBox(height: 8),
+        _Trail(days: [for (var k = 0; k < 7; k++) first + k], state: st, todayDay: dayNo, kind: kind, j: j),
+        const SizedBox(height: 6),
+        _WeekBanner(week: week + 1, locked: true),
+        const SizedBox(height: 8),
+        Opacity(
+          opacity: 0.55,
+          child: _Trail(
+            days: [for (var k = 0; k < 3; k++) first + 7 + k],
+            state: (_) => _State.locked,
+            todayDay: -1,
+            kind: kind,
+            j: j,
+            fadeOut: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WeekBanner extends StatelessWidget {
+  const _WeekBanner({required this.week, this.locked = false});
+  final int week;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    final from = week * 7 + 1;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 12, 12, 12),
       decoration: BoxDecoration(
-        color: locked ? SioColors.greyBg : _done,
+        gradient: locked
+            ? null
+            : const LinearGradient(colors: [_sio, _mid], begin: Alignment.centerLeft, end: Alignment.centerRight),
+        color: locked ? _lockTop : null,
         borderRadius: BorderRadius.circular(18),
-        border: Border(bottom: BorderSide(color: locked ? SioColors.border : _doneEdge, width: 4)),
+        border: Border(bottom: BorderSide(color: locked ? _lockEdge : _deep, width: 4)),
       ),
       child: Row(
         children: [
@@ -262,109 +395,165 @@ class _Path extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'WEEK ${w + 1}',
+                  'WEEK ${week + 1}',
                   style: TextStyle(
-                    color: locked ? SioColors.textSecondary : Colors.white.withValues(alpha: 0.85),
+                    color: locked ? _lockInk : Colors.white.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1.4,
-                    fontSize: 13,
+                    fontSize: 12.5,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Days ${w * 7 + 1}–${w * 7 + 7}',
-                  style: TextStyle(
-                    color: locked ? SioColors.textSecondary : Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                  ),
+                  'Days $from–${from + 6}',
+                  style: TextStyle(color: locked ? _lockInk : Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
                 ),
               ],
             ),
           ),
-          Icon(locked ? Icons.lock_rounded : Icons.spa_rounded, color: locked ? SioColors.textSecondary : Colors.white),
+          if (locked)
+            const Icon(Icons.lock_rounded, color: _lockInk)
+          else
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
+              child: Noor(mood: NoorMood.happy, size: 44, stage: sproutStage(from + 6), animate: false),
+            ),
         ],
       ),
-    );
-
-    final nodes = <Widget>[];
-    for (var k = 0; k < 7; k++) {
-      final d = first + k;
-      final _State s;
-      if (d < dayNo || (d == dayNo && readToday)) {
-        s = _State.done;
-      } else if (d == dayNo) {
-        s = _State.today;
-      } else {
-        s = _State.locked;
-      }
-      nodes.add(
-        _Step(
-          day: d,
-          state: s,
-          chest: d % 7 == 0,
-          offset: math.sin(k * math.pi / 3) * 70,
-          kind: kind,
-          showSprout: d == dayNo,
-          j: j,
-        ),
-      );
-    }
-    final nextWeek = <Widget>[
-      for (var k = 0; k < 3; k++)
-        Opacity(
-          opacity: 0.55 - k * 0.15,
-          child: _Step(
-            day: first + 7 + k,
-            state: _State.locked,
-            chest: false,
-            offset: math.sin(k * math.pi / 3) * 70,
-            kind: kind,
-            showSprout: false,
-            j: j,
-          ),
-        ),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        banner(week),
-        const SizedBox(height: 18),
-        ...nodes,
-        const SizedBox(height: 12),
-        Opacity(opacity: 0.8, child: banner(week + 1, locked: true)),
-        const SizedBox(height: 14),
-        ...nextWeek,
-      ],
     );
   }
 }
 
 enum _State { done, today, locked }
 
-class _Step extends StatefulWidget {
-  const _Step({
-    required this.day,
+class _Trail extends StatelessWidget {
+  const _Trail({
+    required this.days,
     required this.state,
-    required this.chest,
-    required this.offset,
+    required this.todayDay,
     required this.kind,
-    required this.showSprout,
     required this.j,
+    this.fadeOut = false,
   });
-  final int day;
-  final _State state;
-  final bool chest;
-  final double offset;
+  final List<int> days;
+  final _State Function(int day) state;
+  final int todayDay;
   final String kind;
-  final bool showSprout;
   final Map<String, dynamic> j;
+  final bool fadeOut;
+
+  static const _gap = 112.0;
+  static double _off(int k) => math.sin(k * math.pi / 3) * 78;
 
   @override
-  State<_Step> createState() => _StepState();
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      final w = c.maxWidth;
+      final cx = w / 2;
+      final todayIdx = days.indexOf(todayDay);
+      // extra room above today's node for its START bubble
+      final ys = <double>[];
+      var y = 46.0;
+      for (var k = 0; k < days.length; k++) {
+        if (k == todayIdx) y += 34;
+        ys.add(y);
+        y += _gap;
+      }
+      final height = y - _gap + 70;
+      final pts = [for (var k = 0; k < days.length; k++) Offset(cx + _off(k), ys[k])];
+      final walked = todayIdx >= 0
+          ? todayIdx
+          : (state(days.first) == _State.done ? days.length - 1 : -1); // last point the road is "walked" to
+      final rs = _m(j['reading_streak']);
+      final streak = _i(rs['current']);
+      final mood = noorMood(readToday: rs['today'] == true, streak: streak, missedYesterday: streak == 0 && _i(rs['best']) > 0);
+
+      final kids = <Widget>[
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _TrailPainter(points: pts, walked: walked, fadeOut: fadeOut, seed: days.first),
+          ),
+        ),
+      ];
+      for (var k = 0; k < days.length; k++) {
+        final d = days[k];
+        final s = state(d);
+        final today = s == _State.today;
+        final size = today ? 86.0 : 70.0;
+        final p = pts[k];
+        // the step
+        kids.add(
+          Positioned(
+            left: p.dx - size / 2,
+            top: p.dy - size / 2,
+            child: _Node(day: d, state: s, chest: d % 7 == 0, size: size, kind: kind, j: j),
+          ),
+        );
+        // "START" bubble above today's step
+        if (today) {
+          kids.add(
+            Positioned(
+              left: p.dx - 90,
+              width: 180,
+              top: p.dy - size / 2 - 46,
+              child: const Center(child: _StartBubble()),
+            ),
+          );
+        }
+        // day label
+        kids.add(
+          Positioned(
+            left: p.dx - 50,
+            width: 100,
+            top: p.dy + size / 2 + 2,
+            child: Text(
+              d % 7 == 0 ? 'Day $d · chest' : 'Day $d',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: s == _State.locked ? _lockInk : _sio),
+            ),
+          ),
+        );
+        // beside the step: Noor on today's step; a signpost where Noor grows to a new size
+        final side = _off(k) > 1 ? -1.0 : 1.0; // the roomier side
+        final grows = d > 1 && sproutStage(d) != sproutStage(d - 1);
+        if (today || (todayIdx < 0 && k == 0 && s == _State.done && !fadeOut)) {
+          kids.add(
+            Positioned(
+              left: side > 0 ? w - 128 : 8,
+              width: 120,
+              top: p.dy - 68,
+              child: Noor(mood: s == _State.done ? NoorMood.happy : mood, size: 116),
+            ),
+          );
+        } else if (grows) {
+          kids.add(
+            Positioned(
+              left: side > 0 ? w - 118 : 6,
+              width: 112,
+              top: p.dy - 52,
+              child: _GrowSign(stage: sproutStage(d), reached: s == _State.done),
+            ),
+          );
+        }
+      }
+      return SizedBox(
+        height: height,
+        child: Stack(clipBehavior: Clip.none, children: kids),
+      );
+    },
+  );
 }
 
-class _StepState extends State<_Step> with SingleTickerProviderStateMixin {
+class _StartBubble extends StatefulWidget {
+  const _StartBubble();
+
+  @override
+  State<_StartBubble> createState() => _StartBubbleState();
+}
+
+class _StartBubbleState extends State<_StartBubble> with SingleTickerProviderStateMixin {
   late final AnimationController _bob = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
     ..repeat(reverse: true);
 
@@ -374,136 +563,280 @@ class _StepState extends State<_Step> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _tap() async {
-    HapticFeedback.selectionClick();
-    switch (widget.state) {
-      case _State.today:
-      case _State.done when widget.day == _todayStep():
-        await push(context, AyahReaderScreen(journey: widget.j, games: _games));
-        AppState.i.refreshAll();
-      case _State.done:
-        toast(context, 'Day ${widget.day} done ✓ MashaAllah!');
-      case _State.locked:
-        toast(context, widget.chest ? 'Reach day ${widget.day} to open this chest 🎁' : 'Come back on day ${widget.day} 🌱');
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _bob,
+    builder: (context, child) => Transform.translate(offset: Offset(0, -4 * _bob.value), child: child),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _pale2, width: 2),
+        boxShadow: const [BoxShadow(color: Color(0x1A0E3F70), blurRadius: 8, offset: Offset(0, 3))],
+      ),
+      child: const Text(
+        'START',
+        style: TextStyle(color: _sio, fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 1.2),
+      ),
+    ),
+  );
+}
+
+/// A little wooden signpost: "Day 7 · Noor grows leaves".
+class _GrowSign extends StatelessWidget {
+  const _GrowSign({required this.stage, required this.reached});
+  final int stage;
+  final bool reached;
+
+  @override
+  Widget build(BuildContext context) => Opacity(
+    opacity: reached ? 1 : 0.85,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Noor(mood: NoorMood.happy, size: 64, stage: stage, animate: false),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: reached ? _pale : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _pale2, width: 1.5),
+          ),
+          child: Text(
+            reached ? 'Grew! ✓' : sproutStageNames[stage],
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _sio, fontWeight: FontWeight.w900, fontSize: 11),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The soft road between the steps, plus grass, flowers and pebbles along it.
+class _TrailPainter extends CustomPainter {
+  _TrailPainter({required this.points, required this.walked, required this.fadeOut, required this.seed});
+  final List<Offset> points;
+  final int walked; // index of the last walked step (-1 = none)
+  final bool fadeOut;
+  final int seed;
+
+  Path _road(int from, int to) {
+    final path = Path()..moveTo(points[from].dx, points[from].dy);
+    for (var i = from; i < to; i++) {
+      final a = points[i];
+      final b = points[i + 1];
+      final my = (a.dy + b.dy) / 2;
+      path.cubicTo(a.dx, my, b.dx, my, b.dx, b.dy);
+    }
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.length < 2) return;
+    // a little lead-in above the first step
+    final lead = Path()
+      ..moveTo(points.first.dx, points.first.dy - 50)
+      ..lineTo(points.first.dx, points.first.dy);
+    final all = _road(0, points.length - 1)..addPath(lead, Offset.zero);
+    if (fadeOut) {
+      all.lineTo(points.last.dx, points.last.dy + 60);
+    }
+    final edge = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 40
+      ..color = const Color(0xFFD7E7F7);
+    final top = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 32
+      ..color = const Color(0xFFEAF3FC);
+    canvas.drawPath(all, edge);
+    canvas.drawPath(all, top);
+    if (walked > 0) {
+      final w = _road(0, walked);
+      canvas.drawPath(w, edge..color = const Color(0xFF9CC8EF));
+      canvas.drawPath(w, top..color = const Color(0xFFBFDDF7));
+    }
+    // dashed centre line
+    final dash = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 4
+      ..color = Colors.white;
+    for (final m in all.computeMetrics()) {
+      for (var d = 0.0; d < m.length; d += 22) {
+        canvas.drawPath(m.extractPath(d, math.min(d + 9, m.length)), dash);
+      }
+    }
+    // decorations between the steps, on the side away from the bend
+    for (var i = 0; i < points.length - 1; i++) {
+      final a = points[i];
+      final b = points[i + 1];
+      final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+      final away = mid.dx > size.width / 2 ? -1.0 : 1.0;
+      final at = Offset(mid.dx + away * 92, mid.dy);
+      if (at.dx < 14 || at.dx > size.width - 14) continue;
+      final faded = i >= walked && walked >= 0 || walked < 0;
+      switch ((seed + i) % 3) {
+        case 0:
+          _grass(canvas, at, faded);
+        case 1:
+          _flower(canvas, at, faded);
+        default:
+          _pebbles(canvas, at, faded);
+      }
     }
   }
 
+  void _grass(Canvas c, Offset o, bool faded) {
+    final p = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 4
+      ..color = faded ? const Color(0xFFB7D7A8) : const Color(0xFF6BBF59);
+    for (final (dx, h, lean) in [(-8.0, 16.0, -6.0), (0.0, 22.0, 0.0), (8.0, 15.0, 6.0)]) {
+      final path = Path()
+        ..moveTo(o.dx + dx, o.dy + 8)
+        ..quadraticBezierTo(o.dx + dx, o.dy + 8 - h / 2, o.dx + dx + lean, o.dy + 8 - h);
+      c.drawPath(path, p);
+    }
+  }
+
+  void _flower(Canvas c, Offset o, bool faded) {
+    final stem = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round
+      ..color = faded ? const Color(0xFFB7D7A8) : const Color(0xFF6BBF59);
+    c.drawLine(o.translate(0, 12), o.translate(0, -2), stem);
+    final petal = Paint()..color = faded ? const Color(0xFFF2D9DD) : const Color(0xFFF7A1B5);
+    for (var k = 0; k < 5; k++) {
+      final a = k * 2 * math.pi / 5;
+      c.drawCircle(o.translate(math.cos(a) * 6, -6 + math.sin(a) * 6), 4.6, petal);
+    }
+    c.drawCircle(o.translate(0, -6), 3.6, Paint()..color = faded ? const Color(0xFFF6E7A6) : const Color(0xFFFFC83D));
+  }
+
+  void _pebbles(Canvas c, Offset o, bool faded) {
+    final p = Paint()..color = faded ? const Color(0xFFE1E8EF) : const Color(0xFFC9D6E3);
+    c.drawOval(Rect.fromCenter(center: o.translate(-7, 4), width: 16, height: 10), p);
+    c.drawOval(Rect.fromCenter(center: o.translate(7, 7), width: 11, height: 7), p);
+    c.drawOval(Rect.fromCenter(center: o.translate(4, -3), width: 8, height: 6), p);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrailPainter old) => old.walked != walked || old.points != points;
+}
+
+class _Node extends StatelessWidget {
+  const _Node({
+    required this.day,
+    required this.state,
+    required this.chest,
+    required this.size,
+    required this.kind,
+    required this.j,
+  });
+  final int day;
+  final _State state;
+  final bool chest;
+  final double size;
+  final String kind;
+  final Map<String, dynamic> j;
+
   int _todayStep() {
-    final rs = _m(widget.j['reading_streak']);
+    final rs = _m(j['reading_streak']);
     final streak = _i(rs['current']);
     return rs['today'] == true ? math.max(streak, 1) : streak + 1;
   }
 
+  Future<void> _tap(BuildContext context) async {
+    HapticFeedback.selectionClick();
+    if (state == _State.today || (state == _State.done && day == _todayStep())) {
+      await push(context, AyahReaderScreen(journey: j, games: _games));
+      AppState.i.refreshAll();
+    } else if (state == _State.done) {
+      toast(context, 'Day $day done ✓ MashaAllah!');
+    } else {
+      toast(context, chest ? 'Reach day $day to open this chest 🎁' : 'Come back on day $day 🌱');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final s = widget.state;
+    final s = state;
     final today = s == _State.today;
     final (Color top, Color edge) = switch (s) {
-      _State.done when widget.chest => (_gold, _goldEdge),
-      _State.done => (_done, _doneEdge),
-      _State.today => (SioColors.blue, const Color(0xFF0E3F70)),
-      _State.locked => (SioColors.greyBg, SioColors.border),
+      _State.done when chest => (_gold, _goldEdge),
+      _State.done => (_light, _mid),
+      _State.today => (_sio, _deep),
+      _State.locked => (_lockTop, _lockEdge),
     };
-    final icon = widget.chest
-        ? Text(s == _State.done ? '🎉' : '🎁', style: TextStyle(fontSize: 30, color: s == _State.locked ? Colors.black38 : null))
+    final icon = chest
+        ? Text(
+            s == _State.done ? '🎉' : '🎁',
+            style: TextStyle(fontSize: size * 0.4, color: s == _State.locked ? Colors.black38 : null),
+          )
         : Icon(
             switch (s) {
               _State.done => Icons.check_rounded,
-              _State.today => Icons.menu_book_rounded,
+              _State.today => kind == 'hadith' ? Icons.format_quote_rounded : Icons.menu_book_rounded,
               _State.locked => Icons.lock_rounded,
             },
-            color: s == _State.locked ? SioColors.textSecondary : Colors.white,
-            size: 34,
+            color: s == _State.locked ? _lockInk : Colors.white,
+            size: size * 0.44,
           );
-    final size = today ? 84.0 : 72.0;
-    final button = Semantics(
-      button: true,
-      label: 'Day ${widget.day}${today ? ', today' : ''}',
-      child: Squish(
-        onTap: _tap,
-        child: SizedBox(
-          width: size,
-          height: size * 0.92,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: size * 0.84,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: edge, shape: BoxShape.circle),
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                height: size * 0.84,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: top, shape: BoxShape.circle),
-                  child: Center(child: icon),
-                ),
-              ),
-            ],
+    Widget disc = SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: size * 0.9,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: edge, shape: BoxShape.circle),
+            ),
           ),
-        ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: size * 0.9,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  center: const Alignment(-0.35, -0.45),
+                  radius: 0.9,
+                  colors: [Color.lerp(top, Colors.white, 0.28)!, top],
+                ),
+              ),
+              child: Center(child: icon),
+            ),
+          ),
+        ],
       ),
     );
-    Widget node = today
-        ? Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedBuilder(
-                animation: _bob,
-                builder: (context, child) => Transform.translate(offset: Offset(0, -4 * _bob.value), child: child),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: SioColors.border, width: 2),
-                  ),
-                  child: Text(
-                    'START · today’s ${widget.kind}',
-                    style: TextStyle(color: SioColors.blue, fontWeight: FontWeight.w900, fontSize: 13),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: SioColors.blue.withValues(alpha: 0.25), width: 5),
-                ),
-                child: button,
-              ),
-            ],
-          )
-        : button;
-    final rs = _m(widget.j['reading_streak']);
-    final streak = _i(rs['current']);
-    final mood = noorMood(readToday: rs['today'] == true, streak: streak, missedYesterday: streak == 0 && _i(rs['best']) > 0);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: SizedBox(
-        height: today ? 150 : 82,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Transform.translate(offset: Offset(widget.offset, 0), child: node),
-            if (widget.showSprout)
-              Align(
-                alignment: widget.offset > 0 ? Alignment.centerLeft : Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Noor(mood: s == _State.done ? NoorMood.happy : mood, size: 104),
-                ),
-              ),
-          ],
+    if (today) {
+      disc = Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: _sio.withValues(alpha: 0.35), blurRadius: 18, spreadRadius: 4)],
         ),
-      ),
+        child: disc,
+      );
+    }
+    return Semantics(
+      button: true,
+      label: 'Day $day${today ? ', today' : ''}',
+      child: Squish(onTap: () => _tap(context), child: disc),
     );
   }
 }
@@ -577,11 +910,7 @@ class _SproutCelebrationState extends State<_SproutCelebration> {
         width: 320,
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFEFFBE3), Color(0xFFD3F2B8)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+          gradient: const LinearGradient(colors: [Colors.white, _pale2], begin: Alignment.topCenter, end: Alignment.bottomCenter),
           borderRadius: BorderRadius.circular(28),
         ),
         child: Column(
@@ -603,20 +932,20 @@ class _SproutCelebrationState extends State<_SproutCelebration> {
             Text(
               widget.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1F3D12)),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _deep),
             ),
             const SizedBox(height: 6),
             Text(
               widget.sub,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: Color(0xFF3F5233), height: 1.35),
+              style: const TextStyle(fontSize: 15, color: _mid, height: 1.35),
             ),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: _done,
+                  backgroundColor: _sio,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

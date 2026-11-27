@@ -213,7 +213,7 @@ class _FriendSprout extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
         decoration: BoxDecoration(
-          color: today ? const Color(0xFFEFFBE3) : SioColors.card,
+          color: today ? const Color(0xFFE6F2FD) : SioColors.card,
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
@@ -228,7 +228,7 @@ class _FriendSprout extends StatelessWidget {
                     '${p['full_name'] ?? ''}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontWeight: FontWeight.w800, color: today ? const Color(0xFF1F3D12) : SioColors.ink),
+                    style: TextStyle(fontWeight: FontWeight.w800, color: today ? const Color(0xFF0E3F70) : SioColors.ink),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -238,7 +238,7 @@ class _FriendSprout extends StatelessWidget {
                         ? '🥀 $first’s sprout dried up'
                         : '🥺 Thirsty · 🔥 $cur',
                     style: TextStyle(
-                      color: today ? const Color(0xFF3F5233) : SioColors.textSecondary,
+                      color: today ? const Color(0xFF2F7BC4) : SioColors.textSecondary,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -246,7 +246,7 @@ class _FriendSprout extends StatelessWidget {
                   if (together > 1)
                     Text(
                       '🤝 $together days together',
-                      style: TextStyle(color: today ? const Color(0xFF3F5233) : SioColors.textSecondary, fontSize: 12),
+                      style: TextStyle(color: today ? const Color(0xFF2F7BC4) : SioColors.textSecondary, fontSize: 12),
                     ),
                 ],
               ),

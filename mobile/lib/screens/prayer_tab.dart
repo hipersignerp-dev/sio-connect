@@ -199,7 +199,9 @@ class _PrayerTabState extends State<PrayerTab> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
                   decoration: BoxDecoration(
-                    color: n == next.key ? SioColors.blue.withValues(alpha: 0.10) : SioColors.card,
+                    color: n == next.key
+                        ? SioColors.blue.withValues(alpha: 0.12)
+                        : (SioColors.dark ? SioColors.card : const Color(0xFFF1F7FD)),
                     borderRadius: BorderRadius.circular(16),
                     border: n == next.key ? Border.all(color: SioColors.blue.withValues(alpha: 0.5)) : null,
                   ),
