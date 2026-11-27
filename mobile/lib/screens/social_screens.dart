@@ -76,6 +76,8 @@ class _AssociateShellState extends State<AssociateShell> with WidgetsBindingObse
       BugReport.startShake();
       Push.start();
       PrayerAlarms.schedule();
+      PrayerAlarms.checkLaunch(); // opened by a prayer reminder: show it full screen
+      PrayerAlarms.askFullScreen();
       if (mounted) Onboarding.maybeShow(context);
     });
     Notify.start('${AppState.i.me['user'] ?? ''}');

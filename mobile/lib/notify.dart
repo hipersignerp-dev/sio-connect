@@ -20,7 +20,7 @@ class Notify {
 
   static Future<void> _init() async {
     if (_ready) return;
-    await _plugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
+    await _plugin.initialize(PrayerAlarms.initSettings, onDidReceiveNotificationResponse: PrayerAlarms.onTap);
     _ready = true;
   }
 

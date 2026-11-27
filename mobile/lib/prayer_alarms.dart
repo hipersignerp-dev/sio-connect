@@ -10,7 +10,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import 'package:material_ui/material_ui.dart';
+
+import 'links.dart';
 import 'prayer.dart';
+import 'screens/prayer_alarm_screen.dart';
 
 /// Prayer reminders. Prayer times move a little every day, so the next 7 days are scheduled from the month's
 /// timetable (aladhan.com, kept on the phone) and re-scheduled whenever the app opens or the settings change.
@@ -162,11 +166,11 @@ class PrayerAlarms {
   static bool _ready = false;
   static Future<void> _init() async {
     if (_ready) return;
-    await _plugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
+    await _plugin.initialize(initSettings, onDidReceiveNotificationResponse: onTap);
     _ready = true;
   }
 
-  static Future<NotificationDetails> _details(String sound, {String? big}) async {
+  static Future<NotificationDetails> _details(String sound, {String? big, bool fullScreen = false}) async {
     final style = big == null ? null : BigTextStyleInformation(big);
     if (sound == 'custom') {
       final p = await _p;
@@ -185,6 +189,7 @@ class PrayerAlarms {
             audioAttributesUsage: AudioAttributesUsage.alarm, // plays in full, at alarm volume
             sound: UriAndroidNotificationSound(uri),
             styleInformation: style,
+            fullScreenIntent: fullScreen,
             largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
           ),
         );
@@ -203,6 +208,7 @@ class PrayerAlarms {
         audioAttributesUsage: _voice(sound) ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
         sound: sound == 'default' ? null : RawResourceAndroidNotificationSound('prayer_$sound'),
         styleInformation: style,
+        fullScreenIntent: fullScreen,
         largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
       ),
     );
@@ -236,6 +242,68 @@ class PrayerAlarms {
     } catch (_) {
       return true;
     }
+  }
+
+  // ---- the full-screen reminder
+  static const initSettings = InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher'));
+
+  /// A prayer reminder was tapped, or rang full screen: show the alarm screen.
+  static void onTap(NotificationResponse r) => _open(r.payload, r.id);
+
+  static String? _shown;
+  static void _open(String? payload, int? id) {
+    if (payload == null || !payload.startsWith('prayer|')) return;
+    final parts = payload.split('|');
+    if (parts.length < 3 || _shown == payload) return;
+    final nav = navKey.currentState;
+    if (nav == null) return;
+    _shown = payload;
+    nav
+        .push(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => PrayerAlarmScreen(prayer: parts[1], offset: int.tryParse(parts[2]) ?? 15, id: id),
+          ),
+        )
+        .whenComplete(() => _shown = null);
+  }
+
+  /// Opened by a reminder (the phone was locked, or the app was closed)? Called once the app is up.
+  static Future<void> checkLaunch() async {
+    try {
+      await _init();
+      final d = await _plugin.getNotificationAppLaunchDetails();
+      if (d?.didNotificationLaunchApp ?? false) {
+        final r = d!.notificationResponse;
+        _open(r?.payload, r?.id);
+      }
+    } catch (_) {}
+  }
+
+  /// Stops the reminder's sound (by clearing the notification).
+  static Future<void> stop(int? id) async {
+    if (id == null) return;
+    try {
+      await _plugin.cancel(id);
+    } catch (_) {}
+  }
+
+  /// Show the alarm screen over the lock screen and wake the screen, only while it is open.
+  static Future<void> overLockScreen(bool on) async {
+    try {
+      await _battery.invokeMethod('lock', {'on': on});
+    } catch (_) {}
+  }
+
+  /// Android 14+ asks the person once before an app may ring full screen.
+  static Future<void> askFullScreen() async {
+    try {
+      await _init();
+      final p = await _p;
+      if (p.getBool('pa_fs_asked') ?? false) return;
+      await p.setBool('pa_fs_asked', true);
+      await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestFullScreenIntentPermission();
+    } catch (_) {}
   }
 
   // ---- phones that stop alarms to save battery
@@ -300,8 +368,9 @@ class PrayerAlarms {
               title,
               body,
               tz.TZDateTime.from(when.toUtc(), tz.UTC),
-              await _details(snd, big: body),
+              await _details(snd, big: body, fullScreen: o > 0),
               // alarmClock: rings like a real alarm, even in battery saver and while the app is closed
+              payload: 'prayer|$prayer|$o',
               androidScheduleMode: exact ? AndroidScheduleMode.alarmClock : AndroidScheduleMode.inexactAllowWhileIdle,
             );
             ids.add('$id');
@@ -330,6 +399,12 @@ class PrayerAlarms {
     final title = after ? 'Did you pray Dhuhr? 🤲' : 'It’s time for Dhuhr · ളുഹ്ർ';
     const text = 'This is how your prayer reminder will look 🕌';
     final body = snd == 'ayah' ? withAyah(text) : text;
-    await _plugin.show(_base + (after ? 498 : 499), title, body, await _details(snd, big: body));
+    await _plugin.show(
+      _base + (after ? 498 : 499),
+      title,
+      body,
+      await _details(snd, big: body, fullScreen: after),
+      payload: after ? 'prayer|Dhuhr|15' : null,
+    );
   }
 }

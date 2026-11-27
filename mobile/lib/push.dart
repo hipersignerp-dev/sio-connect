@@ -1,3 +1,4 @@
+import 'prayer_alarms.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -33,7 +34,7 @@ class Push {
     _started = true;
     try {
       if (Firebase.apps.isEmpty) await Firebase.initializeApp(options: _options);
-      await _local.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
+      await _local.initialize(PrayerAlarms.initSettings, onDidReceiveNotificationResponse: PrayerAlarms.onTap);
       await _local.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(
         channel,
       );

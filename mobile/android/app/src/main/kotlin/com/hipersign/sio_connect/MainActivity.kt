@@ -95,6 +95,15 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(pm.isIgnoringBatteryOptimizations(packageName))
                     }
                     "brand" -> result.success(android.os.Build.MANUFACTURER ?: "")
+                    // the prayer alarm screen: over the lock screen and wake the screen, only while it is open
+                    "lock" -> {
+                        val on = call.argument<Boolean>("on") == true
+                        if (android.os.Build.VERSION.SDK_INT >= 27) {
+                            setShowWhenLocked(on)
+                            setTurnScreenOn(on)
+                        }
+                        result.success(true)
+                    }
                     "battery" -> result.success(open(listOf(
                         Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                             .setData(android.net.Uri.parse("package:$packageName")))))
