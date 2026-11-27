@@ -1429,7 +1429,8 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
               runSpacing: 8,
               children: [
                 if (audio.isNotEmpty) AyahAudioButton(urls: audio, onComplete: _finishedListening),
-                if (malayalamToRead(r).isNotEmpty) MalayalamSpeakButton(text: malayalamToRead(r), onComplete: _finishedListening),
+                if (malayalamToRead(r).isNotEmpty)
+                  MalayalamSpeakButton(text: malayalamToRead(r), reading: r, onComplete: _finishedListening),
               ],
             ),
             if (!_done)

@@ -320,7 +320,8 @@ class _ReadingCard extends StatelessWidget {
             children: [
               if ((reading['audio'] as List? ?? []).isNotEmpty)
                 AyahAudioButton(urls: [for (final u in reading['audio'] as List) '$u'], light: false),
-              if (malayalamToRead(reading).isNotEmpty) MalayalamSpeakButton(text: malayalamToRead(reading), light: false),
+              if (malayalamToRead(reading).isNotEmpty)
+                MalayalamSpeakButton(text: malayalamToRead(reading), reading: reading, light: false),
             ],
           ),
         ],

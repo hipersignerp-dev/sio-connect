@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'api.dart';
 
 /// Play / stop the recitation of today's ayah (one or more files, played one after another).
 class AyahAudioButton extends StatefulWidget {
@@ -90,11 +94,16 @@ class _AyahAudioButtonState extends State<AyahAudioButton> {
 }
 
 /// Reads the Malayalam meaning (and today's lesson) aloud with the phone's Malayalam voice.
+/// Reads the Malayalam meaning and lesson aloud. Uses the natural recording the server makes for the reading
+/// (Gemini text-to-speech, made once and shared); falls back to the phone's own voice only if that fails.
 class MalayalamSpeakButton extends StatefulWidget {
-  const MalayalamSpeakButton({super.key, required this.text, this.light = false, this.onComplete});
+  const MalayalamSpeakButton({super.key, required this.text, this.light = false, this.onComplete, this.reading});
   final String text;
   final VoidCallback? onComplete; // read to the end
   final bool light;
+
+  /// The daily reading (needs 'name'; 'ml_audio' if already recorded). Null = phone voice only.
+  final Map? reading;
 
   @override
   State<MalayalamSpeakButton> createState() => _MalayalamSpeakButtonState();
@@ -102,35 +111,89 @@ class MalayalamSpeakButton extends StatefulWidget {
 
 class _MalayalamSpeakButtonState extends State<MalayalamSpeakButton> {
   static final FlutterTts _tts = FlutterTts();
+  AudioPlayer? _p;
+  StreamSubscription<PlayerState>? _sub;
   bool _speaking = false;
+  bool _loading = false;
+  bool _usingTts = false;
 
   @override
   void dispose() {
-    if (_speaking) _tts.stop();
+    if (_speaking && _usingTts) _tts.stop();
+    _sub?.cancel();
+    _p?.dispose();
     super.dispose();
   }
 
-  Future<void> _toggle() async {
-    if (_speaking) {
+  Future<void> _stop() async {
+    if (_usingTts) {
       await _tts.stop();
-      if (mounted) setState(() => _speaking = false);
-      return;
+    } else {
+      await _p?.stop();
     }
+    if (mounted) setState(() => _speaking = false);
+  }
+
+  Future<String?> _recording() async {
+    final r = widget.reading;
+    if (r == null || '${r['name'] ?? ''}'.isEmpty) return null;
+    var url = '${r['ml_audio'] ?? ''}';
+    if (url.isEmpty) {
+      final res = await Api.call('sio_connect.tts.ml_audio', {'reading': '${r['name']}'});
+      url = '${(res is Map ? res['url'] : null) ?? ''}';
+      if (url.isNotEmpty) r['ml_audio'] = url;
+    }
+    if (url.isEmpty) return null;
+    return url.startsWith('http') ? url : '${Api.baseUrl}$url';
+  }
+
+  Future<void> _toggle() async {
+    if (_speaking) return _stop();
+    if (_loading) return;
+    setState(() => _loading = true);
+    try {
+      final url = await _recording();
+      if (url != null) {
+        _p ??= AudioPlayer();
+        await _p!.setUrl(url);
+        _usingTts = false;
+        await _sub?.cancel();
+        _sub = _p!.playerStateStream.listen((st) {
+          if (st.processingState == ProcessingState.completed && _speaking) {
+            widget.onComplete?.call();
+            if (mounted) setState(() => _speaking = false);
+          }
+        });
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _speaking = true;
+          });
+        }
+        await _p!.play();
+        return;
+      }
+    } catch (_) {
+      // fall back to the phone's voice below
+    }
+    if (mounted) setState(() => _loading = false);
+    await _phoneVoice();
+  }
+
+  Future<void> _phoneVoice() async {
     final ok = await _tts.isLanguageAvailable('ml-IN');
     if (ok != true) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             duration: Duration(seconds: 6),
-            content: Text(
-              'Your phone has no Malayalam voice yet. Open Settings → Text-to-speech (Speech services by Google) '
-              '→ Install voice data → Malayalam.',
-            ),
+            content: Text('Couldn’t load the Malayalam audio. Check your internet and try again.'),
           ),
         );
       }
       return;
     }
+    _usingTts = true;
     await _tts.setLanguage('ml-IN');
     await _tts.setSpeechRate(0.45);
     _tts.setCompletionHandler(() {
@@ -157,10 +220,17 @@ class _MalayalamSpeakButtonState extends State<MalayalamSpeakButton> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_speaking ? Icons.stop_rounded : Icons.record_voice_over_outlined, color: fg, size: 18),
+              if (_loading)
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: fg))
+              else
+                Icon(_speaking ? Icons.stop_rounded : Icons.record_voice_over_outlined, color: fg, size: 18),
               const SizedBox(width: 4),
               Text(
-                _speaking ? 'Stop' : 'മലയാളം',
+                _loading
+                    ? 'Preparing…'
+                    : _speaking
+                    ? 'Stop'
+                    : 'മലയാളം',
                 style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 13),
               ),
             ],

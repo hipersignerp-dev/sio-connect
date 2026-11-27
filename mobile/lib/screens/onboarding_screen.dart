@@ -207,7 +207,7 @@ class _FlowState extends State<_Flow> {
               children: [
                 if (audio.isNotEmpty) AyahAudioButton(urls: audio, light: true, onComplete: _markRead),
                 if (malayalamToRead(r).isNotEmpty)
-                  MalayalamSpeakButton(text: malayalamToRead(r), light: true, onComplete: _markRead),
+                  MalayalamSpeakButton(text: malayalamToRead(r), reading: r, light: true, onComplete: _markRead),
               ],
             ),
           ],
