@@ -238,6 +238,29 @@ class PrayerAlarms {
     }
   }
 
+  // ---- phones that stop alarms to save battery
+  static const _battery = MethodChannel('com.hipersign.sio_connect/battery');
+
+  /// Is the app allowed to run in the background (battery "Unrestricted")?
+  static Future<bool> batteryFree() async {
+    try {
+      return await _battery.invokeMethod<bool>('free') ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<String> brand() async {
+    try {
+      return (await _battery.invokeMethod<String>('brand') ?? '').toLowerCase();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static Future<void> openBattery() => _battery.invokeMethod('battery');
+  static Future<void> openAutostart() => _battery.invokeMethod('autostart');
+
   static Future<void> askExact() async {
     await _init();
     await _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestExactAlarmsPermission();
@@ -278,7 +301,8 @@ class PrayerAlarms {
               body,
               tz.TZDateTime.from(when.toUtc(), tz.UTC),
               await _details(snd, big: body),
-              androidScheduleMode: exact ? AndroidScheduleMode.exactAllowWhileIdle : AndroidScheduleMode.inexactAllowWhileIdle,
+              // alarmClock: rings like a real alarm, even in battery saver and while the app is closed
+              androidScheduleMode: exact ? AndroidScheduleMode.alarmClock : AndroidScheduleMode.inexactAllowWhileIdle,
             );
             ids.add('$id');
           }

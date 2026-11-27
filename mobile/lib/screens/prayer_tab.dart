@@ -29,6 +29,9 @@ class _PrayerTabState extends State<PrayerTab> {
   String _soundAfter = 'ayah';
   bool _enabled = true;
   bool _exact = true;
+  bool _batteryFree = true;
+  String _brand = '';
+  late final AppLifecycleListener _life;
   String? _custom; // name of the uploaded sound
   Timer? _tick;
   final _player = AudioPlayer();
@@ -37,6 +40,13 @@ class _PrayerTabState extends State<PrayerTab> {
   void initState() {
     super.initState();
     _load();
+    // coming back from the phone's settings: check again
+    _life = AppLifecycleListener(
+      onResume: () async {
+        await _load();
+        await PrayerAlarms.schedule();
+      },
+    );
     _tick = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -51,6 +61,8 @@ class _PrayerTabState extends State<PrayerTab> {
     final sndAfter = await PrayerAlarms.soundAfter();
     final en = await PrayerAlarms.enabled();
     final ex = await PrayerAlarms.exactAllowed();
+    final bf = await PrayerAlarms.batteryFree();
+    final brand = await PrayerAlarms.brand();
     final custom = await PrayerAlarms.customName();
     if (mounted) {
       setState(() {
@@ -61,9 +73,64 @@ class _PrayerTabState extends State<PrayerTab> {
         _soundAfter = sndAfter;
         _enabled = en;
         _exact = ex;
+        _batteryFree = bf;
+        _brand = brand;
         _custom = custom;
       });
     }
+  }
+
+  /// Many phones stop alarms of closed apps to save battery. Two switches fix it.
+  Widget _batteryCard() {
+    final auto = ['xiaomi', 'redmi', 'poco', 'oppo', 'realme', 'oneplus', 'vivo', 'iqoo', 'huawei', 'honor'].any(_brand.contains);
+    return Card(
+      color: SioColors.warningBg,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.battery_alert, color: SioColors.warning),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Let reminders ring when the app is closed',
+                    style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Your phone stops SIO Connect in the background to save battery, so the azan can’t ring. '
+              'Open Battery and choose “Unrestricted” (or “Allow background activity”).'
+              '${auto ? ' Then turn on Auto-start for SIO Connect.' : ''}',
+              style: TextStyle(color: SioColors.text, fontSize: 13.5),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                FilledButton.icon(
+                  onPressed: PrayerAlarms.openBattery,
+                  icon: const Icon(Icons.battery_charging_full),
+                  label: const Text('Open Battery'),
+                ),
+                if (auto)
+                  OutlinedButton.icon(
+                    onPressed: PrayerAlarms.openAutostart,
+                    icon: const Icon(Icons.restart_alt),
+                    label: const Text('Auto-start'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _preview(String v) async {
@@ -116,6 +183,7 @@ class _PrayerTabState extends State<PrayerTab> {
   @override
   void dispose() {
     _tick?.cancel();
+    _life.dispose();
     _player.dispose();
     super.dispose();
   }
@@ -326,6 +394,7 @@ class _PrayerTabState extends State<PrayerTab> {
                     },
                   ),
                 ),
+              if (!_batteryFree) _batteryCard(),
               const SizedBox(height: 6),
               Text(
                 'Remind me',
@@ -405,6 +474,12 @@ class _PrayerTabState extends State<PrayerTab> {
                   ],
                 ),
               ),
+              if (_batteryFree)
+                TextButton.icon(
+                  onPressed: PrayerAlarms.openAutostart,
+                  icon: const Icon(Icons.help_outline, size: 18),
+                  label: const Text('Not ringing when the app is closed? Turn on Auto-start'),
+                ),
             ],
           ],
         ),

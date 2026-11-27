@@ -83,5 +83,49 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+    
+        // Prayer reminders must ring while the app is closed. Many phones (Vivo, Oppo, Realme, Xiaomi…)
+        // stop an app's alarms to save battery unless the person allows it. This lets Dart check that and
+        // open the right settings page.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.hipersign.sio_connect/battery")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "free" -> {
+                        val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+                        result.success(pm.isIgnoringBatteryOptimizations(packageName))
+                    }
+                    "brand" -> result.success(android.os.Build.MANUFACTURER ?: "")
+                    "battery" -> result.success(open(listOf(
+                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            .setData(android.net.Uri.parse("package:$packageName")))))
+                    "autostart" -> result.success(open(listOf(
+                        comp("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),
+                        comp("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"),
+                        comp("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity"),
+                        comp("com.oplus.safecenter", "com.oplus.safecenter.startupapp.StartupAppListActivity"),
+                        comp("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
+                        comp("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager"),
+                        comp("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"),
+                        comp("com.samsung.android.lool", "com.samsung.android.sm.ui.battery.BatteryActivity"),
+                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            .setData(android.net.Uri.parse("package:$packageName")))))
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun comp(pkg: String, cls: String) =
+        Intent().setComponent(android.content.ComponentName(pkg, cls))
+
+    /** Opens the first settings page this phone has. */
+    private fun open(intents: List<Intent>): Boolean {
+        for (i in intents) {
+            try {
+                startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return true
+            } catch (_: Exception) {
+            }
+        }
+        return false
     }
 }
