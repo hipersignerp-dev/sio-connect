@@ -39,6 +39,18 @@ int sproutStage(int streak) => streak >= 100
     : 0;
 
 const sproutStageNames = ['Tiny seedling', 'Little sprout', 'Growing', 'First bud', 'In bloom'];
+
+/// Pot colours, won from the chests: one new colour for each week of the series completed.
+const potColours = <String, (String, Color)>{
+  'blue': ('SIO Blue', Color(0xFF1A62A8)),
+  'green': ('Leaf Green', Color(0xFF3E9B4F)),
+  'red': ('SIO Red', Color(0xFFC8202A)),
+  'purple': ('Royal Purple', Color(0xFF6A4BC4)),
+  'orange': ('Sunset Orange', Color(0xFFE87A2A)),
+  'teal': ('Ocean Teal', Color(0xFF1C9A9A)),
+  'pink': ('Rose Pink', Color(0xFFE2607F)),
+  'gold': ('Golden', Color(0xFFE0A800)),
+};
 const _stageAt = [0, 3, 7, 30, 100];
 
 /// "4 more days until your first bud" (null when fully grown).
@@ -104,7 +116,7 @@ String noorLine(NoorMood m, {int streak = 0, String name = '', bool games = true
 
 /// The sprout, gently swaying on screen.
 class Noor extends StatefulWidget {
-  const Noor({super.key, required this.mood, this.size = 96, this.animate = true, this.stage});
+  const Noor({super.key, required this.mood, this.size = 96, this.animate = true, this.stage, this.pot});
   final NoorMood mood;
   final double size;
   final bool animate;
@@ -112,8 +124,14 @@ class Noor extends StatefulWidget {
   /// Growth stage 0–4; null = the signed-in person's sprout ([Noor.myStreak]).
   final int? stage;
 
+  /// Pot colour key ([potColours]); null = the signed-in person's pot ([Noor.myPot]).
+  final String? pot;
+
   /// The signed-in person's streak, so every Noor on screen shows their sprout at the right size.
   static int myStreak = 0;
+
+  /// The signed-in person's chosen pot.
+  static String myPot = 'blue';
 
   @override
   State<Noor> createState() => _NoorState();
@@ -137,12 +155,18 @@ class _NoorState extends State<Noor> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final st = widget.mood == NoorMood.out ? 0 : (widget.stage ?? sproutStage(Noor.myStreak));
-    final img = Image.asset(
-      'assets/sprout/s${st}_${_img(widget.mood)}.png',
+    final pot = potColours.containsKey(widget.pot ?? Noor.myPot) ? (widget.pot ?? Noor.myPot) : 'blue';
+    Widget layer(String f) => Image.asset(
+      'assets/sprout/$f.png',
       width: widget.size,
       height: widget.size,
       filterQuality: FilterQuality.medium,
       gaplessPlayback: true,
+    );
+    final img = SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: Stack(children: [layer('p${st}_${_img(widget.mood)}'), layer('pot_$pot')]),
     );
     if (!widget.animate) return img;
     return RepaintBoundary(

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +12,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'card_screens.dart';
 import 'more_screen.dart';
+import 'today_screen.dart' show setPot;
 
 // A person's page, kept simple: who they are, their sprout and streak. Mine adds edit, SIO card and settings.
 
@@ -41,12 +44,21 @@ class MeScreen extends StatelessWidget {
     ),
     body: Loader<Map<String, dynamic>>(
       cacheKey: 'profile_me',
-      load: () async => _m(await Api.call('${Api.m}profile')),
+      load: () async {
+        final p = _m(await Api.call('${Api.m}profile'));
+        try {
+          final j = _m(await Api.call('${Api.m}journey'));
+          p['_pots'] = _i(_m(j['series'])['pots_unlocked']);
+          if (j['pot'] != null) Noor.myPot = '${j['pot']}';
+        } catch (_) {}
+        return p;
+      },
       builder: (context, p) => [
         _Who(p: p),
         const SizedBox(height: 16),
         _SproutCard(p: p, mine: true),
         const SizedBox(height: 16),
+        if (p['_pots'] != null) ...[_PotPicker(unlocked: math.max(1, _i(p['_pots']))), const SizedBox(height: 16)],
         Row(
           children: [
             Expanded(
@@ -283,4 +295,107 @@ class NudgeButton extends StatelessWidget {
       },
     ),
   );
+}
+
+/// Noor's pots: one new colour from each week's chest. Tap one you've won to use it.
+class _PotPicker extends StatefulWidget {
+  const _PotPicker({required this.unlocked});
+  final int unlocked;
+
+  @override
+  State<_PotPicker> createState() => _PotPickerState();
+}
+
+class _PotPickerState extends State<_PotPicker> {
+  @override
+  Widget build(BuildContext context) {
+    final keys = potColours.keys.toList();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      decoration: BoxDecoration(
+        color: SioColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFCFE5FA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: Text(
+              'NOOR’S POTS · ${widget.unlocked} of ${keys.length}',
+              style: const TextStyle(color: Color(0xFF1A62A8), fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 12),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, top: 2, bottom: 6),
+            child: Text(
+              'Finish a week of the series to open its chest and win a new pot.',
+              style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+            ),
+          ),
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 0.82,
+            children: [
+              for (var i = 0; i < keys.length; i++)
+                Builder(
+                  builder: (context) {
+                    final k = keys[i];
+                    final won = i < widget.unlocked;
+                    final mine = Noor.myPot == k;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () async {
+                        HapticFeedback.selectionClick();
+                        if (!won) {
+                          toast(
+                            context,
+                            'Finish ${i - widget.unlocked + 1} more week${i - widget.unlocked + 1 == 1 ? '' : 's'} to win this one 🎁',
+                          );
+                          return;
+                        }
+                        setState(() {});
+                        await setPot(k);
+                        if (mounted) setState(() {});
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.all(3),
+                        decoration: BoxDecoration(
+                          color: mine ? const Color(0xFFE6F2FD) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: mine ? const Color(0xFF1A62A8) : Colors.transparent, width: 2),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Opacity(
+                              opacity: won ? 1 : 0.3,
+                              child: Noor(mood: NoorMood.happy, size: 52, pot: k, animate: false),
+                            ),
+                            Text(
+                              won ? potColours[k]!.$1 : '🔒',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: won ? SioColors.ink : SioColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

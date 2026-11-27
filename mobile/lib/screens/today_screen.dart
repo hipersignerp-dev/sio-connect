@@ -51,6 +51,7 @@ class TodayScreen extends StatelessWidget {
           final j = _m(await Api.call('${Api.m}journey'));
           final rs = _m(j['reading_streak']);
           Noor.myStreak = _i(rs['current']);
+          if (j['pot'] != null) Noor.myPot = '${j['pot']}';
           final missed = _i(rs['current']) == 0 && _i(rs['best']) > 0;
           Notify.rememberStreak(_i(rs['current']), missed: missed, name: AppState.i.firstName, games: _games);
           if (rs['today'] == true) Notify.markReadToday(_i(rs['current']));
@@ -256,6 +257,10 @@ class _TodayAyah extends StatelessWidget {
     final hadith = r['kind'] == 'Hadith';
     final ar = '${r['text_ar'] ?? ''}';
     final ml = '${r['text_ml'] ?? ''}';
+    final at = _Where(j);
+    final theme = at.week.title.isEmpty
+        ? ''
+        : '${at.week.emoji} ${at.week.title} · day ${at.lesson - at.first + 1} of ${at.week.size}';
     Future<void> open() async {
       HapticFeedback.selectionClick();
       await push(context, AyahReaderScreen(journey: j, games: _games));
@@ -284,7 +289,7 @@ class _TodayAyah extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    hadith ? 'HADITH OF THE DAY' : 'AYAH OF THE DAY',
+                    hadith ? 'TODAY’S HADITH' : 'TODAY’S AYAH',
                     style: const TextStyle(color: _sio, fontWeight: FontWeight.w900, letterSpacing: 1.3, fontSize: 12),
                   ),
                   const Spacer(),
@@ -294,6 +299,14 @@ class _TodayAyah extends StatelessWidget {
                   ),
                 ],
               ),
+              if (theme.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    theme,
+                    style: const TextStyle(color: _mid, fontSize: 12.5, fontWeight: FontWeight.w700),
+                  ),
+                ),
               if (ar.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 SizedBox(
@@ -426,6 +439,61 @@ class _GrowthStrip extends StatelessWidget {
 
 /// The week as a winding garden trail: a soft blue road joins the steps, the walked part darker, little
 /// plants and flowers along the edges, a chest on day 7, and a signpost where Noor grows to a new size.
+/// One themed week of the reading series.
+class _Week {
+  const _Week(this.no, this.title, this.titleMl, this.emoji, this.size);
+  final int no;
+  final String title;
+  final String titleMl;
+  final String emoji;
+  final int size;
+}
+
+/// Where this person is in the series: today's lesson number (counted from their first day ever), the week
+/// it belongs to and the lesson numbers that week covers. Missing a day never moves you back on the path:
+/// the path counts lessons read, the streak (and Noor's size) counts days in a row.
+class _Where {
+  _Where(Map<String, dynamic> j) {
+    final s = _m(j['series']);
+    final rs = _m(j['reading_streak']);
+    readToday = s.isNotEmpty ? s['read_today'] == true : rs['today'] == true;
+    final weeksRaw = [for (final w in (s['weeks'] as List? ?? const [])) _m(w)];
+    if (weeksRaw.isEmpty) {
+      // older server: plain 7-day weeks by streak
+      final streak = _i(rs['current']);
+      lesson = readToday ? math.max(streak, 1) : streak + 1;
+      final w = (lesson - 1) ~/ 7;
+      week = _Week(w + 1, '', '', '', 7);
+      next = _Week(w + 2, '', '', '', 7);
+      first = w * 7 + 1;
+      round = 1;
+      return;
+    }
+    final done = _i(s['done']);
+    final length = math.max(_i(s['length']), 1);
+    lesson = readToday ? math.max(done, 1) : done + 1;
+    final p = (lesson - 1) % length;
+    round = (lesson - 1) ~/ length + 1;
+    var wi = 0;
+    for (var i = 0; i < weeksRaw.length; i++) {
+      final st = _i(weeksRaw[i]['start']);
+      if (p >= st && p < st + _i(weeksRaw[i]['size'])) wi = i;
+    }
+    _Week mk(Map<String, dynamic> w) =>
+        _Week(_i(w['week']), '${w['title'] ?? ''}', '${w['title_ml'] ?? ''}', '${w['emoji'] ?? ''}', _i(w['size']));
+    week = mk(weeksRaw[wi]);
+    next = mk(weeksRaw[(wi + 1) % weeksRaw.length]);
+    first = lesson - (p - _i(weeksRaw[wi]['start']));
+  }
+
+  late final bool readToday;
+  late final int lesson; // today's lesson, 1-based, counted over all time
+  late final _Week week;
+  late final _Week next;
+  late final int first; // lesson number of this week's first step
+  late final int round; // 2 = going through the series a second time
+}
+
 class _Path extends StatelessWidget {
   const _Path({required this.j});
   final Map<String, dynamic> j;
@@ -434,34 +502,44 @@ class _Path extends StatelessWidget {
   Widget build(BuildContext context) {
     final rs = _m(j['reading_streak']);
     final streak = _i(rs['current']);
-    final readToday = rs['today'] == true;
-    final dayNo = readToday ? math.max(streak, 1) : streak + 1; // the step that is "today"
-    final week = (dayNo - 1) ~/ 7; // 0-based
-    final first = week * 7 + 1;
+    final at = _Where(j);
     final reading = j['reading'] == null ? null : _m(j['reading']);
     final kind = reading?['kind'] == 'Hadith' ? 'hadith' : 'ayah';
+    final streakAfterToday = at.readToday ? streak : streak + 1;
+    int streakAt(int d) => streakAfterToday + (d - at.lesson);
 
-    _State st(int d) => d < dayNo || (d == dayNo && readToday)
+    _State st(int d) => d < at.lesson || (d == at.lesson && at.readToday)
         ? _State.done
-        : d == dayNo
+        : d == at.lesson
         ? _State.today
         : _State.locked;
 
+    final last = at.first + at.week.size - 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _WeekBanner(week: week),
+        _WeekBanner(week: at.week, from: at.first, round: at.round),
         const SizedBox(height: 8),
-        _Trail(days: [for (var k = 0; k < 7; k++) first + k], state: st, todayDay: dayNo, kind: kind, j: j),
+        _Trail(
+          days: [for (var k = 0; k < at.week.size; k++) at.first + k],
+          state: st,
+          todayDay: at.lesson,
+          chestDay: last,
+          streakAt: streakAt,
+          kind: kind,
+          j: j,
+        ),
         const SizedBox(height: 6),
-        _WeekBanner(week: week + 1, locked: true),
+        _WeekBanner(week: at.next, from: last + 1, locked: true),
         const SizedBox(height: 8),
         Opacity(
           opacity: 0.55,
           child: _Trail(
-            days: [for (var k = 0; k < 3; k++) first + 7 + k],
+            days: [for (var k = 0; k < math.min(3, at.next.size); k++) last + 1 + k],
             state: (_) => _State.locked,
             todayDay: -1,
+            chestDay: -1,
+            streakAt: streakAt,
             kind: kind,
             j: j,
             fadeOut: true,
@@ -473,13 +551,15 @@ class _Path extends StatelessWidget {
 }
 
 class _WeekBanner extends StatelessWidget {
-  const _WeekBanner({required this.week, this.locked = false});
-  final int week;
+  const _WeekBanner({required this.week, required this.from, this.locked = false, this.round = 1});
+  final _Week week;
+  final int from;
   final bool locked;
+  final int round;
 
   @override
   Widget build(BuildContext context) {
-    final from = week * 7 + 1;
+    final themed = week.title.isNotEmpty;
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 12, 12),
       decoration: BoxDecoration(
@@ -497,19 +577,32 @@ class _WeekBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'WEEK ${week + 1}',
+                  [
+                    'WEEK ${week.no}',
+                    if (round > 1) 'ROUND $round',
+                    if (themed) 'DAYS $from–${from + week.size - 1}',
+                  ].join(' · '),
                   style: TextStyle(
                     color: locked ? _lockInk : Colors.white.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.4,
-                    fontSize: 12.5,
+                    letterSpacing: 1.3,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Days $from–${from + 6}',
-                  style: TextStyle(color: locked ? _lockInk : Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
+                  themed ? '${week.title} ${week.emoji}' : 'Days $from–${from + week.size - 1}',
+                  style: TextStyle(color: locked ? _lockInk : Colors.white, fontWeight: FontWeight.w900, fontSize: 19),
                 ),
+                if (themed && week.titleMl.isNotEmpty)
+                  Text(
+                    week.titleMl,
+                    style: malayalamStyle(
+                      color: locked ? _lockInk : Colors.white.withValues(alpha: 0.85),
+                      size: 13,
+                      weight: FontWeight.w600,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -520,7 +613,7 @@ class _WeekBanner extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
-              child: Noor(mood: NoorMood.happy, size: 44, stage: sproutStage(from + 6), animate: false),
+              child: Noor(mood: NoorMood.happy, size: 44, stage: sproutStage(Noor.myStreak), animate: false),
             ),
         ],
       ),
@@ -535,6 +628,8 @@ class _Trail extends StatelessWidget {
     required this.days,
     required this.state,
     required this.todayDay,
+    required this.chestDay,
+    required this.streakAt,
     required this.kind,
     required this.j,
     this.fadeOut = false,
@@ -542,6 +637,8 @@ class _Trail extends StatelessWidget {
   final List<int> days;
   final _State Function(int day) state;
   final int todayDay;
+  final int chestDay; // the step with the chest (last of the week)
+  final int Function(int day) streakAt; // the streak a step would reach, for "Noor grows here" signposts
   final String kind;
   final Map<String, dynamic> j;
   final bool fadeOut;
@@ -590,7 +687,7 @@ class _Trail extends StatelessWidget {
           Positioned(
             left: p.dx - size / 2,
             top: p.dy - size / 2,
-            child: _Node(day: d, state: s, chest: d % 7 == 0, size: size, kind: kind, j: j),
+            child: _Node(day: d, state: s, chest: d == chestDay, size: size, kind: kind, j: j, todayDay: todayDay),
           ),
         );
         // "START" bubble above today's step
@@ -611,7 +708,7 @@ class _Trail extends StatelessWidget {
             width: 100,
             top: p.dy + size / 2 + 2,
             child: Text(
-              d % 7 == 0 ? 'Day $d · chest' : 'Day $d',
+              d == chestDay ? 'Day $d · chest' : 'Day $d',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: s == _State.locked ? _lockInk : _sio),
             ),
@@ -619,7 +716,8 @@ class _Trail extends StatelessWidget {
         );
         // beside the step: Noor on today's step; a signpost where Noor grows to a new size
         final side = _off(k) > 1 ? -1.0 : 1.0; // the roomier side
-        final grows = d > 1 && sproutStage(d) != sproutStage(d - 1);
+        final proj = streakAt(d);
+        final grows = d >= todayDay && todayDay > 0 && proj > 1 && sproutStage(proj) != sproutStage(proj - 1);
         if (today || (todayIdx < 0 && k == 0 && s == _State.done && !fadeOut)) {
           kids.add(
             Positioned(
@@ -635,7 +733,7 @@ class _Trail extends StatelessWidget {
               left: side > 0 ? w - 118 : 6,
               width: 112,
               top: p.dy - 52,
-              child: _GrowSign(stage: sproutStage(d), reached: s == _State.done),
+              child: _GrowSign(stage: sproutStage(proj), reached: s == _State.done),
             ),
           );
         }
@@ -842,7 +940,9 @@ class _Node extends StatelessWidget {
     required this.size,
     required this.kind,
     required this.j,
+    required this.todayDay,
   });
+  final int todayDay;
   final int day;
   final _State state;
   final bool chest;
@@ -850,15 +950,9 @@ class _Node extends StatelessWidget {
   final String kind;
   final Map<String, dynamic> j;
 
-  int _todayStep() {
-    final rs = _m(j['reading_streak']);
-    final streak = _i(rs['current']);
-    return rs['today'] == true ? math.max(streak, 1) : streak + 1;
-  }
-
   Future<void> _tap(BuildContext context) async {
     HapticFeedback.selectionClick();
-    if (state == _State.today || (state == _State.done && day == _todayStep())) {
+    if (state == _State.today || (state == _State.done && day == todayDay)) {
       await push(context, AyahReaderScreen(journey: j, games: _games));
       AppState.i.refreshAll();
     } else if (state == _State.done) {
@@ -943,28 +1037,30 @@ class _Node extends StatelessWidget {
   }
 }
 
-/// After today's ayah: Noor celebrates, grows if it reached a new stage, and a chest opens every 7th day.
-Future<void> celebrateSprout(BuildContext context, Map<String, dynamic> r) {
+/// After today's ayah: Noor celebrates, grows if it reached a new stage, and when the lesson finishes a themed
+/// week, the chest opens with a new pot colour for Noor.
+Future<void> celebrateSprout(BuildContext context, Map<String, dynamic> r) async {
   final n = _i(r['current']);
   final grew = n > 0 && sproutStage(n) != sproutStage(n - 1);
-  final chest = n > 0 && n % 7 == 0;
+  final week = r['week_done'] == null ? null : _m(r['week_done']);
+  final newPot = r['new_pot'] == null ? null : '${r['new_pot']}';
   HapticFeedback.heavyImpact();
   Noor.myStreak = n;
-  final title = n <= 1
+  final title = n <= 1 && week == null
       ? 'You planted Noor! 🌱'
+      : week != null
+      ? 'Week complete! 🎁'
       : grew
       ? 'Noor grew! ${sproutStageNames[sproutStage(n)]}'
-      : chest
-      ? 'Week ${n ~/ 7} complete! 🎁'
       : 'Day $n done!';
-  final sub = n <= 1
+  final sub = n <= 1 && week == null
       ? 'Water it with one ayah every day and watch it grow.'
+      : week != null
+      ? 'You finished “${week['title']}” ${week['emoji'] ?? ''}. ${newPot != null ? 'The chest opened: a new pot for Noor!' : 'MashaAllah!'}'
       : grew
       ? 'MashaAllah, $n days in a row. Keep going!'
-      : chest
-      ? '$n days in a row. Noor is so proud of you.'
       : (nextGrowth(n) ?? 'Noor is in full bloom. See you tomorrow!');
-  return showGeneralDialog<void>(
+  final use = await showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Close',
@@ -977,15 +1073,31 @@ Future<void> celebrateSprout(BuildContext context, Map<String, dynamic> r) {
         child: child,
       ),
     ),
-    pageBuilder: (ctx, _, _) => _SproutCelebration(n: n, title: title, sub: sub),
+    pageBuilder: (ctx, _, _) => _SproutCelebration(n: n, title: title, sub: sub, newPot: newPot),
   );
+  if (use == true && newPot != null) {
+    await setPot(newPot);
+  }
+}
+
+/// Puts Noor in a pot colour (one already won).
+Future<void> setPot(String pot) async {
+  final old = Noor.myPot;
+  Noor.myPot = pot;
+  try {
+    await Api.call('${Api.m}update_my_profile', {'noor_pot': pot});
+    AppState.i.refreshAll();
+  } catch (_) {
+    Noor.myPot = old;
+  }
 }
 
 class _SproutCelebration extends StatefulWidget {
-  const _SproutCelebration({required this.n, required this.title, required this.sub});
+  const _SproutCelebration({required this.n, required this.title, required this.sub, this.newPot});
   final int n;
   final String title;
   final String sub;
+  final String? newPot;
 
   @override
   State<_SproutCelebration> createState() => _SproutCelebrationState();
@@ -1018,7 +1130,26 @@ class _SproutCelebrationState extends State<_SproutCelebration> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Noor(mood: NoorMood.celebrate, size: 170, stage: sproutStage(widget.n)),
+            if (widget.newPot != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('🎁', style: TextStyle(fontSize: 34)),
+                  const SizedBox(width: 6),
+                  Noor(mood: NoorMood.celebrate, size: 150, stage: sproutStage(widget.n), pot: widget.newPot),
+                ],
+              ),
+              Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(color: potColours[widget.newPot]?.$2 ?? _sio, borderRadius: BorderRadius.circular(20)),
+                child: Text(
+                  'New pot: ${potColours[widget.newPot]?.$1 ?? widget.newPot}',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ] else
+              Noor(mood: NoorMood.celebrate, size: 170, stage: sproutStage(widget.n)),
             if (_games && widget.n > 0)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1052,10 +1183,15 @@ class _SproutCelebrationState extends State<_SproutCelebration> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('CONTINUE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1)),
+                onPressed: () => Navigator.of(context).pop(widget.newPot != null),
+                child: Text(
+                  widget.newPot != null ? 'USE THE NEW POT' : 'CONTINUE',
+                  style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1),
+                ),
               ),
             ),
+            if (widget.newPot != null)
+              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep my pot')),
           ],
         ),
       ),

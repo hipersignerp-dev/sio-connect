@@ -1,3 +1,4 @@
+# @include journey
 if not ctx["member"]:
     frappe.throw(_("No member record for this account."))
 m = frappe.get_doc("SIO Member", ctx["member"].name)
@@ -8,6 +9,12 @@ if args.get("life_stage") is not None:
     m.life_stage = args.get("life_stage") if args.get("life_stage") in ("School", "College", "Working", "Other") else None
 if args.get("phone_visibility") in ("Leaders only", "Friends", "My unit", "All members"):
     m.phone_visibility = args.get("phone_visibility")
+if args.get("noor_pot"):
+    # only a pot colour already won from the weekly chests
+    rows, weeks = reading_series()
+    unlocked = series_state(m.name, rows, weeks)["pots_unlocked"]
+    if args.get("noor_pot") in POTS[:unlocked]:
+        m.noor_pot = args.get("noor_pot")
 if args.get("hide_games") is not None:
     m.hide_games = 1 if frappe.utils.cint(args.get("hide_games")) else 0
 

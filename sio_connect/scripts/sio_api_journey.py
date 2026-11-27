@@ -69,6 +69,39 @@ def member_days(member, activity):
         "select distinct day from `tabSIO Streak Day` where member = %s and activity = %s", (member, activity))]
 
 
+POTS = ["blue", "green", "red", "purple", "orange", "teal", "pink", "gold"]
+
+
+def reading_series():
+    # the daily readings in series order: themed weeks, then the order inside each week
+    rows = frappe.get_all("SIO Daily Reading", filters={"active": 1},
+                          fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml", "audio",
+                                  "filled_from_quran_api", "series_week", "series_title", "series_title_ml", "series_emoji",
+                                  "sort_order"])
+    rows.sort(key=lambda r: (r.series_week or 999, r.sort_order or 0))
+    weeks = []
+    for i, r in enumerate(rows):
+        w = r.series_week or 0
+        if not weeks or weeks[-1]["week"] != w:
+            weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
+                          "emoji": r.series_emoji or "", "start": i, "size": 0})
+        weeks[-1]["size"] += 1
+    return rows, weeks
+
+
+def series_state(member, rows, weeks):
+    # how far this person is: lessons done (days read, ever), today's lesson, weeks (chests) completed
+    days = member_days(member, "Reading")
+    done = len(days)
+    today = frappe.utils.getdate(frappe.utils.nowdate())
+    read_today = today in [frappe.utils.getdate(d) for d in days]
+    pos = done - 1 if read_today else done
+    n = len(rows) or 1
+    completed = (done // n) * len(weeks) + len([w for w in weeks if w["start"] + w["size"] <= done % n])
+    return {"done": done, "pos": max(pos, 0), "read_today": read_today, "length": len(rows),
+            "completed_weeks": completed, "pots_unlocked": min(len(POTS), 1 + completed)}
+
+
 def attendance_streak(member):
     # meetings in a row (most recent completed meetings this person was on the list for) where they were present
     rows = frappe.db.sql(
@@ -240,14 +273,15 @@ if not m:
     frappe.throw(_("Your student record is not set up yet."))
 me_doc = frappe.db.get_value("SIO Member", m.name, ["name", "full_name", "username", "photo", "unit", "area",
                                                      "member_role"], as_dict=True)
-rows = frappe.get_all("SIO Daily Reading", filters={"active": 1},
-                      fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml", "audio", "filled_from_quran_api"],
-                      order_by="sort_order asc, creation asc")
+rows, weeks = reading_series()
+progress = series_state(m.name, rows, weeks)
 reading = None
 if rows:
-    day_no = frappe.utils.date_diff(frappe.utils.nowdate(), "2026-01-01")
-    reading = fill_ayah(rows[day_no % len(rows)])
+    # each person walks the series at their own pace: today's lesson is the next one they haven't read
+    reading = fill_ayah(rows[progress["pos"] % len(rows)])
     reading["audio"] = [u for u in (reading.get("audio") or "").split("\n") if u]
+series_out = dict(progress)
+series_out["weeks"] = weeks
 b = badges_for(me_doc)
 today = frappe.utils.nowdate()
 quiz = frappe.db.sql(
@@ -273,6 +307,8 @@ frappe.response["message"] = {
     "me": card(me_doc), "reading": reading, "reading_streak": b["reading"], "attendance": b["attendance"],
     "quiz_streak": b["quiz"], "quiz": quiz, "badges": b["badges"], "friends": b["friends"], "invited": b["invited"],
     "friend_requests": pending, "unit_today": unit_today,
+    "series": series_out,
+    "pot": frappe.db.get_value("SIO Member", m.name, "noor_pot") or "blue",
     "invite_text": "Join me on SIO Connect, the app of SIO Ottapalam Area: programmes, photos, daily ayah streak, "
                    "quiz and more. " + frappe.utils.get_url("/go" + ("?i=" + me_doc.username if me_doc.username else ""))
                    + (" (my invite code: " + me_doc.username + ")" if me_doc.username else ""),

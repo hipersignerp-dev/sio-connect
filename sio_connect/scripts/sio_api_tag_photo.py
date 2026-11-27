@@ -122,6 +122,39 @@ def member_days(member, activity):
         "select distinct day from `tabSIO Streak Day` where member = %s and activity = %s", (member, activity))]
 
 
+POTS = ["blue", "green", "red", "purple", "orange", "teal", "pink", "gold"]
+
+
+def reading_series():
+    # the daily readings in series order: themed weeks, then the order inside each week
+    rows = frappe.get_all("SIO Daily Reading", filters={"active": 1},
+                          fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml", "audio",
+                                  "filled_from_quran_api", "series_week", "series_title", "series_title_ml", "series_emoji",
+                                  "sort_order"])
+    rows.sort(key=lambda r: (r.series_week or 999, r.sort_order or 0))
+    weeks = []
+    for i, r in enumerate(rows):
+        w = r.series_week or 0
+        if not weeks or weeks[-1]["week"] != w:
+            weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
+                          "emoji": r.series_emoji or "", "start": i, "size": 0})
+        weeks[-1]["size"] += 1
+    return rows, weeks
+
+
+def series_state(member, rows, weeks):
+    # how far this person is: lessons done (days read, ever), today's lesson, weeks (chests) completed
+    days = member_days(member, "Reading")
+    done = len(days)
+    today = frappe.utils.getdate(frappe.utils.nowdate())
+    read_today = today in [frappe.utils.getdate(d) for d in days]
+    pos = done - 1 if read_today else done
+    n = len(rows) or 1
+    completed = (done // n) * len(weeks) + len([w for w in weeks if w["start"] + w["size"] <= done % n])
+    return {"done": done, "pos": max(pos, 0), "read_today": read_today, "length": len(rows),
+            "completed_weeks": completed, "pots_unlocked": min(len(POTS), 1 + completed)}
+
+
 def attendance_streak(member):
     # meetings in a row (most recent completed meetings this person was on the list for) where they were present
     rows = frappe.db.sql(
