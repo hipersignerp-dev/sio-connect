@@ -33,10 +33,10 @@ class _ProgrammesScreenState extends State<ProgrammesScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SioColors.background,
+    backgroundColor: const Color(0xFFEFF6FD),
     appBar: AppBar(
-      backgroundColor: SioColors.background,
-      surfaceTintColor: SioColors.background,
+      backgroundColor: const Color(0xFFEFF6FD),
+      surfaceTintColor: const Color(0xFFEFF6FD),
       automaticallyImplyLeading: false,
       title: const Text('Programmes', style: TextStyle(fontWeight: FontWeight.w800)),
       actions: [
@@ -148,7 +148,7 @@ class _ProgrammeRowState extends State<_ProgrammeRow> {
     final ok = await run(
       context,
       () => Api.call('${Api.m}register_event', {'event': widget.e['name'], 'cancel': was ? 1 : 0}),
-      done: was ? 'Removed' : 'See you there! 🙌',
+      done: was ? 'Okay, you’re not going' : 'See you there! 🙌',
     );
     if (mounted) {
       setState(() {
@@ -161,99 +161,224 @@ class _ProgrammeRowState extends State<_ProgrammeRow> {
     }
   }
 
+  static const _deep = Color(0xFF0E3F70);
+  static const _sio = Color(0xFF1A62A8);
+  static const _mid = Color(0xFF2F7BC4);
+  static const _light = Color(0xFF5AA6E8);
+  static const _grey = Color(0xFF5B6B7C);
+
+  /// A picture for the kind of programme, from its type or title.
+  static String _emoji(Map e) {
+    final t = '${e['event_type'] ?? ''} ${e['title'] ?? ''}'.toLowerCase();
+    if (t.contains('tour') || t.contains('trip') || t.contains('yatra')) return '🚌';
+    if (t.contains('class') || t.contains('study') || t.contains('quran') || t.contains('halaqa')) return '📖';
+    if (t.contains('camp')) return '⛺';
+    if (t.contains('sport') || t.contains('football') || t.contains('match') || t.contains('cricket')) return '⚽';
+    if (t.contains('iftar') || t.contains('ramadan') || t.contains('eid')) return '🌙';
+    if (t.contains('meet') || t.contains('conference') || t.contains('sammelan')) return '🤝';
+    if (t.contains('blood') || t.contains('relief') || t.contains('service') || t.contains('help')) return '❤️';
+    if (t.contains('protest') || t.contains('rally') || t.contains('march')) return '📣';
+    return '✨';
+  }
+
+  /// "Today", "Tomorrow", "In 3 days".
+  static String? _when(DateTime? d) {
+    if (d == null) return null;
+    final now = DateTime.now();
+    final days = DateTime(d.year, d.month, d.day).difference(DateTime(now.year, now.month, now.day)).inDays;
+    if (days < 0) return null;
+    if (days == 0) return d.isBefore(now) ? 'Happening now' : 'Today';
+    if (days == 1) return 'Tomorrow';
+    return 'In $days days';
+  }
+
+  Widget _info(IconData icon, String text) => Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Row(
+      children: [
+        Icon(icon, size: 18, color: _mid),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF2B3A4A), fontSize: 14.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  void _open() => push(context, EventDetailScreen(name: '${widget.e['name']}', title: '${widget.e['title']}'));
+
   @override
   Widget build(BuildContext context) {
     final e = widget.e;
     final d = parseDate(e['starts_on']);
     final canGo = !widget.past && AppState.i.can('register_events') && e['status'] != 'Completed';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: SioColors.card,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => push(context, EventDetailScreen(name: '${e['name']}', title: '${e['title']}')),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Container(
-                  width: 54,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: widget.past ? SioColors.greyBg : SioColors.blue,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        d == null ? '–' : DateFormat('d').format(d),
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          height: 1,
-                          color: widget.past ? SioColors.ink : Colors.white,
+    final venue = '${e['venue'] ?? ''}';
+    final where = '${e['unit'] ?? ''}'.isEmpty ? 'Area-wide programme' : 'SIO ${e['unit']}';
+    if (widget.past) {
+      // past ones stay small
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: _open,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Text(_emoji(e), style: const TextStyle(fontSize: 24)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${e['title']}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: _deep),
                         ),
-                      ),
-                      Text(
-                        d == null ? '' : DateFormat('MMM').format(d).toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: widget.past ? SioColors.textSecondary : Colors.white70,
+                        Text(
+                          [if (d != null) DateFormat('d MMM').format(d), where].join(' · '),
+                          style: const TextStyle(color: _grey, fontSize: 13),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${e['title']}',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: SioColors.ink),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        [
-                          if (d != null) DateFormat('EEE, h:mm a').format(d),
-                          if ('${e['venue'] ?? ''}'.isNotEmpty) '${e['venue']}',
-                        ].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: SioColors.textSecondary, fontSize: 13),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${e['unit'] ?? ''}'.isEmpty ? 'Area-wide' : 'SIO ${e['unit']}',
-                        style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
-                      ),
-                      const SizedBox(height: 4),
-                      FacesGoing(e: e, extra: _count - numOf(e['registered_count']).toInt()),
-                    ],
-                  ),
-                ),
-                if (canGo) ...[
-                  const SizedBox(width: 8),
-                  _going
-                      ? FilledButton.tonal(
-                          onPressed: _busy ? null : _toggle,
-                          style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
-                          child: const Text('✓ Going'),
-                        )
-                      : FilledButton(
-                          onPressed: _busy ? null : _toggle,
-                          style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
-                          child: const Text('I’ll go'),
-                        ),
+                  const Icon(Icons.chevron_right, color: _grey),
                 ],
-              ],
+              ),
             ),
+          ),
+        ),
+      );
+    }
+    final soon = _when(d);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Material(
+        color: Colors.white,
+        elevation: 0,
+        borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _open,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // the colourful top: picture, date, how soon
+              Container(
+                height: 112,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [_sio, _light]),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -8,
+                      bottom: -18,
+                      child: Opacity(opacity: 0.9, child: Text(_emoji(e), style: const TextStyle(fontSize: 92))),
+                    ),
+                    Positioned(
+                      left: 14,
+                      top: 14,
+                      child: Container(
+                        width: 62,
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                        child: Column(
+                          children: [
+                            Text(
+                              d == null ? '' : DateFormat('EEE').format(d).toUpperCase(),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _mid, letterSpacing: 1),
+                            ),
+                            Text(
+                              d == null ? '–' : DateFormat('d').format(d),
+                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, height: 1.1, color: _deep),
+                            ),
+                            Text(
+                              d == null ? '' : DateFormat('MMM').format(d).toUpperCase(),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _mid, letterSpacing: 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (soon != null)
+                      Positioned(
+                        left: 88,
+                        top: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            soon,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${e['title']}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: _deep, height: 1.2),
+                    ),
+                    const SizedBox(height: 4),
+                    if (d != null) _info(Icons.schedule_rounded, DateFormat('EEEE, h:mm a').format(d)),
+                    if (venue.isNotEmpty) _info(Icons.place_outlined, venue),
+                    _info(Icons.groups_2_outlined, where),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: FacesGoing(e: e, extra: _count - numOf(e['registered_count']).toInt())),
+                        if (canGo)
+                          SizedBox(
+                            height: 46,
+                            child: _going
+                                ? OutlinedButton.icon(
+                                    onPressed: _busy ? null : _toggle,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: _sio,
+                                      side: const BorderSide(color: _sio, width: 1.5),
+                                      shape: const StadiumBorder(),
+                                    ),
+                                    icon: const Icon(Icons.check_rounded),
+                                    label: const Text('Going', style: TextStyle(fontWeight: FontWeight.w800)),
+                                  )
+                                : FilledButton(
+                                    onPressed: _busy ? null : _toggle,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: _sio,
+                                      padding: const EdgeInsets.symmetric(horizontal: 22),
+                                      shape: const StadiumBorder(),
+                                    ),
+                                    child: const Text('I’ll go 🙌', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                                  ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

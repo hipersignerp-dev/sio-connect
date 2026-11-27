@@ -120,8 +120,11 @@ ThemeData buildTheme() {
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
-      backgroundColor: SioColors.text,
-      contentTextStyle: TextStyle(color: Colors.white),
+      backgroundColor: const Color(0xFF0E3F70),
+      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
+      actionTextColor: const Color(0xFF9FD0FF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 6,
     ),
     listTileTheme: ListTileThemeData(iconColor: SioColors.blue, textColor: SioColors.text),
     chipTheme: base.chipTheme.copyWith(

@@ -22,22 +22,6 @@ Future<void> showAppearance(BuildContext context) => showModalBottomSheet<void>(
           children: [
             const Text('Appearance', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 14),
-            const Text('Theme', style: TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: 'light', icon: Icon(Icons.light_mode_outlined), label: Text('Light')),
-                ButtonSegment(value: 'dark', icon: Icon(Icons.dark_mode_outlined), label: Text('Dark')),
-                ButtonSegment(value: 'system', icon: Icon(Icons.phone_android), label: Text('Phone')),
-              ],
-              selected: {Look.mode},
-              onSelectionChanged: (v) {
-                Navigator.of(context).pop();
-                Look.set(theme: v.first);
-              },
-            ),
-            const SizedBox(height: 18),
             const Text('Text size', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             SegmentedButton<double>(

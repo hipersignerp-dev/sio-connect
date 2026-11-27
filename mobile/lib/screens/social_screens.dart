@@ -23,6 +23,7 @@ import 'event_detail_screen.dart';
 import 'find_members_screen.dart';
 import 'home_screen.dart';
 import 'home_shell.dart';
+import 'ayah_quiz.dart';
 import 'journey_screens.dart';
 import 'meeting_screens.dart';
 import 'more_screen.dart';
@@ -1134,7 +1135,7 @@ class AyahReaderScreen extends StatelessWidget {
                 mood: mood,
                 text: rs['today'] == true
                     ? noorLine(mood, streak: _i(rs['current']), name: AppState.i.firstName, games: games)
-                    : 'Listen to the end, or tap “I read it”, to water me today 💧',
+                    : 'Listen, then answer 2 quick questions to water me today 💧',
               ),
             );
           },
@@ -1300,9 +1301,18 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
 
   bool get _done => _readNow || _m(widget.journey['reading_streak'])['today'] == true;
 
-  /// Listening to the whole recitation (or the Malayalam reading) counts as reading today.
+  /// Listening to the end (or "I read it") opens 2 quick questions; both right = read today.
   void _finishedListening() {
-    if (!_done && !_busy) _read();
+    if (!_done && !_busy) _quizThenRead();
+  }
+
+  bool _quizOpen = false;
+  Future<void> _quizThenRead() async {
+    if (_quizOpen || _busy || _done) return;
+    _quizOpen = true;
+    final ok = await askAyahQuiz(context, _m(widget.journey['reading']));
+    _quizOpen = false;
+    if (ok && mounted) await _read();
   }
 
   @override
@@ -1431,7 +1441,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
               const Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
-                  'Listen till the end and it counts as read today.',
+                  'Listen till the end, then answer 2 quick questions to water Noor 💧',
                   style: TextStyle(color: Color(0xFF6B8299), fontSize: 12),
                 ),
               ),
@@ -1494,7 +1504,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: const StadiumBorder(),
                           ),
-                          onPressed: _busy ? null : _read,
+                          onPressed: _busy ? null : _quizThenRead,
                           icon: const Icon(Icons.water_drop_rounded, color: Colors.white),
                           label: Text(_busy ? 'Saving…' : 'I read it', style: const TextStyle(fontWeight: FontWeight.w800)),
                         ),

@@ -3,15 +3,14 @@ import 'package:material_ui/material_ui.dart';
 import 'api.dart';
 import 'theme.dart';
 
-/// Appearance chosen in Settings: light (default) / dark / follow the phone, and text size.
+/// Appearance: the app is always light (SIO light blue), whatever the phone's setting; text size is chosen in Settings.
 class Look {
   static final changes = ValueNotifier<int>(0);
   static String get mode => Api.prefs.getString('theme_mode') ?? 'light';
   static double get textScale => Api.prefs.getDouble('text_scale') ?? 1.0;
 
   static void apply() {
-    final phoneDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
-    SioColors.dark = mode == 'dark' || (mode == 'system' && phoneDark);
+    SioColors.dark = false;
   }
 
   static Future<void> set({String? theme, double? scale}) async {

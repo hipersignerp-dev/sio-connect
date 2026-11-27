@@ -62,7 +62,8 @@ def reading_series():
     rows = frappe.get_all("SIO Daily Reading", filters={"active": 1},
                           fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml", "audio",
                                   "filled_from_quran_api", "ml_audio", "series_week", "series_title", "series_title_ml", "series_emoji",
-                                  "sort_order"])
+                                  "sort_order", "q1", "q1_answer", "q1_wrong_1", "q1_wrong_2",
+                                  "q2", "q2_answer", "q2_wrong_1", "q2_wrong_2"])
     rows.sort(key=lambda r: (r.series_week or 999, r.sort_order or 0))
     weeks = []
     for i in range(len(rows)):
