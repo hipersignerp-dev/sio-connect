@@ -20,7 +20,7 @@ class PrayerAlarms {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static const _base = 9000; // notification ids 9000–9499
 
-  static const sounds = {'ayah': 'Recitation: Kullu nafsin dhā’iqatul mawt (29:57)', 'chime': 'Soft chime', 'bell': 'Bell', 'soft': 'Gentle tone', 'default': 'Phone’s sound'};
+  static const sounds = {'azan': 'Azan (short: the opening Allāhu Akbar)', 'ayah': 'Recitation: Kullu nafsin dhā’iqatul mawt (29:57)', 'chime': 'Soft chime', 'bell': 'Bell', 'soft': 'Gentle tone', 'default': 'Phone’s sound'};
   static const defaultOffsets = [0, 15];
 
   // ---- settings (kept on the phone)
@@ -38,7 +38,9 @@ class PrayerAlarms {
     return o..sort();
   }
 
-  static Future<String> sound() async => (await _p).getString('pa_sound') ?? 'ayah';
+  /// The sound at azan time, and the sound for the other reminders (15 min after, or before).
+  static Future<String> sound() async => (await _p).getString('pa_sound') ?? 'azan';
+  static Future<String> soundAfter() async => (await _p).getString('pa_sound_after') ?? 'ayah';
 
   // ---- an uploaded sound (an azan downloaded from the internet, a recording…)
   static const _soundCh = MethodChannel('com.hipersign.sio_connect/sound');
@@ -83,12 +85,13 @@ class PrayerAlarms {
     return name;
   }
 
-  static Future<void> save({bool? enabled, Set<String>? on, List<int>? offsets, String? sound}) async {
+  static Future<void> save({bool? enabled, Set<String>? on, List<int>? offsets, String? sound, String? soundAfter}) async {
     final p = await _p;
     if (enabled != null) await p.setBool('pa_enabled', enabled);
     if (on != null) await p.setStringList('pa_on', on.toList());
     if (offsets != null) await p.setStringList('pa_offsets', [for (final o in offsets.toSet()) '$o']);
     if (sound != null) await p.setString('pa_sound', sound);
+    if (soundAfter != null) await p.setString('pa_sound_after', soundAfter);
     await schedule();
   }
 
@@ -195,15 +198,17 @@ class PrayerAlarms {
         channelDescription: 'Reminders for the five prayers',
         importance: Importance.max,
         priority: Priority.high,
-        category: sound == 'ayah' ? AndroidNotificationCategory.alarm : AndroidNotificationCategory.reminder,
-        // the recitation plays in full, at alarm volume, so it is never cut off mid-ayah
-        audioAttributesUsage: sound == 'ayah' ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
+        category: _voice(sound) ? AndroidNotificationCategory.alarm : AndroidNotificationCategory.reminder,
+        // the azan and the recitation play in full, at alarm volume, so they are never cut off
+        audioAttributesUsage: _voice(sound) ? AudioAttributesUsage.alarm : AudioAttributesUsage.notification,
         sound: sound == 'default' ? null : RawResourceAndroidNotificationSound('prayer_$sound'),
         styleInformation: style,
         largeIcon: const DrawableResourceAndroidBitmap('noor_hello'),
       ),
     );
   }
+
+  static bool _voice(String sound) => sound == 'azan' || sound == 'ayah';
 
   static String _hm(DateTime t) {
     final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
@@ -250,7 +255,8 @@ class PrayerAlarms {
       if (!await enabled()) return;
       final on = await prayersOn();
       final offs = await offsets();
-      final snd = await sound();
+      final sndAzan = await sound();
+      final sndAfter = await soundAfter();
       final exact = await exactAllowed();
       final now = DateTime.now();
       final ids = <String>[];
@@ -263,6 +269,7 @@ class PrayerAlarms {
             final when = at.add(Duration(minutes: o));
             if (!when.isAfter(now.add(const Duration(seconds: 30))) || n >= 450) continue;
             final id = _base + n++;
+            final snd = o == 0 ? sndAzan : sndAfter;
             final (title, text) = _text(prayer, at, o);
             final body = snd == 'ayah' ? withAyah(text) : text;
             await _plugin.zonedSchedule(
@@ -292,12 +299,13 @@ class PrayerAlarms {
     await p.setString('pa_last', today);
   }
 
-  /// A reminder right now, to hear the sound.
-  static Future<void> test() async {
+  /// A reminder right now, to hear the sound: the azan-time one, or the one 15 minutes after.
+  static Future<void> test({bool after = false}) async {
     await _init();
-    final snd = await sound();
+    final snd = after ? await soundAfter() : await sound();
+    final title = after ? 'Did you pray Dhuhr? 🤲' : 'It’s time for Dhuhr · ളുഹ്ർ';
     const text = 'This is how your prayer reminder will look 🕌';
     final body = snd == 'ayah' ? withAyah(text) : text;
-    await _plugin.show(_base + 499, 'It’s time for Dhuhr · ളുഹ്ർ', body, await _details(snd, big: body));
+    await _plugin.show(_base + (after ? 498 : 499), title, body, await _details(snd, big: body));
   }
 }

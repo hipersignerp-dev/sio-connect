@@ -25,7 +25,8 @@ class _PrayerTabState extends State<PrayerTab> {
   PrayerTimes? _p;
   Set<String> _on = {};
   List<int> _offs = [];
-  String _sound = 'chime';
+  String _sound = 'azan';
+  String _soundAfter = 'ayah';
   bool _enabled = true;
   bool _exact = true;
   String? _custom; // name of the uploaded sound
@@ -47,6 +48,7 @@ class _PrayerTabState extends State<PrayerTab> {
     final on = await PrayerAlarms.prayersOn();
     final offs = await PrayerAlarms.offsets();
     final snd = await PrayerAlarms.sound();
+    final sndAfter = await PrayerAlarms.soundAfter();
     final en = await PrayerAlarms.enabled();
     final ex = await PrayerAlarms.exactAllowed();
     final custom = await PrayerAlarms.customName();
@@ -56,12 +58,60 @@ class _PrayerTabState extends State<PrayerTab> {
         _on = on;
         _offs = offs;
         _sound = snd;
+        _soundAfter = sndAfter;
         _enabled = en;
         _exact = ex;
         _custom = custom;
       });
     }
   }
+
+  Future<void> _preview(String v) async {
+    if (v == 'default') return;
+    try {
+      if (v == 'custom') {
+        final path = await PrayerAlarms.customPath();
+        if (path == null) return;
+        await _player.setFilePath(path);
+      } else {
+        await _player.setAsset('assets/sounds/prayer_$v.ogg');
+      }
+      await _player.play();
+    } catch (_) {}
+  }
+
+  Widget _soundPicker(String value, void Function(String) pick) => RadioGroup<String>(
+    groupValue: value,
+    onChanged: (v) {
+      if (v == null) return;
+      pick(v);
+      _preview(v);
+    },
+    child: Column(
+      children: [
+        for (final e in PrayerAlarms.sounds.entries)
+          RadioListTile<String>(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: e.key,
+            title: Text(e.value),
+            subtitle: e.key == 'ayah'
+                ? const Text(
+                    'كُلُّ نَفْسٍ ذَائِقَةُ الْمَوْتِ ۖ ثُمَّ إِلَيْنَا تُرْجَعُونَ\nEvery soul will taste death, then to Us you will return · Mishary Alafasy',
+                  )
+                : null,
+          ),
+        if (_custom != null)
+          RadioListTile<String>(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: 'custom',
+            title: Text(_custom!),
+            subtitle: const Text('Your uploaded sound · plays in full, at alarm volume'),
+          ),
+      ],
+    ),
+  );
 
   @override
   void dispose() {
@@ -297,50 +347,22 @@ class _PrayerTabState extends State<PrayerTab> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Sound',
+                'Sound at azan time',
                 style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
               ),
-              RadioGroup<String>(
-                groupValue: _sound,
-                onChanged: (v) async {
-                  if (v == null) return;
-                  setState(() => _sound = v);
-                  if (v != 'default') {
-                    try {
-                      if (v == 'custom') {
-                        final path = await PrayerAlarms.customPath();
-                        if (path != null) await _player.setFilePath(path);
-                      } else {
-                        await _player.setAsset('assets/sounds/prayer_$v.ogg');
-                      }
-                      await _player.play();
-                    } catch (_) {}
-                  }
-                  await PrayerAlarms.save(sound: v);
-                },
-                child: Column(
-                  children: [
-                    for (final e in PrayerAlarms.sounds.entries)
-                      RadioListTile<String>(
-                        contentPadding: EdgeInsets.zero,
-                        value: e.key,
-                        title: Text(e.value),
-                        subtitle: e.key == 'ayah'
-                            ? const Text(
-                                'كُلُّ نَفْسٍ ذَائِقَةُ الْمَوْتِ ۖ ثُمَّ إِلَيْنَا تُرْجَعُونَ\nEvery soul will taste death, then to Us you will return · Mishary Alafasy',
-                              )
-                            : null,
-                      ),
-                    if (_custom != null)
-                      RadioListTile<String>(
-                        contentPadding: EdgeInsets.zero,
-                        value: 'custom',
-                        title: Text(_custom!),
-                        subtitle: const Text('Your uploaded sound · plays in full, at alarm volume'),
-                      ),
-                  ],
-                ),
+              _soundPicker(_sound, (v) {
+                setState(() => _sound = v);
+                PrayerAlarms.save(sound: v);
+              }),
+              const SizedBox(height: 8),
+              Text(
+                'Sound for the other reminders (e.g. 15 min after)',
+                style: TextStyle(fontWeight: FontWeight.w800, color: SioColors.ink),
               ),
+              _soundPicker(_soundAfter, (v) {
+                setState(() => _soundAfter = v);
+                PrayerAlarms.save(soundAfter: v);
+              }),
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: OutlinedButton.icon(
@@ -350,7 +372,7 @@ class _PrayerTabState extends State<PrayerTab> {
                       final name = await PrayerAlarms.pickCustom();
                       if (name == null) return;
                       await _load();
-                      if (context.mounted) toast(context, '“$name” will play for prayer reminders');
+                      if (context.mounted) toast(context, '“$name” will play at azan time');
                     } catch (e) {
                       if (context.mounted) toast(context, '$e'.replaceFirst('Exception: ', ''));
                     }
@@ -366,10 +388,21 @@ class _PrayerTabState extends State<PrayerTab> {
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
-                child: OutlinedButton.icon(
-                  onPressed: () => PrayerAlarms.test(),
-                  icon: const Icon(Icons.notifications_outlined),
-                  label: const Text('Send me a test reminder'),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => PrayerAlarms.test(),
+                      icon: const Icon(Icons.notifications_outlined),
+                      label: const Text('Test: azan time'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => PrayerAlarms.test(after: true),
+                      icon: const Icon(Icons.notifications_outlined),
+                      label: const Text('Test: 15 min after'),
+                    ),
+                  ],
                 ),
               ),
             ],
