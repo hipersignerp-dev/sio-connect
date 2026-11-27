@@ -86,7 +86,7 @@ def reading_series():
         if not weeks or weeks[-1]["week"] != w:
             weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
                           "emoji": r.series_emoji or "", "start": i, "size": 0})
-        weeks[-1]["size"] += 1
+        weeks[-1]["size"] = weeks[-1]["size"] + 1
     return rows, weeks
 
 
