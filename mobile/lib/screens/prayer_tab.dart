@@ -476,6 +476,14 @@ class _PrayerTabState extends State<PrayerTab> {
                       icon: const Icon(Icons.notifications_outlined),
                       label: const Text('Test: 15 min after'),
                     ),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        await PrayerAlarms.test(after: true, delay: const Duration(seconds: 10));
+                        if (context.mounted) toast(context, 'Lock your phone now. It will ring in 10 seconds 🔒');
+                      },
+                      icon: const Icon(Icons.lock_clock),
+                      label: const Text('Test on lock screen (10 s)'),
+                    ),
                   ],
                 ),
               ),

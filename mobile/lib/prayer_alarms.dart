@@ -24,7 +24,7 @@ class PrayerAlarms {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static const _base = 9000; // notification ids 9000–9499
 
-  static const sounds = {'azan': 'Azan (short: the opening Allāhu Akbar)', 'ayah': 'Recitation: Kullu nafsin dhā’iqatul mawt (29:57)', 'chime': 'Soft chime', 'bell': 'Bell', 'soft': 'Gentle tone', 'default': 'Phone’s sound'};
+  static const sounds = {'azan': 'Azan · Sabah Fakhri (the opening Allāhu Akbar)', 'ayah': 'Recitation: Kullu nafsin dhā’iqatul mawt (29:57)', 'chime': 'Soft chime', 'bell': 'Bell', 'soft': 'Gentle tone', 'default': 'Phone’s sound'};
   static const defaultOffsets = [0, 15];
 
   // ---- settings (kept on the phone)
@@ -198,7 +198,8 @@ class PrayerAlarms {
     }
     return NotificationDetails(
       android: AndroidNotificationDetails(
-        'prayer_$sound',
+        // a new channel when a built-in sound changes: Android keeps a channel's sound once it is made
+        sound == 'azan' ? 'prayer_azan_v2' : 'prayer_$sound',
         'Prayer reminders (${sounds[sound] ?? sound})',
         channelDescription: 'Reminders for the five prayers',
         importance: Importance.max,
@@ -395,18 +396,31 @@ class PrayerAlarms {
   }
 
   /// A reminder right now, to hear the sound: the azan-time one, or the one 15 minutes after.
-  static Future<void> test({bool after = false}) async {
+  /// The one after also opens its full screen straight away (while the phone is in use, Android only shows
+  /// a banner; the full screen takes over by itself when the phone is locked).
+  /// [delay]: ring later instead, so the person can lock the phone and see the real thing.
+  static Future<void> test({bool after = false, Duration? delay}) async {
     await _init();
     final snd = after ? await soundAfter() : await sound();
     final title = after ? 'Did you pray Dhuhr? 🤲' : 'It’s time for Dhuhr · ളുഹ്ർ';
     const text = 'This is how your prayer reminder will look 🕌';
     final body = snd == 'ayah' ? withAyah(text) : text;
-    await _plugin.show(
-      _base + (after ? 498 : 499),
-      title,
-      body,
-      await _details(snd, big: body, fullScreen: after),
-      payload: after ? 'prayer|Dhuhr|15' : null,
-    );
+    final id = _base + (after ? 498 : 499);
+    final details = await _details(snd, big: body, fullScreen: after);
+    final payload = after ? 'prayer|Dhuhr|15' : null;
+    if (delay != null) {
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tz.TZDateTime.from(DateTime.now().add(delay).toUtc(), tz.UTC),
+        details,
+        payload: payload,
+        androidScheduleMode: await exactAllowed() ? AndroidScheduleMode.alarmClock : AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+      return;
+    }
+    await _plugin.show(id, title, body, details, payload: payload);
+    if (after) _open(payload, id);
   }
 }
