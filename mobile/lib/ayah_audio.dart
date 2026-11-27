@@ -246,3 +246,120 @@ String malayalamToRead(Map r) => [
   if ('${r['text_ml'] ?? ''}'.isNotEmpty) '${r['text_ml']}',
   if ('${r['lesson_ml'] ?? ''}'.isNotEmpty) 'ഇന്നത്തെ പാഠം. ${r['lesson_ml']}',
 ].join('\n');
+
+/// One big button: plays the Arabic recitation, then the Malayalam meaning, in one go.
+class ListenAllButton extends StatefulWidget {
+  const ListenAllButton({super.key, required this.urls, required this.reading, required this.malayalam, this.onComplete});
+  final List<String> urls; // the Arabic recitation, one or more files
+  final Map reading; // the daily reading, for its Malayalam recording
+  final String malayalam; // the text, if the phone's voice has to read it
+  final VoidCallback? onComplete;
+
+  @override
+  State<ListenAllButton> createState() => _ListenAllButtonState();
+}
+
+class _ListenAllButtonState extends State<ListenAllButton> {
+  static final FlutterTts _tts = FlutterTts();
+  final AudioPlayer _p = AudioPlayer();
+  String _part = ''; // '' idle, 'ar' Arabic, 'ml' Malayalam, 'load'
+  int _run = 0; // a new tap cancels the old run
+
+  @override
+  void dispose() {
+    _run++;
+    _tts.stop();
+    _p.dispose();
+    super.dispose();
+  }
+
+  Future<String?> _mlUrl() async {
+    final r = widget.reading;
+    var url = '${r['ml_audio'] ?? ''}';
+    if (url.isEmpty && '${r['name'] ?? ''}'.isNotEmpty) {
+      try {
+        final res = await Api.call('sio_connect.tts.ml_audio', {'reading': '${r['name']}'});
+        url = '${(res is Map ? res['url'] : null) ?? ''}';
+        if (url.isNotEmpty) r['ml_audio'] = url;
+      } catch (_) {}
+    }
+    if (url.isEmpty) return null;
+    return url.startsWith('http') ? url : '${Api.baseUrl}$url';
+  }
+
+  Future<bool> _playUrl(String url, int run) async {
+    await _p.setUrl(url);
+    if (run != _run) return false;
+    await _p.play(); // returns when it stops or finishes
+    return run == _run && _p.processingState == ProcessingState.completed;
+  }
+
+  Future<void> _stop() async {
+    _run++;
+    await _p.stop();
+    await _tts.stop();
+    if (mounted) setState(() => _part = '');
+  }
+
+  Future<void> _start() async {
+    final run = ++_run;
+    setState(() => _part = widget.urls.isEmpty ? 'load' : 'ar');
+    final ml = widget.malayalam.isEmpty ? Future<String?>.value(null) : _mlUrl(); // fetch while Arabic plays
+    try {
+      for (final u in widget.urls) {
+        if (!await _playUrl(u, run)) return;
+      }
+      if (widget.malayalam.isEmpty) return _done(run);
+      if (mounted) setState(() => _part = 'load');
+      final url = await ml;
+      if (run != _run) return;
+      if (mounted) setState(() => _part = 'ml');
+      if (url != null) {
+        if (await _playUrl(url, run)) _done(run);
+        return;
+      }
+      // no recording yet: the phone's voice
+      if (await _tts.isLanguageAvailable('ml-IN') != true) return _done(run);
+      await _tts.setLanguage('ml-IN');
+      await _tts.setSpeechRate(0.45);
+      await _tts.awaitSpeakCompletion(true);
+      await _tts.speak(widget.malayalam);
+      if (run == _run) _done(run);
+    } catch (_) {
+      if (run == _run && mounted) {
+        setState(() => _part = '');
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Couldn’t play. Check your internet.')));
+      }
+    }
+  }
+
+  void _done(int run) {
+    if (run != _run) return;
+    widget.onComplete?.call();
+    if (mounted) setState(() => _part = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final busy = _part.isNotEmpty;
+    final label = switch (_part) {
+      'ar' => 'Playing Arabic…  then മലയാളം',
+      'load' => 'Getting മലയാളം…',
+      'ml' => 'Playing മലയാളം…',
+      _ => 'Listen  ·  Arabic + മലയാളം',
+    };
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF1A62A8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        onPressed: busy ? _stop : _start,
+        icon: Icon(busy ? Icons.stop_rounded : Icons.play_arrow_rounded, size: 26),
+        label: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+      ),
+    );
+  }
+}

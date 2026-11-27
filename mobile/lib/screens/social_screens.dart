@@ -1426,15 +1426,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
           Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Color(0xFF46607A))),
           if (audio.isNotEmpty || malayalamToRead(r).isNotEmpty) ...[
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (audio.isNotEmpty) AyahAudioButton(urls: audio, onComplete: _finishedListening),
-                if (malayalamToRead(r).isNotEmpty)
-                  MalayalamSpeakButton(text: malayalamToRead(r), reading: r, onComplete: _finishedListening),
-              ],
-            ),
+            ListenAllButton(urls: audio, reading: r, malayalam: malayalamToRead(r), onComplete: _finishedListening),
             if (!_done)
               const Padding(
                 padding: EdgeInsets.only(top: 6),
