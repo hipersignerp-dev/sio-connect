@@ -129,7 +129,7 @@ def reading_series():
     # the daily readings in series order: themed weeks, then the order inside each week
     rows = frappe.get_all("SIO Daily Reading", filters={"active": 1},
                           fields=["name", "kind", "reference", "text_en", "text_ml", "text_ar", "lesson_en", "lesson_ml", "audio",
-                                  "filled_from_quran_api", "series_week", "series_title", "series_title_ml", "series_emoji",
+                                  "filled_from_quran_api", "ml_audio", "series_week", "series_title", "series_title_ml", "series_emoji",
                                   "sort_order"])
     rows.sort(key=lambda r: (r.series_week or 999, r.sort_order or 0))
     weeks = []

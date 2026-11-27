@@ -111,8 +111,8 @@ try:
     if provider == "Google Gemini":
         model = settings.get("ai_model") or "gemini-2.5-flash"
         r = frappe.make_post_request(
-            "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + key,
-            headers={"Content-Type": "application/json"},
+            "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent",
+            headers={"Content-Type": "application/json", "x-goog-api-key": key},
             data=json.dumps({"systemInstruction": {"parts": [{"text": system}]},
                              "contents": [{"role": "user", "parts": [{"text": user}]}]}))
         out = r["candidates"][0]["content"]["parts"][0]["text"]
