@@ -140,7 +140,7 @@ def reading_series():
             weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
                           "emoji": r.series_emoji or "", "start": i, "size": 0})
         weeks[-1]["size"] = weeks[-1]["size"] + 1
-    return rows, weeks
+    return {"rows": rows, "weeks": weeks}
 
 
 def series_state(member, rows, weeks):

@@ -86,7 +86,7 @@ def reading_series():
             weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
                           "emoji": r.series_emoji or "", "start": i, "size": 0})
         weeks[-1]["size"] = weeks[-1]["size"] + 1
-    return rows, weeks
+    return {"rows": rows, "weeks": weeks}
 
 
 def series_state(member, rows, weeks):
@@ -241,7 +241,9 @@ if args.get("phone_visibility") in ("Leaders only", "Friends", "My unit", "All m
     m.phone_visibility = args.get("phone_visibility")
 if args.get("noor_pot"):
     # only a pot colour already won from the weekly chests
-    rows, weeks = reading_series()
+    rs_ = reading_series()
+    rows = rs_["rows"]
+    weeks = rs_["weeks"]
     unlocked = series_state(m.name, rows, weeks)["pots_unlocked"]
     if args.get("noor_pot") in POTS[:unlocked]:
         m.noor_pot = args.get("noor_pot")

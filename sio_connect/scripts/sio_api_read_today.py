@@ -87,7 +87,7 @@ def reading_series():
             weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
                           "emoji": r.series_emoji or "", "start": i, "size": 0})
         weeks[-1]["size"] = weeks[-1]["size"] + 1
-    return rows, weeks
+    return {"rows": rows, "weeks": weeks}
 
 
 def series_state(member, rows, weeks):
@@ -241,7 +241,9 @@ if not frappe.db.exists("SIO Streak Day", {"member": m.name, "activity": "Readin
 s = streak_from_days(member_days(m.name, "Reading"), True)
 s["milestone"] = s["current"] in (3, 7, 14, 21, 30, 50, 75, 100, 150, 200, 365)
 # the reading series: did this lesson finish a themed week? Then the chest opens with a new pot colour for Noor.
-rows, weeks = reading_series()
+rs_ = reading_series()
+rows = rs_["rows"]
+weeks = rs_["weeks"]
 st = series_state(m.name, rows, weeks)
 s["lessons"] = st["done"]
 n = len(rows) or 1

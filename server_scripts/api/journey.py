@@ -6,7 +6,9 @@ if not m:
     frappe.throw(_("Your student record is not set up yet."))
 me_doc = frappe.db.get_value("SIO Member", m.name, ["name", "full_name", "username", "photo", "unit", "area",
                                                      "member_role"], as_dict=True)
-rows, weeks = reading_series()
+rs_ = reading_series()
+rows = rs_["rows"]
+weeks = rs_["weeks"]
 progress = series_state(m.name, rows, weeks)
 reading = None
 if rows:

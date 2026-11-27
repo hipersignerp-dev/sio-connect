@@ -87,7 +87,7 @@ def reading_series():
             weeks.append({"week": w, "title": r.series_title or "", "title_ml": r.series_title_ml or "",
                           "emoji": r.series_emoji or "", "start": i, "size": 0})
         weeks[-1]["size"] = weeks[-1]["size"] + 1
-    return rows, weeks
+    return {"rows": rows, "weeks": weeks}
 
 
 def series_state(member, rows, weeks):
@@ -274,7 +274,9 @@ if not m:
     frappe.throw(_("Your student record is not set up yet."))
 me_doc = frappe.db.get_value("SIO Member", m.name, ["name", "full_name", "username", "photo", "unit", "area",
                                                      "member_role"], as_dict=True)
-rows, weeks = reading_series()
+rs_ = reading_series()
+rows = rs_["rows"]
+weeks = rs_["weeks"]
 progress = series_state(m.name, rows, weeks)
 reading = None
 if rows:

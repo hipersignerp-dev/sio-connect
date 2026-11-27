@@ -11,7 +11,9 @@ if args.get("phone_visibility") in ("Leaders only", "Friends", "My unit", "All m
     m.phone_visibility = args.get("phone_visibility")
 if args.get("noor_pot"):
     # only a pot colour already won from the weekly chests
-    rows, weeks = reading_series()
+    rs_ = reading_series()
+    rows = rs_["rows"]
+    weeks = rs_["weeks"]
     unlocked = series_state(m.name, rows, weeks)["pots_unlocked"]
     if args.get("noor_pot") in POTS[:unlocked]:
         m.noor_pot = args.get("noor_pot")
