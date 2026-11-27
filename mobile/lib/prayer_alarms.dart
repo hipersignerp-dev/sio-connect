@@ -357,6 +357,8 @@ class PrayerAlarms {
           if (!on.contains(prayer)) continue;
           final at = times[prayer]!;
           for (final o in offs) {
+            // Maghrib's time is short and people pray it right away: no "did you pray?" reminder after it
+            if (prayer == 'Maghrib' && o > 0) continue;
             final when = at.add(Duration(minutes: o));
             if (!when.isAfter(now.add(const Duration(seconds: 30))) || n >= 450) continue;
             final id = _base + n++;

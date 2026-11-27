@@ -414,6 +414,11 @@ class _PrayerTabState extends State<PrayerTab> {
                   ActionChip(avatar: const Icon(Icons.add, size: 18), label: const Text('Other time'), onPressed: _addCustom),
                 ],
               ),
+              const SizedBox(height: 4),
+              Text(
+                'Reminders after the azan are skipped for Maghrib.',
+                style: TextStyle(color: SioColors.textSecondary, fontSize: 12.5),
+              ),
               const SizedBox(height: 16),
               Text(
                 'Sound at azan time',
