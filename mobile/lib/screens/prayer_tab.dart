@@ -30,6 +30,7 @@ class _PrayerTabState extends State<PrayerTab> {
   bool _enabled = true;
   bool _exact = true;
   bool _batteryFree = true;
+  bool _fullScreen = true;
   String _brand = '';
   late final AppLifecycleListener _life;
   String? _custom; // name of the uploaded sound
@@ -62,6 +63,7 @@ class _PrayerTabState extends State<PrayerTab> {
     final en = await PrayerAlarms.enabled();
     final ex = await PrayerAlarms.exactAllowed();
     final bf = await PrayerAlarms.batteryFree();
+    final fs = await PrayerAlarms.fullScreenAllowed();
     final brand = await PrayerAlarms.brand();
     final custom = await PrayerAlarms.customName();
     if (mounted) {
@@ -74,6 +76,7 @@ class _PrayerTabState extends State<PrayerTab> {
         _enabled = en;
         _exact = ex;
         _batteryFree = bf;
+        _fullScreen = fs;
         _brand = brand;
         _custom = custom;
       });
@@ -392,6 +395,16 @@ class _PrayerTabState extends State<PrayerTab> {
                       await _load();
                       await PrayerAlarms.schedule();
                     },
+                  ),
+                ),
+              if (!_fullScreen)
+                Card(
+                  color: SioColors.warningBg,
+                  child: ListTile(
+                    leading: Icon(Icons.fullscreen, color: SioColors.warning),
+                    title: const Text('Allow full-screen reminders'),
+                    subtitle: const Text('So the reminder after azan opens on the lock screen like an alarm. Tap, then turn it on.'),
+                    onTap: PrayerAlarms.openFullScreenSettings,
                   ),
                 ),
               if (!_batteryFree) _batteryCard(),

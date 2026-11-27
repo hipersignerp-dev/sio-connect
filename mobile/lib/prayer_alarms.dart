@@ -327,6 +327,17 @@ class PrayerAlarms {
     }
   }
 
+  /// Android 14+: is the app allowed to show the full-screen prayer alarm?
+  static Future<bool> fullScreenAllowed() async {
+    try {
+      return await _battery.invokeMethod<bool>('fullscreen') ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<void> openFullScreenSettings() => _battery.invokeMethod('fullscreenSettings');
+
   static Future<void> openBattery() => _battery.invokeMethod('battery');
   static Future<void> openAutostart() => _battery.invokeMethod('autostart');
 

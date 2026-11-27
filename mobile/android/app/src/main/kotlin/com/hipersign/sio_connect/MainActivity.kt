@@ -13,11 +13,29 @@ class MainActivity : FlutterFragmentActivity() {
     private var shareChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        prayerAlarm(intent)
         super.onCreate(savedInstanceState)
         takeShare(intent)
     }
 
+    /** Opened by a prayer reminder: show over the lock screen and wake the screen at once, before
+     *  Flutter starts, so the alarm screen appears like a real alarm. Dart turns it off when it closes. */
+    private fun prayerAlarm(i: Intent?) {
+        val payload = i?.getStringExtra("payload") ?: return
+        if (!payload.startsWith("prayer|")) return
+        if (android.os.Build.VERSION.SDK_INT >= 27) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        }
+    }
+
     override fun onNewIntent(intent: Intent) {
+        prayerAlarm(intent)
         super.onNewIntent(intent)
         setIntent(intent)
         if (takeShare(intent)) shareChannel?.invokeMethod("shared", null)
@@ -95,6 +113,16 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(pm.isIgnoringBatteryOptimizations(packageName))
                     }
                     "brand" -> result.success(android.os.Build.MANUFACTURER ?: "")
+                    // Android 14+: may the app show full-screen alerts?
+                    "fullscreen" -> {
+                        val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+                        result.success(android.os.Build.VERSION.SDK_INT < 34 || nm.canUseFullScreenIntent())
+                    }
+                    "fullscreenSettings" -> result.success(open(listOf(
+                        Intent("android.settings.MANAGE_APP_USE_FULL_SCREEN_INTENT")
+                            .setData(android.net.Uri.parse("package:$packageName")),
+                        Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))))
                     // the prayer alarm screen: over the lock screen and wake the screen, only while it is open
                     "lock" -> {
                         val on = call.argument<Boolean>("on") == true
