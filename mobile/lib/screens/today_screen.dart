@@ -71,6 +71,7 @@ class TodayScreen extends StatelessWidget {
             _TopBar(rs: rs),
             const SizedBox(height: 10),
             _SproutHero(j: j),
+            if (j['reading'] != null) ...[const SizedBox(height: 12), _TodayAyah(j: j)],
             const SizedBox(height: 12),
             _GrowthStrip(streak: _i(rs['current'])),
             const SizedBox(height: 18),
@@ -240,6 +241,107 @@ class _SproutHero extends StatelessWidget {
     final st = sproutStage(streak);
     if (st >= 4) return 1;
     return ((streak - at[st]) / (at[st + 1] - at[st])).clamp(0.0, 1.0);
+  }
+}
+
+/// Today's ayah right on the Today tab: the Arabic, the Malayalam meaning, and a button to read it.
+class _TodayAyah extends StatelessWidget {
+  const _TodayAyah({required this.j});
+  final Map<String, dynamic> j;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = _m(j['reading']);
+    final read = _m(j['reading_streak'])['today'] == true;
+    final hadith = r['kind'] == 'Hadith';
+    final ar = '${r['text_ar'] ?? ''}';
+    final ml = '${r['text_ml'] ?? ''}';
+    Future<void> open() async {
+      HapticFeedback.selectionClick();
+      await push(context, AyahReaderScreen(journey: j, games: _games));
+      AppState.i.refreshAll();
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: open,
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF7FBFF), Color(0xFFE6F2FD)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: _pale2, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    hadith ? 'HADITH OF THE DAY' : 'AYAH OF THE DAY',
+                    style: const TextStyle(color: _sio, fontWeight: FontWeight.w900, letterSpacing: 1.3, fontSize: 12),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${r['reference'] ?? ''}',
+                    style: const TextStyle(color: _lockInk, fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              if (ar.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    ar,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    textDirection: TextDirection.rtl,
+                    style: arabicStyle(color: _deep, size: 22),
+                  ),
+                ),
+              ],
+              if (ml.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  ml,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: malayalamStyle(color: _deep, size: 15, weight: FontWeight.w700),
+                ),
+              ],
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: read
+                    ? OutlinedButton.icon(
+                        onPressed: open,
+                        icon: const Icon(Icons.check_circle_rounded, color: _mid),
+                        label: const Text('Read today · open again'),
+                      )
+                    : FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _sio,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: const StadiumBorder(),
+                        ),
+                        onPressed: open,
+                        icon: const Icon(Icons.water_drop_rounded),
+                        label: const Text('Read & water Noor', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

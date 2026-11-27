@@ -205,8 +205,9 @@ class _FlowState extends State<_Flow> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (audio.isNotEmpty) AyahAudioButton(urls: audio, onComplete: _markRead),
-                if (malayalamToRead(r).isNotEmpty) MalayalamSpeakButton(text: malayalamToRead(r), onComplete: _markRead),
+                if (audio.isNotEmpty) AyahAudioButton(urls: audio, light: true, onComplete: _markRead),
+                if (malayalamToRead(r).isNotEmpty)
+                  MalayalamSpeakButton(text: malayalamToRead(r), light: true, onComplete: _markRead),
               ],
             ),
           ],

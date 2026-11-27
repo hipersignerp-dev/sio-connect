@@ -149,11 +149,12 @@ class _PrayerTabState extends State<PrayerTab> {
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF0E3F70), Color(0xFF1A62A8)],
+                    colors: [Color(0xFFF7FBFF), Color(0xFFDDEEFC)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFCFE5FA), width: 1.5),
                 ),
                 child: Row(
                   children: [
@@ -164,7 +165,7 @@ class _PrayerTabState extends State<PrayerTab> {
                           const Text(
                             'NEXT PRAYER',
                             style: TextStyle(
-                              color: Colors.white70,
+                              color: Color(0xFF2F7BC4),
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.5,
                               fontSize: 12,
@@ -173,17 +174,17 @@ class _PrayerTabState extends State<PrayerTab> {
                           const SizedBox(height: 4),
                           Text(
                             '${next!.key} · ${PrayerTimes.ml[next.key]}',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 24),
+                            style: const TextStyle(color: Color(0xFF0E3F70), fontWeight: FontWeight.w900, fontSize: 24),
                           ),
                           Text(
                             '${_hm(next.value)} · in ${left!.inHours > 0 ? '${left.inHours}h ' : ''}${left.inMinutes % 60}m',
-                            style: const TextStyle(color: Color(0xFFBFE0FF), fontWeight: FontWeight.w700, fontSize: 16),
+                            style: const TextStyle(color: Color(0xFF1A62A8), fontWeight: FontWeight.w700, fontSize: 16),
                           ),
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              const Icon(Icons.place_outlined, size: 14, color: Colors.white60),
-                              Text(p.place, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                              const Icon(Icons.place_outlined, size: 14, color: Color(0xFF6B8299)),
+                              Text(p.place, style: const TextStyle(color: Color(0xFF6B8299), fontSize: 12)),
                             ],
                           ),
                         ],

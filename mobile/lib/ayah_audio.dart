@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 /// Play / stop the recitation of today's ayah (one or more files, played one after another).
 class AyahAudioButton extends StatefulWidget {
-  const AyahAudioButton({super.key, required this.urls, this.light = true, this.onComplete});
+  const AyahAudioButton({super.key, required this.urls, this.light = false, this.onComplete});
   final List<String> urls;
   final VoidCallback? onComplete; // played to the end
   final bool light; // white on a dark card
@@ -91,7 +91,7 @@ class _AyahAudioButtonState extends State<AyahAudioButton> {
 
 /// Reads the Malayalam meaning (and today's lesson) aloud with the phone's Malayalam voice.
 class MalayalamSpeakButton extends StatefulWidget {
-  const MalayalamSpeakButton({super.key, required this.text, this.light = true, this.onComplete});
+  const MalayalamSpeakButton({super.key, required this.text, this.light = false, this.onComplete});
   final String text;
   final VoidCallback? onComplete; // read to the end
   final bool light;

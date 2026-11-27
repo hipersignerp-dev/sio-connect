@@ -1318,12 +1318,12 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF0E3F70), Color(0xFF1A62A8)]),
+            gradient: const LinearGradient(colors: [Color(0xFFF4F9FF), Color(0xFFDDEEFC)]),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
             children: [
-              const Icon(Icons.check_circle, color: Color(0xFF7CE0A0)),
+              const Icon(Icons.check_circle, color: Color(0xFF2E9E5B)),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -1331,21 +1331,21 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                   children: [
                     Text(
                       r['kind'] == 'Hadith' ? 'Today’s hadith read' : 'Today’s ayah read',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                      style: const TextStyle(color: Color(0xFF0E3F70), fontWeight: FontWeight.w800),
                     ),
                     Text(
                       '${r['reference'] ?? ''} · tap to read again',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style: const TextStyle(color: Color(0xFF46607A), fontSize: 12),
                     ),
                   ],
                 ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
                 child: Text(
                   '🔥 $streak',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                  style: const TextStyle(color: Color(0xFF0E3F70), fontWeight: FontWeight.w800),
                 ),
               ),
             ],
@@ -1357,12 +1357,13 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0E3F70), Color(0xFF1A62A8)],
+          colors: [Color(0xFFF7FBFF), Color(0xFFDDEEFC)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [BoxShadow(color: Color(0x331A62A8), blurRadius: 18, offset: Offset(0, 8))],
+        border: Border.all(color: const Color(0xFFCFE5FA), width: 1.5),
+        boxShadow: const [BoxShadow(color: Color(0x141A62A8), blurRadius: 14, offset: Offset(0, 6))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1371,7 +1372,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
             children: [
               Text(
                 r['kind'] == 'Hadith' ? 'HADITH OF THE DAY' : 'AYAH OF THE DAY',
-                style: const TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w800),
+                style: const TextStyle(color: Color(0xFF46607A), fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w800),
               ),
               const Spacer(),
               if (_done && !widget.alwaysOpen)
@@ -1379,16 +1380,16 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                   onTap: () => setState(() => _open = false),
                   child: const Padding(
                     padding: EdgeInsets.only(right: 8),
-                    child: Icon(Icons.expand_less, color: Colors.white70),
+                    child: Icon(Icons.expand_less, color: Color(0xFF46607A)),
                   ),
                 ),
               if (widget.games)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
                   child: Text(
                     '🔥 $streak',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                    style: const TextStyle(color: Color(0xFF0E3F70), fontWeight: FontWeight.w800),
                   ),
                 ),
             ],
@@ -1401,7 +1402,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 ar,
                 textAlign: TextAlign.right,
                 textDirection: TextDirection.rtl,
-                style: arabicStyle(color: Colors.white, size: 24),
+                style: arabicStyle(color: Color(0xFF0E3F70), size: 24),
               ),
             ),
             const SizedBox(height: 10),
@@ -1410,17 +1411,17 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
           if (ml.isNotEmpty) ...[
             Text(
               ml,
-              style: malayalamStyle(color: Colors.white, size: 17, weight: FontWeight.w700),
+              style: malayalamStyle(color: Color(0xFF0E3F70), size: 17, weight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
-            Text('“${r['text_en']}”', style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4)),
+            Text('“${r['text_en']}”', style: const TextStyle(color: Color(0xFF46607A), fontSize: 14, height: 1.4)),
           ] else
             Text(
               '“${r['text_en']}”',
-              style: const TextStyle(color: Colors.white, fontSize: 18, height: 1.4, fontWeight: FontWeight.w700),
+              style: const TextStyle(color: Color(0xFF0E3F70), fontSize: 18, height: 1.4, fontWeight: FontWeight.w700),
             ),
           const SizedBox(height: 6),
-          Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Colors.white70)),
+          Text('— ${r['reference'] ?? ''}', style: const TextStyle(color: Color(0xFF46607A))),
           if (audio.isNotEmpty || malayalamToRead(r).isNotEmpty) ...[
             const SizedBox(height: 12),
             Wrap(
@@ -1436,7 +1437,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
                   'Listen till the end and it counts as read today.',
-                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                  style: TextStyle(color: Color(0xFF6B8299), fontSize: 12),
                 ),
               ),
           ],
@@ -1445,20 +1446,20 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     '💡 ഇന്നത്തെ പാഠം · TODAY’S LESSON',
-                    style: TextStyle(color: Color(0xFFFFD2B3), fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w800),
+                    style: TextStyle(color: Color(0xFFC96A1B), fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 4),
                   if ('${r['lesson_ml'] ?? ''}'.isNotEmpty)
-                    Text('${r['lesson_ml']}', style: malayalamStyle(color: Colors.white, size: 15)),
+                    Text('${r['lesson_ml']}', style: malayalamStyle(color: Color(0xFF0E3F70), size: 15)),
                   if ('${r['lesson_en'] ?? ''}'.isNotEmpty) ...[
                     const SizedBox(height: 6),
-                    Text('${r['lesson_en']}', style: const TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.4)),
+                    Text('${r['lesson_en']}', style: const TextStyle(color: Color(0xFF46607A), fontSize: 13.5, height: 1.4)),
                   ],
                 ],
               ),
@@ -1470,7 +1471,7 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
               opacity: Tween(begin: 0.6, end: 1.0).animate(_pulse),
               child: Text(
                 '⏳ ${24 - DateTime.now().hour}h left to keep your $streak-day streak',
-                style: const TextStyle(color: Color(0xFFFFD2B3), fontWeight: FontWeight.w700),
+                style: const TextStyle(color: Color(0xFFC96A1B), fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -1481,14 +1482,11 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                 child: _done
                     ? Container(
                         padding: const EdgeInsets.symmetric(vertical: 11),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(30),
-                        ),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
                         child: const Text(
                           '✓  Read today. See you tomorrow',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                          style: TextStyle(color: Color(0xFF0E3F70), fontWeight: FontWeight.w700),
                         ),
                       )
                     : ScaleTransition(
@@ -1496,22 +1494,22 @@ class _AyahHeroState extends State<_AyahHero> with SingleTickerProviderStateMixi
                         child: FilledButton.icon(
                           key: _btn,
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: SioColors.blue,
+                            backgroundColor: const Color(0xFF1A62A8),
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: const StadiumBorder(),
                           ),
                           onPressed: _busy ? null : _read,
-                          icon: const Icon(Icons.water_drop_rounded, color: Color(0xFF1CB0F6)),
+                          icon: const Icon(Icons.water_drop_rounded, color: Colors.white),
                           label: Text(_busy ? 'Saving…' : 'I read it', style: const TextStyle(fontWeight: FontWeight.w800)),
                         ),
                       ),
               ),
               const SizedBox(width: 8),
               IconButton(
-                style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.16)),
+                style: IconButton.styleFrom(backgroundColor: Colors.white),
                 tooltip: 'Share',
-                icon: const Icon(Icons.send_outlined, color: Colors.white),
+                icon: const Icon(Icons.send_outlined, color: Color(0xFF1A62A8)),
                 onPressed: () => shareAyahImage(context, r),
               ),
             ],
