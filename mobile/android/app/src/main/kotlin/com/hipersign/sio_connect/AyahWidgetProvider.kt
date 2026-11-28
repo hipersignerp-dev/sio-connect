@@ -35,14 +35,19 @@ class AyahWidgetProvider : HomeWidgetProvider() {
         val img = NoorState.face(context, mood, streak)
         for (id in appWidgetIds) {
             val v = RemoteViews(context.packageName, R.layout.ayah_widget)
+            v.setImageViewResource(R.id.w_scene, NoorState.scene(context, "wide", mood))
             v.setImageViewResource(R.id.w_noor, img)
             v.setTextViewText(R.id.w_says, says)
             v.setTextViewText(
                 R.id.w_text,
                 if (fresh) (widgetData.getString("w_text", "") ?: "") else "Tap to open today’s ayah",
             )
-            v.setTextViewText(R.id.w_header, if (games && streak > 0) "🔥 $streak" else if (readToday) "✅ Read" else "")
-            v.setTextViewText(R.id.w_prayer, nextPrayer(widgetData.getString("w_times", "") ?: ""))
+            val header = if (games && streak > 0) "🔥 $streak" else if (readToday) "✅ Read" else ""
+            v.setTextViewText(R.id.w_header, header)
+            v.setViewVisibility(R.id.w_header, if (header.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE)
+            val prayer = nextPrayer(widgetData.getString("w_times", "") ?: "")
+            v.setTextViewText(R.id.w_prayer, prayer)
+            v.setViewVisibility(R.id.w_prayer, if (prayer.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE)
             v.setOnClickPendingIntent(R.id.w_root, HomeWidgetLaunchIntent.getActivity(context, MainActivity::class.java))
             appWidgetManager.updateAppWidget(id, v)
         }

@@ -43,6 +43,12 @@ class NoorState(
             return NoorState(cal, fresh, readToday, streak, games, name, mood)
         }
 
+        /** The little sky-and-hill picture behind Noor, coloured for the mood ("sq" 2x2 or "wide" 4x2). */
+        fun scene(context: Context, shape: String, mood: String): Int {
+            val id = context.resources.getIdentifier("widget_scene_${shape}_$mood", "drawable", context.packageName)
+            return if (id != 0) id else context.resources.getIdentifier("widget_scene_${shape}_hello", "drawable", context.packageName)
+        }
+
         fun stage(streak: Int) = when {
             streak >= 100 -> 4
             streak >= 30 -> 3
@@ -90,18 +96,11 @@ class NoorWidgetProvider : HomeWidgetProvider() {
             "urgent" -> "${n}Water me! 💧"
             else -> if (first.isEmpty()) "I dried up… 🥀" else "$first… I dried up 🥀"
         }
-        val bg = when (st.mood) {
-            "happy" -> R.drawable.noor_bg_happy
-            "waiting" -> R.drawable.noor_bg_waiting
-            "worried" -> R.drawable.noor_bg_worried
-            "urgent" -> R.drawable.noor_bg_urgent
-            "out" -> R.drawable.noor_bg_out
-            else -> R.drawable.noor_bg_hello
-        }
+        val scene = NoorState.scene(context, "sq", st.mood)
         val pic = NoorState.face(context, st.mood, st.streak)
         for (id in appWidgetIds) {
             val v = RemoteViews(context.packageName, R.layout.noor_widget)
-            v.setInt(R.id.n_root, "setBackgroundResource", bg)
+            v.setImageViewResource(R.id.n_scene, scene)
             v.setImageViewResource(R.id.n_noor, pic)
             v.setTextViewText(R.id.n_says, says)
             if (st.games) {
