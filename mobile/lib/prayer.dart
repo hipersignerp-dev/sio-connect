@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_widget_sync.dart';
 
-/// Today's five prayer times for where the phone is (falls back to Ottapalam). Fetched from aladhan.com once a
+/// Today's five prayer times for where the phone is (falls back to Ottapalam when location can't be used). Fetched from aladhan.com once a
 /// day and kept on the phone, so the card works offline after the first load.
 class PrayerTimes {
   PrayerTimes(this.times, this.place, this.day);
@@ -37,28 +37,74 @@ class PrayerTimes {
     return '${n.day.toString().padLeft(2, '0')}-${n.month.toString().padLeft(2, '0')}-${n.year}';
   }
 
-  /// Location without nagging: uses it only if already allowed (asks once, never opens settings).
-  static Future<(double, double, String)> where() async {
+  /// Where the phone is: its location if allowed (asks once by itself; [ask] asks again, or opens
+  /// Settings if it was blocked), else Ottapalam. The place name is the town, e.g. "Kozhikode".
+  static Future<(double, double, String)> where({bool ask = false}) async {
     try {
-      if (await Geolocator.isLocationServiceEnabled()) {
-        var p = await Geolocator.checkPermission();
-        final prefs = await SharedPreferences.getInstance();
-        if (p == LocationPermission.denied && prefs.getBool('prayer_asked') != true) {
-          await prefs.setBool('prayer_asked', true);
-          p = await Geolocator.requestPermission();
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (ask) await Geolocator.openLocationSettings();
+        return (ottapalam.$1, ottapalam.$2, fallbackName);
+      }
+      var p = await Geolocator.checkPermission();
+      final prefs = await SharedPreferences.getInstance();
+      if (p == LocationPermission.denied && (ask || prefs.getBool('prayer_asked') != true)) {
+        await prefs.setBool('prayer_asked', true);
+        p = await Geolocator.requestPermission();
+      }
+      if (p == LocationPermission.deniedForever && ask) {
+        await Geolocator.openAppSettings();
+      }
+      if (p == LocationPermission.always || p == LocationPermission.whileInUse) {
+        Position? pos;
+        try {
+          // a fresh fix first: the last known one can be from another town
+          pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 8)),
+          );
+        } catch (_) {
+          pos = await Geolocator.getLastKnownPosition();
         }
-        if (p == LocationPermission.always || p == LocationPermission.whileInUse) {
-          final last = await Geolocator.getLastKnownPosition();
-          final pos =
-              last ??
-              await Geolocator.getCurrentPosition(
-                locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 10)),
-              );
-          return (pos.latitude, pos.longitude, 'Your location');
+        if (pos != null) return (pos.latitude, pos.longitude, await _town(pos.latitude, pos.longitude));
+      }
+    } catch (_) {}
+    return (ottapalam.$1, ottapalam.$2, fallbackName);
+  }
+
+  /// Shown when the phone's location can't be used.
+  static const fallbackName = 'Ottapalam';
+  bool get isFallback => place == fallbackName;
+
+  /// The town's name for a spot (remembered, so it is looked up once per place).
+  static Future<String> _town(double lat, double lng) async {
+    final key = 'town_${lat.toStringAsFixed(2)},${lng.toStringAsFixed(2)}';
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(key);
+    if (saved != null) return saved;
+    try {
+      final r = await http
+          .get(Uri.parse('https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$lat&longitude=$lng&localityLanguage=en'))
+          .timeout(const Duration(seconds: 6));
+      if (r.statusCode == 200) {
+        final j = jsonDecode(r.body) as Map;
+        final name = ['${j['city'] ?? ''}', '${j['locality'] ?? ''}', '${j['principalSubdivision'] ?? ''}']
+            .firstWhere((x) => x.trim().isNotEmpty, orElse: () => '');
+        if (name.isNotEmpty) {
+          await prefs.setString(key, name);
+          return name;
         }
       }
     } catch (_) {}
-    return (ottapalam.$1, ottapalam.$2, 'Ottapalam');
+    return 'Your location';
+  }
+
+  /// "Use my location": asks for permission again (or opens Settings), then loads fresh times.
+  static Future<PrayerTimes?> useMyLocation() async {
+    await where(ask: true);
+    _cache = null;
+    _cachedAt = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('prayer_day');
+    return load();
   }
 
   static PrayerTimes? _parse(String body, String place, String day) {
@@ -74,17 +120,24 @@ class PrayerTimes {
     return PrayerTimes(out, place, day);
   }
 
+  static DateTime? _cachedAt;
+
+  /// Today's times. Checked again for a new place every 30 minutes, so travelling updates them.
   static Future<PrayerTimes?> load() async {
     final day = _today();
-    if (_cache != null && _cache!.day == day) return _cache;
+    if (_cache != null && _cache!.day == day && _cachedAt != null && DateTime.now().difference(_cachedAt!).inMinutes < 30) {
+      return _cache;
+    }
     final prefs = await SharedPreferences.getInstance();
+    final (lat, lng, place) = await where();
+    final spot = '${lat.toStringAsFixed(1)},${lng.toStringAsFixed(1)}';
     final saved = prefs.getString('prayer_json');
-    if (saved != null && prefs.getString('prayer_day') == day) {
-      _cache = _parse(saved, prefs.getString('prayer_place') ?? 'Ottapalam', day);
+    if (saved != null && prefs.getString('prayer_day') == day && prefs.getString('prayer_spot') == spot) {
+      _cache = _parse(saved, place, day);
+      _cachedAt = DateTime.now();
       if (_cache != null) return _cache;
     }
     try {
-      final (lat, lng, place) = await where();
       // method 1 = Karachi (used in Kerala), school 0 = Shafi'i Asr
       final r = await http
           .get(Uri.parse('https://api.aladhan.com/v1/timings/$day?latitude=$lat&longitude=$lng&method=1&school=0'))
@@ -95,7 +148,9 @@ class PrayerTimes {
           await prefs.setString('prayer_json', r.body);
           await prefs.setString('prayer_day', day);
           await prefs.setString('prayer_place', place);
+          await prefs.setString('prayer_spot', spot);
           _cache = p;
+          _cachedAt = DateTime.now();
           return p;
         }
       }

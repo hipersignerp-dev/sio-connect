@@ -53,6 +53,28 @@ class _PrayerTabState extends State<PrayerTab> {
     });
   }
 
+  bool _locating = false;
+
+  /// Tap the place: ask for location again (or open Settings), then fresh times and reminders for here.
+  Future<void> _useMyLocation() async {
+    setState(() => _locating = true);
+    final p = await PrayerTimes.useMyLocation();
+    if (!mounted) return;
+    setState(() {
+      _locating = false;
+      if (p != null) _p = p;
+    });
+    if (p != null) {
+      HomeWidgetSync.prayers(p.times);
+      await PrayerAlarms.schedule();
+      if (mounted && p.isFallback) {
+        toast(context, 'Turn on location for SIO Connect to get times for where you are');
+      } else if (mounted) {
+        toast(context, 'Prayer times for ${p.place} 📍');
+      }
+    }
+  }
+
   Future<void> _load() async {
     final p = await PrayerTimes.load();
     if (p != null) HomeWidgetSync.prayers(p.times);
@@ -305,11 +327,40 @@ class _PrayerTabState extends State<PrayerTab> {
                             style: const TextStyle(color: Color(0xFF1A62A8), fontWeight: FontWeight.w700, fontSize: 16),
                           ),
                           const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              const Icon(Icons.place_outlined, size: 14, color: Color(0xFF6B8299)),
-                              Text(p.place, style: const TextStyle(color: Color(0xFF6B8299), fontSize: 12)),
-                            ],
+                          InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: _locating ? null : _useMyLocation,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    p.isFallback ? Icons.location_off_outlined : Icons.place_outlined,
+                                    size: 16,
+                                    color: const Color(0xFF6B8299),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Flexible(
+                                    child: Text(
+                                      _locating ? 'Finding you…' : p.place,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Color(0xFF4A6178), fontSize: 13, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  if (p.isFallback && !_locating) ...[
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Use my location',
+                                      style: TextStyle(color: Color(0xFF1A62A8), fontSize: 13, fontWeight: FontWeight.w800),
+                                    ),
+                                  ] else if (!_locating) ...[
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.refresh_rounded, size: 15, color: Color(0xFF6B8299)),
+                                  ],
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),

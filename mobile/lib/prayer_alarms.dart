@@ -111,6 +111,7 @@ class PrayerAlarms {
   /// Times for each day from today, for [days] days.
   static Future<List<(DateTime, Map<String, DateTime>)>> upcoming({int days = 7}) async {
     final p = await _p;
+    _place = null; // where the phone is now: a new town gets a new timetable
     final now = DateTime.now();
     final out = <(DateTime, Map<String, DateTime>)>[];
     final months = <String, List<dynamic>>{};
@@ -142,16 +143,19 @@ class PrayerAlarms {
   }
 
   static String? _place;
+  static (double, double)? _spot;
   static Future<String> _placeKey() async {
     if (_place != null) return _place!;
     final (lat, lng, _) = await PrayerTimes.where();
+    _spot = (lat, lng);
     // rounded to about 10 km, so the timetable is fetched again only after a real move
     return _place = '${lat.toStringAsFixed(1)},${lng.toStringAsFixed(1)}';
   }
 
   static Future<String?> _fetchMonth(DateTime d) async {
     try {
-      final (lat, lng, _) = await PrayerTimes.where();
+      await _placeKey();
+      final (lat, lng) = _spot!;
       final r = await http
           .get(
             Uri.parse('https://api.aladhan.com/v1/calendar/${d.year}/${d.month}?latitude=$lat&longitude=$lng&method=1&school=0'),
